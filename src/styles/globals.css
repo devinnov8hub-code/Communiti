@@ -1,0 +1,166 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/dm-sans/opsz.css';
+
+/* Class-based dark mode: <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------ *
+ * Design tokens — taken from the Figma "Innov8" file variables.
+ * Raw palette values live in @theme; semantic tokens below switch
+ * between the light and dark designs.
+ * ------------------------------------------------------------------ */
+@theme {
+  --font-sans: 'DM Sans Variable', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand */
+  --color-brand-green: #39b04c; /* green theme / Buttons/button-bg-1 */
+  --color-brand-orange: #ed8322; /* Orange theme */
+  --color-brand-orange-soft: #f5a04f; /* Buttons/button-bg-2-3 */
+  --color-brand-orange-glow: #f68620;
+  --color-brand-orange-tint: #fff1e5; /* shadows/drop-orange */
+  --color-brand-green-tint: #e8f7eb; /* shadows/drop-green */
+  --color-innovation: #18a109; /* Featured innovation titles */
+  --color-grey-45: #626262; /* innovation taglines */
+
+  /* System status */
+  --color-info: #4da6ff; /* System/Information/40 */
+  --color-info-tint: #e8f4ff; /* System/Information/20 */
+  --color-info-strong: #0078d4; /* System/Information/50 */
+  --color-success-tint: #e8f5e9; /* System/Green/20 */
+  --color-success: #2e7d32; /* System/Green/40 */
+  --color-success-strong: #145a32; /* System/Green/50 */
+  --color-warning-tint: #fff8e1; /* System/Warning/20 */
+  --color-warning-strong: #b77900; /* System/Warning/50 */
+  --color-warning: #f4b400; /* System/Warning/40 */
+  --color-error: #d32f2f; /* System/Error/40 */
+  --color-danger-soft: #e85d5d; /* "Report this Post" button */
+
+  /* System greys */
+  --color-grey-30: #d1d5db; /* System/Grey/30, Border/default */
+  --color-grey-40: #6b7280; /* System/Grey/40, Text/secondary */
+  --color-grey-50: #1f2937; /* System/Grey/50 */
+  --color-offwhite: #f8f9fa; /* shadows/drop-10 (light) */
+  --color-night: #1b2028; /* offwhite-web-bg (dark) */
+
+  /* Semantic, theme-aware colors (values set on :root / .dark) */
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-fg: var(--fg);
+  --color-fg-body: var(--fg-body);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-label: var(--fg-label);
+  --color-border-input: var(--border-input);
+  --color-border-default: var(--border-default);
+  --color-border-pill: var(--border-pill);
+  --color-divider: var(--divider);
+  --color-hairline: var(--hairline);
+  --color-sidebar: var(--sidebar);
+  --color-popover: var(--popover);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-input-fill: var(--input-fill);
+  --color-carousel: var(--carousel);
+
+  /* Typography scale (Figma text styles) */
+  --text-head2: 42px; /* Head2 — Bold */
+  --text-head2--line-height: normal;
+  --text-title-sm: 32px; /* Head2 on small screens */
+  --text-title-sm--line-height: normal;
+  --text-h3: 24px; /* Heading/H3 — SemiBold */
+  --text-h3--line-height: normal;
+  --text-h4: 20px; /* Heading/H4 — SemiBold */
+  --text-h4--line-height: normal;
+  --text-otp: 32px;
+  --text-otp--line-height: normal;
+  --text-body-l: 18px; /* Body/L, Body/18 bold */
+  --text-body-l--line-height: normal;
+  --text-body-m: 16px; /* Body/M */
+  --text-body-m--line-height: normal;
+  --text-body-s: 14px; /* Body/S, Body/Regular */
+  --text-body-s--line-height: normal;
+  --text-caption: 12px; /* Body/Caption */
+  --text-caption--line-height: normal;
+  --text-xs: 9px; /* Body/XS */
+  --text-xs--line-height: normal;
+
+  /* Sizing & spacing (Figma "heights", "Bigger gap" variables) */
+  --spacing-control: 55px; /* heights/buttons */
+  --spacing-otp: 82px;
+  --spacing-gap-sm: 14px; /* Header2 */
+  --spacing-gap-md: 24px; /* Bigger gap/20 */
+  --spacing-gap-lg: 32px; /* Bigger gap/30 */
+  --spacing-gap-xl: 38px; /* Bigger gap/40 */
+  --spacing-gap-2xl: 54px; /* Bigger gap/bottomsheet */
+
+  --container-auth-form: 590px;
+
+  --radius-control: 8px; /* "headers" */
+  --radius-card: 12px; /* "buttons" / Rounded corner/10 */
+  --radius-modal: 14px; /* Header2 */
+  --radius-search: 18px; /* Rounded corner/20 */
+
+  --shadow-popover: 0px 8px 24px 0px rgb(0 0 0 / 0.12);
+
+  --shadow-otp: 0px 4px 19.8px 0px rgb(233 200 155 / 0.25), 0px 3px 11px 0px rgb(246 134 32 / 0.2);
+}
+
+:root {
+  --background: var(--color-offwhite);
+  --surface: var(--color-offwhite);
+  --surface-raised: #ffffff;
+  --fg: #000000; /* Text/primary */
+  --fg-body: var(--color-grey-50);
+  --fg-muted: var(--color-grey-40);
+  --fg-label: var(--color-grey-40);
+  --border-input: var(--color-grey-50);
+  --border-default: var(--color-grey-30);
+  --border-pill: var(--color-grey-30);
+  --divider: var(--color-grey-30);
+  /* Figma's 0.4px Border/default lines */
+  --hairline: var(--color-grey-30);
+  --sidebar: #ffffff;
+  --popover: #ffffff; /* Background/light */
+  --fg-subtle: #505050; /* member counts */
+  --input-fill: #edeef1; /* System/Grey/15 — chat composer */
+  --carousel: #f7f7f7; /* image carousel strip */
+
+  color-scheme: light;
+}
+
+.dark {
+  --background: var(--color-night);
+  --surface: var(--color-grey-50);
+  --surface-raised: var(--color-grey-50);
+  --fg: #ffffff; /* Text/inverse */
+  --fg-body: var(--color-grey-30);
+  --fg-muted: var(--color-grey-40);
+  --fg-label: #ffffff;
+  --border-input: var(--color-grey-30);
+  --border-default: var(--color-grey-40);
+  --border-pill: transparent;
+  --divider: var(--color-grey-30);
+  --hairline: rgb(209 213 219 / 0.25);
+  --sidebar: var(--color-night);
+  --popover: var(--color-grey-50);
+  --fg-subtle: var(--color-grey-30);
+  --input-fill: var(--color-grey-50);
+  --carousel: var(--color-grey-50);
+
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-background font-sans text-fg antialiased;
+    font-variation-settings: 'opsz' 14;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-green;
+  }
+}
