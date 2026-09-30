@@ -8,8 +8,8 @@ import type { Project, ProjectStatus } from '../types'
 // "Open" uses System/Green/40 text (topic tags use the darker Green/50).
 const STATUS: Record<ProjectStatus, { label: string; tone: TagTone; className?: string }> = {
   open: { label: 'Open', tone: 'success', className: 'text-success' },
-  'in-progress': { label: 'In progress', tone: 'info' },
-  closed: { label: 'Closed', tone: 'warning' },
+  'in-progress': { label: 'Ongoing', tone: 'warning' },
+  closed: { label: 'Closed', tone: 'info' },
 }
 
 /** Project summary card (Figma "Project"). */

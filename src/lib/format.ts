@@ -18,7 +18,7 @@ export function timeAgo(iso: string, now = Date.now()) {
   return 'just now'
 }
 
-function ordinal(day: number) {
+export function ordinal(day: number) {
   const suffix =
     day % 10 === 1 && day !== 11
       ? 'st'
@@ -47,3 +47,44 @@ export function formatDateRange(startIso: string, endIso: string) {
 }
 
 export const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value)
+
+const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+
+/** Days between two calendar dates (ignores the time of day). */
+function dayDiff(date: Date, now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000)
+}
+
+/** "Today", "Yesterday" or "Wednesday 26th August, 2026" — ledger day headings. */
+export function formatDayHeading(iso: string, now = new Date()) {
+  const date = new Date(iso)
+  if (dayKey(date) === dayKey(now)) return 'Today'
+  if (dayDiff(date, now) === -1) return 'Yesterday'
+  const weekday = date.toLocaleString('en-US', { weekday: 'long' })
+  const month = date.toLocaleString('en-US', { month: 'long' })
+  return `${weekday} ${ordinal(date.getDate())} ${month}, ${date.getFullYear()}`
+}
+
+/** "11:34 AM" */
+export const formatTime = (iso: string) => new Date(iso).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })
+
+/** "Due Today", "Due Tomorrow", "Overdue · Oct 2", "Due Oct 5" for a YYYY-MM-DD date. */
+export function formatDue(isoDate: string, now = new Date()) {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  const diff = dayDiff(date, now)
+  const short = date.toLocaleString('en-US', { month: 'short', day: 'numeric' })
+  if (diff === 0) return 'Due Today'
+  if (diff === 1) return 'Due Tomorrow'
+  if (diff < 0) return `Overdue · ${short}`
+  return `Due ${short}`
+}
+
+/** "December 22 2026" for a YYYY-MM-DD date. */
+export function formatLongDate(isoDate: string) {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return `${date.toLocaleString('en-US', { month: 'long' })} ${date.getDate()} ${date.getFullYear()}`
+}

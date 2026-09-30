@@ -10,7 +10,12 @@ export const paths = {
   post: (id = ':postId') => `/posts/${id}`,
   search: '/search',
   projects: '/projects',
+  createProject: '/projects/new',
   project: (id = ':projectId') => `/projects/${id}`,
+  editProject: (id = ':projectId') => `/projects/${id}/edit`,
+  /** Workspace tab (overview is the project root). */
+  projectTab: (id = ':projectId', tab = ':tab') => `/projects/${id}/${tab}`,
+  prototype: (id = ':projectId', prototypeId = ':prototypeId') => `/projects/${id}/prototype/${prototypeId}`,
   chats: '/chats',
   chat: (id = ':conversationId') => `/chats/${id}`,
   forums: '/forums',

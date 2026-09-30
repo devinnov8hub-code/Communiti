@@ -14,6 +14,7 @@ npm run format   # Prettier (+ Tailwind class sorting)
 
 ```
 src/
+  admin/          admin console at /admin — separate from the member app (see below)
   app/            router (code-split routes), route guards, path constants
   assets/         images/SVGs exported from Figma (optimised to WebP)
   components/
@@ -26,7 +27,9 @@ src/
                   components/, pages/, types.ts
     auth/         sign-up, verification (+ resend), onboarding, login
     feed/         home feed, post view, comments, search, report/menus, right rail
-    projects/     projects list
+    projects/     projects list, create / edit project
+    workspace/    project workspace: overview & join flow, research, prototypes & versions,
+                  expert evaluations, ledger, contract, tasks, members, project settings
     chats/        messages, project chats, conversation, collaboration requests
     explore/      suggested, highlights, featured innovations, events
     profile/      profile, edit profile, skills, work experience
@@ -100,9 +103,38 @@ upload files accept `multipart/form-data`. Response shapes are the types in each
 
 ### Projects — `features/projects/api/projects.service.ts`
 
-| Method | Path                        | Returns     |
-| ------ | --------------------------- | ----------- |
-| GET    | `/projects?scope=all\|mine` | `Project[]` |
+| Method | Path                        | Body                                                                                            | Returns     |
+| ------ | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------- |
+| GET    | `/projects?scope=all\|mine` |                                                                                                 | `Project[]` |
+| POST   | `/projects`                 | `title, pitch, problem, solution, impact, rolesNeeded[], status, media?, contract?` (multipart) | `Project`   |
+| PATCH  | `/projects/:id`             | same as POST                                                                                    | `Project`   |
+
+### Project workspace — `features/workspace/api/workspace.service.ts`
+
+| Method         | Path                                             | Body                                              | Returns                                   |
+| -------------- | ------------------------------------------------ | ------------------------------------------------- | ----------------------------------------- |
+| GET / PATCH    | `/projects/:id`                                  | — / `{ acceptRequests }`                          | `ProjectWorkspace`                        |
+| GET / POST     | `/projects/:id/join-requests`                    | — / `{ acceptedTerms: true }`                     | `JoinRequest[]` / `ProjectWorkspace`      |
+| PATCH          | `/projects/:id/join-requests/:requestId`         | `{ status: accepted\|declined }`                  | —                                         |
+| DELETE         | `/projects/:id/membership`                       | (leave project)                                   | —                                         |
+| POST           | `/projects/:id/reports`                          | `{ reasons: string[] }`                           | —                                         |
+| GET / PUT      | `/projects/:id/notification-preferences`         | `ProjectNotificationPrefs`                        | `ProjectNotificationPrefs`                |
+| GET            | `/projects/:id/members`                          |                                                   | `WorkspaceMember[]`                       |
+| DELETE         | `/projects/:id/members/:memberId`                |                                                   | —                                         |
+| GET / POST     | `/projects/:id/research`                         | — / `{ title, body }`                             | `ResearchDoc[]` / `ResearchDoc`           |
+| DELETE         | `/projects/:id/research/:docId`                  |                                                   | —                                         |
+| POST           | `/projects/:id/research/:docId/comments`         | `{ text }`                                        | `ResearchDoc`                             |
+| GET / POST     | `/projects/:id/prototypes`                       | — / `name, thumbnail?` (multipart)                | `Prototype[]` / `Prototype`               |
+| DELETE         | `/projects/:id/prototypes/:prototypeId`          |                                                   | —                                         |
+| GET / POST     | `/projects/:id/prototypes/:prototypeId/versions` | — / `name, file` (multipart)                      | `PrototypeVersion[]` / `PrototypeVersion` |
+| POST           | `/projects/:id/versions/:versionId/comments`     | `{ text }`                                        | `PrototypeVersion`                        |
+| GET / POST     | `/projects/:id/evaluations`                      | — / `{ target, scores, comment }`                 | `EvaluationSummary`                       |
+| GET            | `/projects/:id/ledger`                           |                                                   | `LedgerEntry[]`                           |
+| GET / POST     | `/projects/:id/tasks`                            | — / `{ title, description, assigneeId, dueDate }` | `ProjectTask[]` / `ProjectTask`           |
+| PATCH / DELETE | `/projects/:id/tasks/:taskId`                    | `{ completed }` / —                               | `ProjectTask` / —                         |
+
+Only members see workspace tabs other than Overview; admins also get Edit Project Details, join-request
+management and task creation. While a join request is pending the workspace re-fetches every 5 seconds.
 
 ### Chats — `features/chats/api/chats.service.ts`
 
@@ -171,3 +203,39 @@ upload files accept `multipart/form-data`. Response shapes are the types in each
 
 Server state is managed with TanStack Query (`features/*/hooks/queries.ts`); likes and read
 states are optimistic, other mutations update or invalidate the cache.
+
+## Admin console — `src/admin/`
+
+The admin console (Figma ADMIN page) lives entirely in `src/admin/` and is mounted at `/admin` by
+`admin/routes.tsx`. It has its own login (email + password, with an OTP password reset), its own
+session and token (`communiti-admin-session`, separate from members), its own sidebar layout and
+its own `paths.ts`. Every admin route — including the session provider — is lazy-loaded, so members
+never download admin code. Admin code may use the shared UI kit (`components/ui`), tokens and `lib/`;
+**member code must never import from `src/admin/`.**
+
+Mock mode: sign in with any email and a password of 6+ characters; any 5-digit reset code works.
+
+Admin endpoints are prefixed with `/admin` and authenticated with the admin token
+(`admin/api/admin.service.ts`):
+
+| Method       | Path                                                             | Body / query                                                                                        | Returns                                  |
+| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| POST         | `/admin/auth/login`                                              | `{ email, password }`                                                                               | `{ token, admin }`                       |
+| POST         | `/admin/auth/password-reset`                                     | `{ email }`                                                                                         | — (emails a 5-digit code)                |
+| POST         | `/admin/auth/password-reset/verify`                              | `{ email, code }`                                                                                   | `{ resetToken }`                         |
+| POST         | `/admin/auth/password-reset/complete`                            | `{ resetToken, password }`                                                                          | —                                        |
+| PATCH / PUT  | `/admin/me` · `/admin/me/password`                               | profile fields + `avatar?` (multipart) · `{ oldPassword, newPassword }`                             | `AdminUser` · —                          |
+| GET          | `/admin/dashboard?range=` · `/admin/dashboard/:section?range=`   | `range`: 7d, 30d, 90d, 12m; section: users, forums, projects                                        | `OverviewDashboard` · `SectionDashboard` |
+| GET          | `/admin/reports?section=&status=&page=&q=`                       | status: all, pending, reviewed, dismissed                                                           | `Page<Report>`                           |
+| POST         | `/admin/reports/:id/actions`                                     | `{ action }` (dismiss, remove-content, warn, suspend-user, block-user, suspend-group, delete-group) | `Report`                                 |
+| GET          | `/admin/users` · `/admin/forums` · `/admin/projects` `?page=&q=` |                                                                                                     | `Page<…Row>`                             |
+| PATCH        | `/admin/{users,forums,projects}/:id/status`                      | `{ action }` (activate, restrict, warn, suspend)                                                    | —                                        |
+| GET / POST   | `/admin/events`                                                  | — / event fields + `cover?` (multipart)                                                             | `AdminEvent[]` / `AdminEvent`            |
+| GET / DELETE | `/admin/events/:id`                                              |                                                                                                     | `AdminEvent` / —                         |
+| GET / POST   | `/admin/highlights`                                              | — / `title?, eventId?, images[]` (multipart)                                                        | `HighlightGroup[]` / `HighlightGroup`    |
+| GET / DELETE | `/admin/highlights/:id`                                          |                                                                                                     | `HighlightGroup` / —                     |
+| POST         | `/admin/notifications/broadcast`                                 | `{ audience, targetId?, title, ids?, body }`                                                        | —                                        |
+| GET / POST   | `/admin/inbox` · `/admin/inbox/read-all`                         |                                                                                                     | `AdminInboxItem[]` / —                   |
+| GET          | `/admin/logs?page=&q=`                                           |                                                                                                     | `Page<AdminLog>`                         |
+
+`Page<T>` is `{ items, total, page, pageSize }`.

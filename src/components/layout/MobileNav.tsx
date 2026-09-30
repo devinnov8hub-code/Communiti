@@ -1,5 +1,5 @@
 import { Bell, List, X } from '@phosphor-icons/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import logoWordmark from '@/assets/brand/logo-wordmark.svg'
 import { paths } from '@/app/paths'
@@ -28,8 +28,15 @@ export function MobileTopBar({ onMenu }: { onMenu: () => void }) {
   )
 }
 
+interface NavDrawerProps {
+  open: boolean
+  onClose: () => void
+  /** Sidebar to show; defaults to the member app's navigation. */
+  children?: ReactNode
+}
+
 /** Off-canvas sidebar for phones and tablets (below lg). */
-export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function NavDrawer({ open, onClose, children }: NavDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -61,7 +68,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <Sidebar className="max-w-[85vw]" />
+        {children ?? <Sidebar className="max-w-[85vw]" />}
         <IconButton label="Close menu" onClick={onClose} className="absolute top-4 right-3 size-9 bg-fg/5 text-fg">
           <X className="size-5" />
         </IconButton>

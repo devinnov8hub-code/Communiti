@@ -11,6 +11,8 @@
  * ------------------------------------------------------------------ */
 @theme {
   --font-sans: 'DM Sans Variable', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Figma's SemiBold reads heavy in the browser; render it as Medium. */
+  --font-weight-semibold: 500;
 
   /* Brand */
   --color-brand-green: #39b04c; /* green theme / Buttons/button-bg-1 */
@@ -18,6 +20,8 @@
   --color-brand-orange-soft: #f5a04f; /* Buttons/button-bg-2-3 */
   --color-brand-orange-glow: #f68620;
   --color-brand-orange-tint: #fff1e5; /* shadows/drop-orange */
+  --color-brand-orange-peach: #ffc992; /* shadows/drop-orange-2 */
+  --color-brand-orange-cream: #ffe8d1; /* request-sent icon chip */
   --color-brand-green-tint: #e8f7eb; /* shadows/drop-green */
   --color-innovation: #18a109; /* Featured innovation titles */
   --color-grey-45: #626262; /* innovation taglines */
@@ -34,6 +38,18 @@
   --color-warning: #f4b400; /* System/Warning/40 */
   --color-error: #d32f2f; /* System/Error/40 */
   --color-danger-soft: #e85d5d; /* "Report this Post" button */
+  --color-error-tint: #fdecec; /* System/Error/20 */
+  --color-error-wash: #fff4f4; /* "Banned" status pill */
+  --color-warning-wash: #fff9f4; /* "Pending" status pill */
+
+  /* Admin dashboard stat icons */
+  --color-stat-green: #22a447;
+  --color-stat-green-tint: #eaf7ee;
+  --color-stat-indigo: #6366f1;
+  --color-stat-indigo-tint: #eef2ff;
+  --color-stat-violet: #7c5cfc;
+  --color-stat-violet-tint: #f0ecff;
+  --color-chart-bar-top: #ffb36e; /* "gradient 2 orange" */
 
   /* System greys */
   --color-grey-30: #d1d5db; /* System/Grey/30, Border/default */
@@ -100,6 +116,7 @@
   --radius-search: 18px; /* Rounded corner/20 */
 
   --shadow-popover: 0px 8px 24px 0px rgb(0 0 0 / 0.12);
+  --shadow-card: 0px 4px 5.8px 0px rgb(0 0 0 / 0.08); /* task cards */
 
   --shadow-otp: 0px 4px 19.8px 0px rgb(233 200 155 / 0.25), 0px 3px 11px 0px rgb(246 134 32 / 0.2);
 }

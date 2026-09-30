@@ -1,4 +1,7 @@
+import { Plus } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
 import { Button, EmptyState, Tabs } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
@@ -55,6 +58,20 @@ export function ProjectsPage() {
         ) : (
           projects.data.map((project) => <ProjectCard key={project.id} project={project} />)
         )}
+      </div>
+
+      {/* Floating create button (Figma "floating button"), pinned to the bottom of the column. */}
+      <div className="pointer-events-none sticky bottom-6 flex justify-end px-6">
+        <Link
+          to={paths.createProject}
+          className="group pointer-events-auto flex h-20 min-w-20 items-center justify-center rounded-full bg-brand-orange px-6 text-white shadow-popover transition-all duration-300 hover:brightness-95"
+        >
+          <Plus aria-hidden className="size-8 shrink-0" />
+          {/* Label slides out on hover / keyboard focus. */}
+          <span className="max-w-0 overflow-hidden text-body-l font-semibold whitespace-nowrap opacity-0 transition-all duration-300 group-hover:ml-2 group-hover:max-w-[200px] group-hover:opacity-100 group-focus-visible:ml-2 group-focus-visible:max-w-[200px] group-focus-visible:opacity-100">
+            Create Project
+          </span>
+        </Link>
       </div>
     </PageColumns>
   )

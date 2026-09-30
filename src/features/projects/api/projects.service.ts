@@ -1,72 +1,79 @@
-import member1 from '@/assets/mock/member-1.webp'
-import member2 from '@/assets/mock/member-2.webp'
-import member3 from '@/assets/mock/member-3.webp'
-import member4 from '@/assets/mock/member-4.webp'
-import projectFarm from '@/assets/mock/project-farm.webp'
-import { apiRequest, USE_MOCK_API } from '@/lib/api/client'
-import type { Project, ProjectsTab } from '../types'
+import { ApiError, apiRequest, USE_MOCK_API } from '@/lib/api/client'
+import type { NewProject, Project, ProjectsTab } from '../types'
+import { findProjectRecord, mockDelay, mockMembers, projectRecords, toProject } from './projects.mock'
 
 /** Projects API contract. See README for the endpoint list. */
 export interface ProjectsApi {
   getProjects(tab: ProjectsTab): Promise<Project[]>
+  createProject(input: NewProject): Promise<Project>
+  updateProject(id: string, input: NewProject): Promise<Project>
+}
+
+function toFormData(input: NewProject) {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(input)) {
+    if (value === undefined) continue
+    if (value instanceof File) form.append(key, value)
+    else if (Array.isArray(value)) value.forEach((item) => form.append(`${key}[]`, item))
+    else form.append(key, String(value))
+  }
+  return form
 }
 
 const httpProjectsApi: ProjectsApi = {
   getProjects: (tab) => apiRequest(`/projects?scope=${tab}`),
+  createProject: (input) => apiRequest('/projects', { method: 'POST', body: toFormData(input) }),
+  updateProject: (id, input) => apiRequest(`/projects/${id}`, { method: 'PATCH', body: toFormData(input) }),
 }
 
 /* ------------------------- Mock (Figma content) ------------------------- */
 
-const members = [member1, member2, member3, member4].map((avatarUrl, index) => ({
-  id: `m-${index + 1}`,
-  name: `Member ${index + 1}`,
-  avatarUrl,
-}))
-
-const DRONE_DESCRIPTION =
-  'Our agro-drone system transforms farming with AI-driven insights, enabling precise crop management to boost yields and sustainability. This technology paves the way for a more sustainable future in agriculture.'
-
-const projects: Project[] = [
-  {
-    id: 'pr-1',
-    title: 'Agricultural Drone',
-    owner: { id: 'u-joseph', name: 'Dr joseph Feranmi' },
-    status: 'open',
-    tags: [
-      { label: 'Agriculture', tone: 'success' },
-      { label: 'Ai-driven', tone: 'info' },
-      { label: 'Sustainability', tone: 'warning' },
-    ],
-    description: DRONE_DESCRIPTION,
-    coverUrl: projectFarm,
-    membersCount: 12,
-    members,
-    isMine: false,
-  },
-  {
-    id: 'pr-2',
-    title: 'Solar Cold Storage for Farmers',
-    owner: { id: 'u-tobi', name: 'Tobi Adeyemi' },
-    status: 'in-progress',
-    tags: [
-      { label: 'Agriculture', tone: 'success' },
-      { label: 'Clean energy', tone: 'warning' },
-    ],
-    description:
-      'Solar-powered cold rooms that help smallholder farmers cut post-harvest losses and sell produce at better prices.',
-    coverUrl: projectFarm,
-    membersCount: 8,
-    members: members.slice(1),
-    isMine: true,
-  },
-]
-
-const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
-
 const mockProjectsApi: ProjectsApi = {
   async getProjects(tab) {
-    await delay()
+    await mockDelay()
+    const projects = projectRecords.map(toProject)
     return tab === 'mine' ? projects.filter((project) => project.isMine) : projects
+  },
+  async createProject(input) {
+    await mockDelay(600)
+    const id = `pr-${Date.now()}`
+    const record = {
+      id,
+      title: input.title,
+      owner: { id: 'me', name: 'You' },
+      status: input.status,
+      tags: [],
+      description: input.pitch,
+      coverUrl: input.media?.type.startsWith('image/') ? URL.createObjectURL(input.media) : undefined,
+      membersCount: 1,
+      members: [{ ...mockMembers[0], id: 'me', name: 'You', isYou: true }],
+      pitch: input.pitch,
+      problem: input.problem,
+      solution: input.solution,
+      impact: input.impact,
+      rolesNeeded: input.rolesNeeded,
+      membership: 'admin' as const,
+      acceptRequests: true,
+      createdAt: new Date().toISOString(),
+    }
+    projectRecords.unshift(record)
+    return toProject(record)
+  },
+  async updateProject(id, input) {
+    await mockDelay(600)
+    const record = findProjectRecord(id)
+    if (!record) throw new ApiError('This project no longer exists.', 404)
+    Object.assign(record, {
+      title: input.title,
+      status: input.status,
+      description: input.pitch,
+      pitch: input.pitch,
+      problem: input.problem,
+      solution: input.solution,
+      impact: input.impact,
+      rolesNeeded: input.rolesNeeded,
+    })
+    return toProject(record)
   },
 }
 

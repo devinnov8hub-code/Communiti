@@ -86,7 +86,7 @@ export function Menu({ trigger, children, align = 'end', title, className }: Men
             className,
           )}
         >
-          {title && <p className="mb-2 text-body-m font-semibold text-fg-muted">{title}</p>}
+          {title && <p className="mb-2 text-body-m text-fg-muted">{title}</p>}
           <div className="flex flex-col gap-2">{children(close)}</div>
         </div>
       )}
@@ -108,11 +108,13 @@ interface MenuItemProps {
   tone?: MenuTone
   /** `sm`: 14px text with 22px icons ("Chat actions"). */
   size?: 'md' | 'sm'
+  /** Put the icon after the label ("Project Settings" menu). */
+  iconAfter?: boolean
   onSelect: () => void
   children: ReactNode
 }
 
-export function MenuItem({ icon, tone = 'default', size = 'md', onSelect, children }: MenuItemProps) {
+export function MenuItem({ icon, tone = 'default', size = 'md', iconAfter, onSelect, children }: MenuItemProps) {
   return (
     <button
       type="button"
@@ -121,6 +123,7 @@ export function MenuItem({ icon, tone = 'default', size = 'md', onSelect, childr
       className={cn(
         'flex w-full items-center gap-2 border-b border-hairline/60 py-2.5 text-left outline-none last:border-b-0',
         size === 'sm' ? 'text-body-s' : 'text-body-m',
+        iconAfter && 'flex-row-reverse',
         'hover:opacity-80 focus-visible:bg-fg/5',
         tones[tone],
       )}

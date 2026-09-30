@@ -1,9 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { adminRoutes } from '@/admin/routes'
 import { AppShell } from '@/components/layout/AppShell'
 import { GuestOnly, OnboardingOnly, RequireAuth } from './guards'
 import { paths } from './paths'
-
-const comingSoon = async () => ({ Component: (await import('@/pages/ComingSoonPage')).ComingSoonPage })
 
 // Screens are code-split per route so each page only loads what it needs.
 export const router = createBrowserRouter([
@@ -171,11 +170,22 @@ export const router = createBrowserRouter([
               Component: (await import('@/features/notifications/pages/NotificationsPage')).NotificationsPage,
             }),
           },
-          // No project-detail design yet.
-          { path: paths.project(), lazy: comingSoon },
+          ...[paths.createProject, paths.editProject()].map((path) => ({
+            path,
+            lazy: async () => ({
+              Component: (await import('@/features/projects/pages/ProjectFormPage')).ProjectFormPage,
+            }),
+          })),
+          ...[paths.project(), paths.projectTab(), paths.prototype()].map((path) => ({
+            path,
+            lazy: async () => ({
+              Component: (await import('@/features/workspace/pages/WorkspacePage')).WorkspacePage,
+            }),
+          })),
         ],
       },
     ],
   },
+  adminRoutes,
   { path: '*', element: <Navigate to={paths.home} replace /> },
 ])

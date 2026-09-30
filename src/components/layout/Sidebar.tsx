@@ -61,7 +61,7 @@ export function Sidebar({ collapsed = false, onToggle, className }: SidebarProps
                     cn(
                       'relative flex items-center gap-[13px] py-[5px] text-body-l transition-colors',
                       collapsed && 'justify-center rounded-full p-2 hover:bg-fg/5',
-                      isActive ? 'font-semibold text-brand-orange' : 'text-fg-muted hover:text-fg',
+                      isActive ? 'text-brand-orange' : 'text-fg-muted hover:text-fg',
                     )
                   }
                 >
