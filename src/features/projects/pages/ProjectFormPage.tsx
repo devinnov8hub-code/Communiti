@@ -19,7 +19,7 @@ import {
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
 import { useWorkspace } from '@/features/workspace/hooks/queries'
 import type { ProjectWorkspace } from '@/features/workspace/types'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useCreateProject, useUpdateProject } from '../hooks/queries'
 import { PROJECT_ROLES, type NewProject, type ProjectRole, type ProjectStatus } from '../types'
 

@@ -1,6 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 import { adminPaths } from '../paths'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ActivityChart } from '../components/charts'
 import { LogsTable } from '../components/LogsTable'
@@ -12,13 +12,13 @@ import type { DateRange } from '../types'
 
 const includes = (text: string, search: string) => text.toLowerCase().includes(search.toLowerCase())
 
-/** Admin home (Figma "ADMIN" › Overview). */
+/** Admin home ( "ADMIN" › Overview). */
 export function OverviewPage() {
   const [range, setRange] = useState<DateRange>('30d')
   const [search, setSearch] = useState('')
   const query = useDeferredValue(search.trim())
   const overview = useOverview(range)
-
+// const [overview, setOverview] = useState(useOverview(range))
   const queue = overview.data?.queue.filter((row) => includes(`${row.subject} ${row.type} ${row.reason}`, query))
   const logs = overview.data?.logs.filter((row) => includes(`${row.action} ${row.message}`, query))
 

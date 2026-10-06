@@ -1,7 +1,7 @@
 import { ChatCenteredText, DotsThree, ShareNetwork, ThumbsUp, X } from '@phosphor-icons/react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Avatar, AvatarStack, ConfirmDialog, IconButton, Tag, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useModerate } from '../hooks/queries'

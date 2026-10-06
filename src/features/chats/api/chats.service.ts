@@ -2,7 +2,8 @@ import avatarJemima from '@/assets/mock/avatar-jemima.webp'
 import avatarRobot from '@/assets/mock/avatar-robot.webp'
 import avatarSasha from '@/assets/mock/avatar-sasha.webp'
 import avatarTerryLg from '@/assets/mock/avatar-terry-lg.webp'
-import { apiRequest, ApiError, USE_MOCK_API } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { ChatMessage, CollaborationRequest, Conversation, ConversationKind } from '../types'
 
 /** Chats API contract. See README for the endpoint list. */

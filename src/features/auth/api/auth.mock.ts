@@ -1,4 +1,4 @@
-import { ApiError } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
 import { local } from '@/lib/storage'
 import type { Session, User } from '../types'
 import type { AuthApi } from './auth.service'

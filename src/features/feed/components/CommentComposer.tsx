@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Avatar, IconButton, Spinner, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getDisplayName } from '@/features/auth/user'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useAddComment } from '../hooks/queries'
 
 /** "Write a comment..." bar with image / file attachments. */

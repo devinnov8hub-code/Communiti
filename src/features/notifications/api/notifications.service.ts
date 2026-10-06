@@ -1,6 +1,6 @@
 import avatarDrone from '@/assets/mock/avatar-drone.webp'
 import avatarFemme from '@/assets/mock/avatar-femme.webp'
-import { apiRequest, USE_MOCK_API } from '@/lib/api/client'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { AppNotification, NotificationPreferences } from '../types'
 
 /** Notifications API contract. See README for the endpoint list. */

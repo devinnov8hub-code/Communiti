@@ -1,4 +1,4 @@
-import { apiRequest, USE_MOCK_API } from '@/lib/api/client'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import { mockWorkspaceApi } from './workspace.mock'
 import type {
   EvaluationScores,

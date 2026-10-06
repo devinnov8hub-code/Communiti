@@ -1,7 +1,7 @@
 import { ArrowDown, Check, DotsThree, Trash } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { AvatarStack, IconButton, Menu, MenuItem, MenuRadioItem, Spinner, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { formatDue } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useDeleteTask, useTasks, useToggleTask } from '../hooks/queries'

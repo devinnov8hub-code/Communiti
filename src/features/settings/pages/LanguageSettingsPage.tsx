@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { RadioRow } from '../components/RadioRow'
 import { SettingsSection } from '../components/SettingsSection'
 import { useLanguage, useUpdateLanguage } from '../hooks/queries'

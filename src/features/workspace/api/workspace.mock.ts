@@ -3,7 +3,7 @@ import avatarTobi from '@/assets/mock/avatar-tobi.webp'
 import docThumb from '@/assets/mock/doc-thumb.webp'
 import prototypeBike from '@/assets/mock/prototype-bike.webp'
 import prototypeCad from '@/assets/mock/prototype-cad.webp'
-import { ApiError } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
 import { findProjectRecord, mockDelay, mockMembers, type ProjectRecord } from '@/features/projects/api/projects.mock'
 import type {
   Evaluation,

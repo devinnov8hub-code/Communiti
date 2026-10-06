@@ -1,7 +1,7 @@
 import { Image as ImageIcon, PencilSimpleLine, PlugsConnected, Plus, Trash } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 import { IconButton, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useRemoveExperience } from '../hooks/queries'
 import type { Experience, Profile } from '../types'
 

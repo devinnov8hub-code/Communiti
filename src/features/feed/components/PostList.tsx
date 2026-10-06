@@ -1,5 +1,5 @@
 import { Button, EmptyState } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import type { Post } from '../types'
 import { PostCard } from './PostCard'
 

@@ -10,8 +10,10 @@ import { Button, TextField, useToast } from '@/components/ui'
 import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { FormAlert } from '@/features/auth/components/FormAlert'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { adminApi } from '../api/admin.service'
+import { authApi } from '@/lib/api'
+// import { adminApi } from '../api/admin.service'
 import { useAdminSession } from '../session/adminSessionContext'
+import { toAdminSession } from '../session/toAdminSession'
 
 const email = z.string().trim().min(1, 'Enter your email').email('Enter a valid email address')
 const password = z.string().min(8, 'Use at least 8 characters')
@@ -50,7 +52,7 @@ function Screen({ children }: { children: ReactNode }) {
 
 const loginSchema = z.object({ email, password: z.string().min(1, 'Enter your password') })
 
-/** Admin sign-in (Figma "Logon"). */
+/** Admin sign-in ( "Login"). */
 export function AdminLoginPage() {
   const { signIn } = useAdminSession()
   const navigate = useNavigate()
@@ -60,8 +62,10 @@ export function AdminLoginPage() {
     formState: { errors },
   } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
 
+  // react-hook-form collects and validates the fields; `values` is what the user typed.
   const submit = useAsyncAction(async (values: z.infer<typeof loginSchema>) => {
-    signIn(await adminApi.login(values.email, values.password))
+    const response = await authApi.adminLogin(values)
+    signIn(toAdminSession(response))
     navigate(adminPaths.overview, { replace: true })
   })
 
@@ -96,7 +100,7 @@ export function AdminLoginPage() {
           to={adminPaths.resetPassword}
           className="self-end text-caption font-semibold text-brand-orange hover:underline"
         >
-          Reset Password
+          Forgot Password
         </Link>
         <FormAlert message={submit.error} />
         <Button type="submit" loading={submit.pending} className={`${submitClass} mt-2`}>
@@ -111,7 +115,7 @@ export function AdminLoginPage() {
 
 const resetSchema = z.object({ email })
 
-/** Request a reset code (Figma "Reset password"). */
+/** Request a reset code ( "Reset password"). */
 export function AdminResetPasswordPage() {
   const { setReset, reset } = useAdminSession()
   const navigate = useNavigate()
@@ -122,7 +126,7 @@ export function AdminResetPasswordPage() {
   } = useForm({ resolver: zodResolver(resetSchema), defaultValues: { email: reset?.email ?? '' } })
 
   const submit = useAsyncAction(async (values: z.infer<typeof resetSchema>) => {
-    await adminApi.requestPasswordReset(values.email)
+    await authApi.forgotPassword({ email: values.email })
     setReset({ email: values.email })
     navigate(adminPaths.verifyOtp)
   })
@@ -153,9 +157,9 @@ export function AdminResetPasswordPage() {
 
 /* ------------------------------- Confirm OTP ------------------------------ */
 
-const otpSchema = z.object({ code: z.string().regex(/^\d{5}$/, 'Enter the 5-digit code') })
+const otpSchema = z.object({ code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code') })
 
-/** Enter the emailed code (Figma "Confirm OTP"). */
+/** Enter the emailed code ("Confirm OTP"). */
 export function AdminVerifyOtpPage() {
   const { reset, setReset } = useAdminSession()
   const navigate = useNavigate()
@@ -167,12 +171,12 @@ export function AdminVerifyOtpPage() {
   } = useForm({ resolver: zodResolver(otpSchema), defaultValues: { code: '' } })
 
   const submit = useAsyncAction(async ({ code }: z.infer<typeof otpSchema>) => {
-    const { resetToken } = await adminApi.verifyResetCode(reset!.email, code)
+    const { resetToken } = await authApi.verifyPasswordResetCode({ email: reset!.email, code })
     setReset({ email: reset!.email, resetToken })
     navigate(adminPaths.newPassword)
   })
   const resend = useAsyncAction(async () => {
-    await adminApi.requestPasswordReset(reset!.email)
+    await authApi.forgotPassword({ email: reset!.email })
     toast(`A new code was sent to ${reset!.email}`)
   })
 
@@ -189,8 +193,8 @@ export function AdminVerifyOtpPage() {
           label="Enter OTP"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={5}
-          placeholder="_ _ _ _ _"
+          maxLength={6}
+          placeholder="_ _ _ _ _ _"
           className="[&_input]:tracking-[0.4em]"
           error={errors.code?.message}
           {...register('code')}
@@ -218,7 +222,7 @@ const newPasswordSchema = z
   .object({ password, confirm: z.string() })
   .refine((values) => values.password === values.confirm, { path: ['confirm'], message: 'Passwords don’t match' })
 
-/** Choose a new password (Figma "Change password"). */
+/** Choose a new password. */
 export function AdminNewPasswordPage() {
   const { reset, setReset } = useAdminSession()
   const [finished, setFinished] = useState(false)
@@ -231,7 +235,7 @@ export function AdminNewPasswordPage() {
   } = useForm({ resolver: zodResolver(newPasswordSchema), defaultValues: { password: '', confirm: '' } })
 
   const submit = useAsyncAction(async (values: z.infer<typeof newPasswordSchema>) => {
-    await adminApi.setNewPassword(reset!.resetToken!, values.password)
+    await authApi.resetPassword({ resetToken: reset!.resetToken!, newPassword: values.password })
     toast('Password changed — sign in with your new password')
     // Mark done first so this screen's guard doesn't redirect while we navigate away.
     setFinished(true)

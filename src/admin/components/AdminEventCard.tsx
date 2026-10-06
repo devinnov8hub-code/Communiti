@@ -2,7 +2,7 @@ import { CalendarDots, DotsThree, Eye, NavigationArrow, Trash } from '@phosphor-
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { formatDateRange } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useDeleteEvent } from '../hooks/queries'

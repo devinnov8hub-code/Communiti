@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Avatar, Button, Modal, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useRespondToRequest } from '../hooks/queries'
 import type { CollaborationRequest } from '../types'
 

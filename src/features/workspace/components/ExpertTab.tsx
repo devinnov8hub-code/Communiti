@@ -1,7 +1,7 @@
 import { Cube, DotsThree, FileText, Question } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Avatar, IconButton, Menu, MenuItem, Spinner, StarRating, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useEvaluations } from '../hooks/queries'
 import { EVALUATION_CRITERIA, type Evaluation } from '../types'
 import { AddEvaluationModal } from './AddEvaluationModal'

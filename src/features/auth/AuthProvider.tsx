@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
-import { TOKEN_STORAGE_KEY } from '@/lib/api/client'
+import { TOKEN_STORAGE_KEY } from '@/lib/api/tokens'
 import { local, session as sessionStore } from '@/lib/storage'
 import { AuthContext, type AuthContextValue } from './authContext'
 import type { PendingVerification, Session, User } from './types'

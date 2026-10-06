@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest, USE_MOCK_API } from '@/lib/api/client'
+import { API_BASE_URL, apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { ProfileDetails, Session, User, VerificationFlow } from '../types'
 import { mockAuthApi } from './auth.mock'
 

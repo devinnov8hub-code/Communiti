@@ -3,7 +3,7 @@ import { CalendarBlank } from '@phosphor-icons/react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { DateField, Modal, SelectField, TextAreaField, TextField, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useCreateTask, useMembers } from '../hooks/queries'
 import { ModalActions } from './shared'
 

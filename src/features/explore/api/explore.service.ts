@@ -11,7 +11,8 @@ import thumb2 from '@/assets/mock/explore/thumb-2.webp'
 import thumb3 from '@/assets/mock/explore/thumb-3.webp'
 import thumb4 from '@/assets/mock/explore/thumb-4.webp'
 import vrHero from '@/assets/mock/explore/vr-hero.webp'
-import { apiRequest, ApiError, USE_MOCK_API } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { ExploreEvent, Highlight, Innovation } from '../types'
 
 /** Explore API contract. See README for the endpoint list. */

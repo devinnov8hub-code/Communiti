@@ -1,53 +1,80 @@
-import { local } from '@/lib/storage'
+import axios, { AxiosError, type AxiosResponse } from 'axios'
+import { ApiError, toApiError } from './errors'
+import { SESSION_EXPIRED_EVENT, tokens, type AuthScope } from './tokens'
 
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+/**
+ * Backend origin (paths already include `/api/v1`). In development it is this app's own
+ * origin: Vite proxies `/api` to the backend (vite.config.ts), because the backend only
+ * accepts cross-origin calls from the production site.
+ */
+export const API_ORIGIN = (
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? window.location.origin : 'https://api.mycommuniti.org')
+).replace(/\/$/, '')
 
-/** When no backend URL is configured, services fall back to local mocks. */
-export const USE_MOCK_API = API_BASE_URL === ''
-
-export const TOKEN_STORAGE_KEY = 'communiti-token'
-
-export class ApiError extends Error {
-  readonly status: number
-  readonly details?: unknown
-
-  constructor(message: string, status: number, details?: unknown) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-    this.details = details
+// Extra per-request options understood by the interceptors below.
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Which access token to send: the member app's (default) or the admin console's. */
+    scope?: AuthScope
+    /** Public endpoint: don't send an Authorization header. */
+    skipAuth?: boolean
+    /** Don't refresh-and-retry on 401 (sign-in endpoints). */
+    skipRefresh?: boolean
+    /** Set once a request has been retried after a token refresh. */
+    retried?: boolean
   }
 }
 
-type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
+/** The axios instance every service in `./services` uses. */
+export const api = axios.create({
+  baseURL: API_ORIGIN,
+  // The refresh token lives in an httpOnly cookie, so cookies must travel with every call.
+  withCredentials: true,
+  headers: { Accept: 'application/json' },
+})
 
-export async function apiRequest<T>(path: string, { body, headers, ...init }: RequestOptions = {}): Promise<T> {
-  const token = local.get<string>(TOKEN_STORAGE_KEY)
-  const isForm = body instanceof FormData
+/** `api.get<T>(...).then(unwrap)` — services return the response body, not the axios response. */
+export const unwrap = <T>(response: AxiosResponse<T>) => response.data
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(body !== undefined && !isForm && { 'Content-Type': 'application/json' }),
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...headers,
-    },
-    body: isForm ? body : body !== undefined ? JSON.stringify(body) : undefined,
-  })
+api.interceptors.request.use((config) => {
+  const token = config.skipAuth ? null : tokens.get(config.scope ?? 'member')
+  if (token) config.headers.set('Authorization', `Bearer ${token}`)
+  return config
+})
 
-  const data = response.status === 204 ? null : await response.json().catch(() => null)
+// One refresh at a time per scope: parallel 401s share the same call (the refresh token rotates).
+const refreshing: Partial<Record<AuthScope, Promise<boolean>>> = {}
 
-  if (!response.ok) {
-    const message = (data as { message?: string } | null)?.message ?? 'Something went wrong. Please try again.'
-    throw new ApiError(message, response.status, data)
-  }
-
-  return data as T
+function refreshAccessToken(scope: AuthScope) {
+  refreshing[scope] ??= axios
+    .post<{ accessToken?: string }>(`${API_ORIGIN}/api/v1/auth/refresh`, {}, { withCredentials: true })
+    .then(({ data }) => {
+      if (!data.accessToken) return false
+      tokens.set(scope, data.accessToken)
+      return true
+    })
+    .catch(() => false)
+    .finally(() => {
+      delete refreshing[scope]
+    })
+  return refreshing[scope]
 }
 
-/** Normalises any thrown value into a user-facing message. */
-export function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  return 'Something went wrong. Please try again.'
-}
+api.interceptors.response.use(
+  (response) => response,
+  async (error: unknown) => {
+    if (!(error instanceof AxiosError)) throw error
+    const { config, response } = error
+    if (!response) throw new ApiError('Could not reach the server. Check your connection and try again.', 0)
+
+    // Access tokens last 15 minutes: refresh once, then repeat the original request.
+    const scope = config?.scope ?? 'member'
+    if (response.status === 401 && config && !config.skipAuth && !config.skipRefresh && !config.retried) {
+      if (tokens.get(scope) && (await refreshAccessToken(scope))) return api.request({ ...config, retried: true })
+      tokens.set(scope, null)
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: scope }))
+    }
+    // Carries the backend's `code`, `fields` and `requestId`.
+    throw toApiError(response.status, response.data)
+  },
+)

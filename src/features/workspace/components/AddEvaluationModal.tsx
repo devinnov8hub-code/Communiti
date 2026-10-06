@@ -1,7 +1,7 @@
 import { ArrowLeft, Cube, FileText, type Icon } from '@phosphor-icons/react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Modal, Spinner, StarRating, TextAreaField, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
 import { useCreateEvaluation, usePrototypes, useResearch, useVersions } from '../hooks/queries'
 import { EVALUATION_CRITERIA, type EvaluationScores, type EvaluationTarget, type Prototype } from '../types'

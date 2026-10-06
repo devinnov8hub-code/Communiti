@@ -1,7 +1,7 @@
 import { CloudArrowUp, X } from '@phosphor-icons/react'
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 import { Button, Divider, FieldError, Modal, SelectField, TextField, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useAdminEvents, useCreateHighlightGroup } from '../hooks/queries'
 
 const MAX_BYTES = 10 * 1024 * 1024

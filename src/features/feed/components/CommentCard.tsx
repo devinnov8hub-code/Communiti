@@ -1,7 +1,7 @@
 import { DotsThreeOutline, Trash, Warning } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useDeleteComment, useReportComment, useToggleCommentLike } from '../hooks/queries'
 import { useSharePost } from '../hooks/useShare'
 import type { Comment } from '../types'

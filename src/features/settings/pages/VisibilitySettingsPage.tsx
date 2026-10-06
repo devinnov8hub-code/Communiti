@@ -1,5 +1,5 @@
 import { useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { RadioRow } from '../components/RadioRow'
 import { SettingsGroup, SettingsSection } from '../components/SettingsSection'
 import { useUpdateVisibility, useVisibilitySettings } from '../hooks/queries'

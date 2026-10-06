@@ -9,7 +9,7 @@ import member1 from '@/assets/mock/member-1.webp'
 import member2 from '@/assets/mock/member-2.webp'
 import member3 from '@/assets/mock/member-3.webp'
 import member4 from '@/assets/mock/member-4.webp'
-import { ApiError } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
 import type {
   ActivityPoint,
   AdminEvent,

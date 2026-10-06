@@ -1,7 +1,7 @@
 import profileCover from '@/assets/mock/profile-cover.webp'
 import type { Session } from '@/features/auth/types'
 import { getDisplayName } from '@/features/auth/user'
-import { apiRequest, USE_MOCK_API } from '@/lib/api/client'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import { local } from '@/lib/storage'
 import type { NewExperience, Profile, ProfileUpdate, SkillOption } from '../types'
 

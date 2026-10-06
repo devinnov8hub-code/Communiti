@@ -1,7 +1,7 @@
 import { Minus, Plus, X } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Button, Modal, SearchField, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { useSetSkills, useSkillOptions } from '../hooks/queries'
 import { SKILL_CATEGORIES, type SkillCategory } from '../types'

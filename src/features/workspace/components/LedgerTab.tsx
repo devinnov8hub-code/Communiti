@@ -1,6 +1,6 @@
 import { CalendarDots } from '@phosphor-icons/react'
 import { Spinner } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { formatDayHeading, formatTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useLedger } from '../hooks/queries'

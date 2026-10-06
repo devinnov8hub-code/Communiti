@@ -1,7 +1,7 @@
 import { ChatCenteredText, Check, DotsThree, DotsThreeOutlineVertical, Trash } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 import { Button, IconButton, Menu, MenuItem, Spinner, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useCommentOnResearch, useCreateResearch, useDeleteResearch, useResearch } from '../hooks/queries'

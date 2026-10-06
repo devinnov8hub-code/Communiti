@@ -13,7 +13,7 @@ import {
   Tabs,
   useToast,
 } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import {
   useJoinRequests,
   useMembers,

@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button, DateField, FieldError, Modal, SelectField, TextAreaField, TextField, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { useCreateEvent } from '../hooks/queries'
 

@@ -1,5 +1,5 @@
 import { useDeferredValue, useState } from 'react'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { LogsTable } from '../components/LogsTable'
 import { ErrorState } from '../components/states'

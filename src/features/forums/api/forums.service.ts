@@ -6,7 +6,8 @@ import member3 from '@/assets/mock/member-3.webp'
 import member4 from '@/assets/mock/member-4.webp'
 import { feedApi } from '@/features/feed/api/feed.service'
 import type { Post } from '@/features/feed/types'
-import { apiRequest, ApiError, USE_MOCK_API } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { Forum, ForumPostSort, ForumsTab, NewForum } from '../types'
 
 /** Forums API contract. See README for the endpoint list. */

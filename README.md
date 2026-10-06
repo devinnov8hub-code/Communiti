@@ -37,7 +37,7 @@ src/
     settings/     account, language, theme, privacy, policy, visibility, help, delete account, sign out
     notifications/ notifications list + settings
   hooks/          shared hooks
-  lib/            api client, storage, formatting, class-name helper
+  lib/            api/ (backend client, services, types), storage, formatting, class-name helper
   providers/      theme (light / dark / system)
   styles/         globals.css — all design tokens
 ```
@@ -57,6 +57,39 @@ All colours, type sizes and spacing come from the Figma variables and live in
 and dark designs. Don't hard-code hex values in components.
 
 The theme follows the OS by default; Settings → App Theme lets users pick Light / Dark / Device.
+
+## Backend API — `src/lib/api/`
+
+Everything that talks to the real backend ([docs](https://api.mycommuniti.org/api/docs)) lives here.
+The services and types are generated from the backend's OpenAPI spec (`openapi/openapi.json`,
+165 endpoints):
+
+```ts
+import { postsApi, type Post } from '@/lib/api'
+const { data, nextCursor } = await postsApi.getFeed({ tab: 'for-you' })
+```
+
+- `client.ts` — the axios instance: bearer token, one automatic refresh on 401 (the refresh token is
+  an httpOnly cookie), and errors turned into `ApiError`.
+- `services/<area>.service.ts` — one function per endpoint, exported as `authApi`, `postsApi`,
+  `projectsApi`, `workspaceApi`, `chatApi`, `adminApi`…
+- `types/<area>.types.ts` — plain interfaces for every request body, query and response;
+  `models.types.ts` has the backend models (`Post`, `Project`, `UserSummary`…).
+- `errors.ts` — `ApiError` (with the backend's `code` / `fields` / `requestId`) and `getErrorMessage`.
+- `upload.ts` — `uploadFile(file, purpose)`: presign → PUT to storage → confirm.
+- `legacy.ts` — temporary: the fetch helper and sample-data switch used by features that are not
+  connected yet. Removed once they are.
+
+`services/` and `types/` are **generated — do not edit.** `npm run api:sync` re-downloads the spec and
+regenerates; `npm run api:generate` regenerates only. Function names come from
+`scripts/generate-api.mjs` (see `NAME_OVERRIDES`).
+
+The backend only allows browser calls from the production site, so in development the client calls
+`/api/...` on the dev server and Vite proxies it (`vite.config.ts`).
+
+**The screens are not connected yet.** Each feature still has its own `api/` folder (a placeholder
+service plus sample data) and screen-shaped `types.ts` from before the backend existed. As a feature
+is connected, those are deleted and it uses `@/lib/api` services and types directly.
 
 ## Backend integration
 

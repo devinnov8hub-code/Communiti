@@ -1,5 +1,5 @@
 import { ReportDialog, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useReportPost } from '../hooks/queries'
 import { REPORT_REASONS } from '../types'
 

@@ -1,6 +1,6 @@
 import { CaretRight } from '@phosphor-icons/react'
 import { Modal, RadioMark, useToast } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { useMarkAllRead, useNotificationPreferences, useUpdateNotificationPreferences } from '../hooks/queries'
 import type { NotificationCategory } from '../types'
 

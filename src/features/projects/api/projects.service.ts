@@ -1,4 +1,5 @@
-import { ApiError, apiRequest, USE_MOCK_API } from '@/lib/api/client'
+import { ApiError } from '@/lib/api/errors'
+import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { NewProject, Project, ProjectsTab } from '../types'
 import { findProjectRecord, mockDelay, mockMembers, projectRecords, toProject } from './projects.mock'
 

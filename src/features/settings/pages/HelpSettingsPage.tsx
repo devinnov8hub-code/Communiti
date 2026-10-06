@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Button, FieldError, useToast } from '@/components/ui'
 import { controlBoxClass } from '@/components/ui/controlStyles'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { SettingsSection } from '../components/SettingsSection'
 import { useSupportReport } from '../hooks/queries'

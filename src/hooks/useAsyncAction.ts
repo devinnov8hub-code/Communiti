@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { getErrorMessage } from '@/lib/api/client'
+import { getErrorMessage } from '@/lib/api/errors'
 
 /** Tracks loading + error state for a one-off async action (e.g. a form submit). */
 export function useAsyncAction<Args extends unknown[]>(action: (...args: Args) => Promise<void>) {

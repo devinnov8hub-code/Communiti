@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
-import { adminApi, type ListQuery } from '../api/admin.service'
+import {  type ListQuery } from '../api/admin.service'
+import {adminApi} from '@/lib/api'
 import type {
   AdminForumRow,
   AdminProjectRow,
@@ -33,7 +34,7 @@ export const adminKeys = {
 /* ------------------------------- Dashboards ----------------------------- */
 
 export const useOverview = (range: DateRange) =>
-  useQuery({ queryKey: adminKeys.overview(range), queryFn: () => adminApi.getOverview(range) })
+  useQuery({ queryKey: adminKeys.overview(range), queryFn: () => adminApi.getOverviewStats() })
 
 export const useSectionDashboard = (section: 'users' | 'forums' | 'projects', range: DateRange) =>
   useQuery({

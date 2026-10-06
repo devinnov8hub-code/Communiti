@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { adminPaths } from '../paths'
+import { api, SESSION_EXPIRED_EVENT, tokens } from '@/lib/api'
 import { local, session as tabStorage } from '@/lib/storage'
 import { ADMIN_SESSION_KEY } from '../api/admin.service'
 import type { AdminSession, AdminUser } from '../types'
@@ -16,6 +17,8 @@ export function AdminRoot() {
   const [reset, setResetState] = useState(() => tabStorage.get<ResetFlow>(RESET_KEY))
 
   const signIn = useCallback((next: AdminSession) => {
+    // The axios client sends this token on every admin request (scope: 'admin').
+    tokens.set('admin', next.token)
     local.set(ADMIN_SESSION_KEY, next)
     setSession(next)
   }, [])
@@ -29,11 +32,27 @@ export function AdminRoot() {
     })
   }, [])
 
-  const signOut = useCallback(() => {
+  const clearSession = useCallback(() => {
+    tokens.set('admin', null)
     local.set(ADMIN_SESSION_KEY, null)
     setSession(null)
     queryClient.removeQueries({ queryKey: ['admin'] })
   }, [queryClient])
+
+  const signOut = useCallback(() => {
+    // Tell the backend to end this device's session; sign out locally either way.
+    if (tokens.get('admin')) {
+      api.post('/api/v1/auth/logout', undefined, { scope: 'admin', skipRefresh: true }).catch(() => undefined)
+    }
+    clearSession()
+  }, [clearSession])
+
+  // The access token expired and could not be refreshed: back to the login screen.
+  useEffect(() => {
+    const onExpired = (event: Event) => (event as CustomEvent).detail === 'admin' && clearSession()
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
+  }, [clearSession])
 
   const setReset = useCallback((next: ResetFlow | null) => {
     tabStorage.set(RESET_KEY, next)
