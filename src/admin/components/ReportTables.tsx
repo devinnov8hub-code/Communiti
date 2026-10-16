@@ -1,3 +1,5 @@
+import { titleCase } from '@/lib/format'
+import type { AdminReport } from '@/lib/api'
 import type { ModerationSection, Report } from '../types'
 import { DataTable, ReportStatusPill, type Column } from './ui'
 
@@ -10,7 +12,59 @@ const nameHeader: Record<ModerationSection, string> = {
   projects: 'Project Name',
 }
 
-/** Compact queue on the dashboards (Figma "Moderation Queue" card). */
+const REPORT_STATUS = { pending: 'pending', reviewed: 'resolved', dismissed: 'dismissed' } as const
+
+/** Overview "Moderation Queue" card: the newest pending reports, straight from the backend. */
+export function PendingReportsTable({
+  reports,
+  loading,
+  nameHeader = 'UserName',
+  showType = true,
+}: {
+  reports: AdminReport[] | undefined
+  loading?: boolean
+  nameHeader?: string
+  /** Hide on screens where every report is the same kind (e.g. Users). */
+  showType?: boolean
+}) {
+  const columns: Column<AdminReport>[] = [
+    {
+      key: 'name',
+      header: nameHeader,
+      cell: (row) => (
+        <span className="block max-w-[180px] truncate">{row.targetUser?.fullName ?? row.preview ?? '—'}</span>
+      ),
+    },
+    ...(showType
+      ? [
+          {
+            key: 'type',
+            header: 'Type',
+            align: 'center' as const,
+            cell: (row: AdminReport) => titleCase(row.targetType),
+          },
+        ]
+      : []),
+    {
+      key: 'reason',
+      header: 'Reason',
+      align: 'center',
+      cell: (row) => <span className={REASON_TONE[titleCase(row.reason)] ?? 'text-fg'}>{titleCase(row.reason)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      cell: (row) => <ReportStatusPill status={REPORT_STATUS[row.status]} size="xs" />,
+    },
+  ]
+  return <DataTable columns={columns} rows={reports} rowKey={(row) => row.id} loading={loading} empty="No reports 🎉" />
+}
+
+/**
+ * Compact queue on the Users / Forums / Projects dashboards (sample data).
+ * Removed once those screens use PendingReportsTable.
+ */
 export function QueuePreviewTable({
   section,
   reports,

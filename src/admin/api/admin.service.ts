@@ -8,7 +8,6 @@ import type {
   AdminProjectRow,
   AdminSession,
   AdminUser,
-  AdminUserRow,
   BroadcastNotification,
   DateRange,
   HighlightGroup,
@@ -16,7 +15,6 @@ import type {
   ModerationSection,
   NewEvent,
   NewHighlightGroup,
-  OverviewDashboard,
   Page,
   RecordAction,
   Report,
@@ -41,16 +39,14 @@ export interface AdminApi {
   updateProfile(input: Omit<AdminUser, 'id' | 'avatarUrl'> & { avatar?: File | null }): Promise<AdminUser>
   changePassword(oldPassword: string, newPassword: string): Promise<void>
 
-  getOverview(range: DateRange): Promise<OverviewDashboard>
   getSectionDashboard(section: 'users' | 'forums' | 'projects', range: DateRange): Promise<SectionDashboard>
 
   getReports(section: ModerationSection, filter: ReportFilter, query: ListQuery): Promise<Page<Report>>
   moderate(reportId: string, action: ModerationAction): Promise<Report>
 
-  getUsers(query: ListQuery): Promise<Page<AdminUserRow>>
   getForums(query: ListQuery): Promise<Page<AdminForumRow>>
   getProjects(query: ListQuery): Promise<Page<AdminProjectRow>>
-  updateRecord(kind: 'users' | 'forums' | 'projects', id: string, action: RecordAction): Promise<void>
+  updateRecord(kind: 'forums' | 'projects', id: string, action: RecordAction): Promise<void>
 
   getEvents(): Promise<AdminEvent[]>
   getEvent(id: string): Promise<AdminEvent>
@@ -107,14 +103,12 @@ const httpAdminApi: AdminApi = {
   changePassword: (oldPassword, newPassword) =>
     adminRequest('/me/password', { method: 'PUT', body: { oldPassword, newPassword } }),
 
-  getOverview: (range) => adminRequest(`/dashboard?${qs({ range })}`),
   getSectionDashboard: (section, range) => adminRequest(`/dashboard/${section}?${qs({ range })}`),
 
   getReports: (section, filter, { page, search }) =>
     adminRequest(`/reports?${qs({ section, status: filter, page, q: search })}`),
   moderate: (reportId, action) => adminRequest(`/reports/${reportId}/actions`, { method: 'POST', body: { action } }),
 
-  getUsers: ({ page, search }) => adminRequest(`/users?${qs({ page, q: search })}`),
   getForums: ({ page, search }) => adminRequest(`/forums?${qs({ page, q: search })}`),
   getProjects: ({ page, search }) => adminRequest(`/projects?${qs({ page, q: search })}`),
   updateRecord: (kind, id, action) => adminRequest(`/${kind}/${id}/status`, { method: 'PATCH', body: { action } }),

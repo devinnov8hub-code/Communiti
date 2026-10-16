@@ -18,7 +18,6 @@ import type {
   AdminLog,
   AdminProjectRow,
   AdminUser,
-  AdminUserRow,
   HighlightGroup,
   ModerationAction,
   Page,
@@ -166,19 +165,6 @@ let reports: Report[] = [
     report('projects', subject, 'Project', 'Scam', status, groupContent('project', 'Agricultural drone')),
   ),
 ]
-// The dashboard queues in Figma show the posts first; keep that order.
-const contentQueueIds = reports.slice(0, CONTENT_QUEUE.length).map((item) => item.id)
-
-const USER_NAMES = ['John', 'Joshua', 'Favour', 'Adaeze', 'Tobi', 'Kemi', 'Musa', 'Ifeoma', 'Chidi', 'Zainab']
-const STATUSES: RecordStatus[] = ['active', 'restricted', 'flagged']
-let users: AdminUserRow[] = Array.from({ length: 42 }, (_, index) => ({
-  id: ['b2f1e3a4', 'd4c2a1f8', 'a7e6b9c3'][index] ?? Math.random().toString(16).slice(2, 10),
-  username: USER_NAMES[index % USER_NAMES.length] + (index >= USER_NAMES.length ? ` ${index}` : ''),
-  email: 'user@email.com',
-  reports: [3, 0, 2][index % 3],
-  joinedAt: STAMP,
-  status: STATUSES[index % 3],
-}))
 
 const FORUM_NAMES = [
   'Agritech Hub Forum',
@@ -372,20 +358,6 @@ export const mockAdminApi: AdminApi = {
     log('Password changed', 'Administrator password updated')
   },
 
-  async getOverview() {
-    await delay()
-    return {
-      stats: [
-        stat('users', 'Total Users', 'Last 30 days', 32000, 'orange'),
-        stat('events', 'Active Events', 'Currently running', 209, 'green'),
-        stat('forums', 'Active Forums', 'Last 30 days', 32000, 'indigo'),
-        stat('projects', 'Active Projects', 'Last 30 days', 32000, 'violet'),
-      ],
-      activity: bars([22000, 15000, 4200, 9600, 18500, 2900, 6700, 12500]),
-      queue: contentQueueIds.map((id) => reports.find((item) => item.id === id)!).filter(Boolean),
-      logs: logs.slice(0, 4),
-    }
-  },
   async getSectionDashboard(section) {
     await delay()
     const queue = reports.filter((item) => item.section === section && item.type !== 'Post').slice(0, 7)
@@ -451,13 +423,6 @@ export const mockAdminApi: AdminApi = {
     return updated
   },
 
-  async getUsers(query) {
-    await delay()
-    return paginate(
-      users.filter((row) => matches(`${row.username} ${row.email} ${row.id}`, query.search)),
-      query,
-    )
-  },
   async getForums(query) {
     await delay()
     return paginate(
@@ -475,7 +440,6 @@ export const mockAdminApi: AdminApi = {
   async updateRecord(kind, id, action) {
     await delay(400)
     const status = RECORD_RESULT[action]
-    if (kind === 'users') users = users.map((row) => (row.id === id ? { ...row, status } : row))
     if (kind === 'forums') forums = forums.map((row) => (row.id === id ? { ...row, status } : row))
     if (kind === 'projects') projects = projects.map((row) => (row.id === id ? { ...row, status } : row))
     log('Status updated', `${kind.slice(0, -1)} ${id} set to ${status}`)

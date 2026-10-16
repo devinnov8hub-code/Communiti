@@ -2,22 +2,16 @@ import { cn } from '@/lib/cn'
 import type { ActivityPoint, DistributionSlice } from '../types'
 import { Panel } from './ui'
 
-/** Gridlines are evenly spaced in Figma even though the values aren't (1k → 30k). */
-const TICKS = [30_000, 20_000, 10_000, 5_000, 1_000]
 const compact = new Intl.NumberFormat('en', { notation: 'compact' })
+const GRIDLINES = 4
+const MAX_LABELS = 10
 
-/** Height (0–1) of a value on the stepped axis, interpolating between gridlines. */
-function position(value: number) {
-  const ascending = [...TICKS].reverse()
-  const step = 1 / (ascending.length - 1)
-  if (value <= ascending[0]) return Math.max(0, (value / ascending[0]) * step * 0.5)
-  for (let index = 1; index < ascending.length; index++) {
-    if (value <= ascending[index]) {
-      const [low, high] = [ascending[index - 1], ascending[index]]
-      return step * (index - 1) + ((value - low) / (high - low)) * step
-    }
-  }
-  return 1
+/** Rounds the largest value up to a tidy axis maximum (7 → 8, 130 → 200, 22 000 → 40 000). */
+function axisMax(values: number[]) {
+  const max = Math.max(...values, GRIDLINES)
+  const step = 10 ** Math.floor(Math.log10(max / GRIDLINES))
+  const tidy = [1, 2, 2.5, 5, 10].map((factor) => factor * step).find((size) => size * GRIDLINES >= max) ?? max
+  return tidy * GRIDLINES
 }
 
 /** "User Activity" / "Forum Activity" bar chart (Figma "distribution"). */
@@ -32,6 +26,11 @@ export function ActivityChart({
   points: ActivityPoint[]
   className?: string
 }) {
+  const max = axisMax(points.map((point) => point.value))
+  const ticks = Array.from({ length: GRIDLINES + 1 }, (_, index) => max - (index * max) / GRIDLINES)
+  // With many bars (30 days) only every nth date fits under the chart.
+  const labelEvery = Math.ceil(points.length / MAX_LABELS)
+
   return (
     <Panel className={cn('flex flex-col gap-3 px-5 pt-3 pb-4 sm:px-[26px]', className)}>
       <div className="flex flex-col gap-1">
@@ -42,12 +41,12 @@ export function ActivityChart({
         </p>
       </div>
       <figure className="flex flex-col gap-2" aria-label={`${title} chart`}>
-        <div className="relative h-[230px]">
-          {TICKS.map((tick, index) => (
+        <div className="relative mt-2 h-[230px]">
+          {ticks.map((tick, index) => (
             <div
               key={tick}
               className="absolute inset-x-0 flex items-end gap-[5px]"
-              style={{ top: `${(index / (TICKS.length - 1)) * 100}%` }}
+              style={{ top: `${(index / GRIDLINES) * 100}%` }}
             >
               <span className="w-[25px] -translate-y-1/2 text-body-s text-fg-muted">
                 {compact.format(tick).toLowerCase()}
@@ -58,13 +57,17 @@ export function ActivityChart({
               />
             </div>
           ))}
-          <ol className="absolute inset-y-0 right-0 left-[39px] flex items-end justify-around gap-2">
+          <ol className="absolute inset-y-0 right-0 left-[39px] flex items-end justify-around gap-1 sm:gap-2">
             {points.map((point, index) => (
-              <li key={index} className="flex h-full w-full max-w-[37px] items-end">
+              <li key={index} className="flex h-full w-full max-w-[37px] min-w-0 items-end">
                 <span
                   title={`${point.label}: ${point.value.toLocaleString()}`}
-                  className="block w-full rounded-card bg-linear-to-b from-chart-bar-top to-brand-orange"
-                  style={{ height: `${position(point.value) * 100}%` }}
+                  className={cn(
+                    'block w-full bg-linear-to-b from-chart-bar-top to-brand-orange',
+                    points.length > 12 ? 'rounded-sm' : 'rounded-card',
+                  )}
+                  // A sliver for small non-zero days so they don't vanish.
+                  style={{ height: `${point.value > 0 ? Math.max((point.value / max) * 100, 1.5) : 0}%` }}
                 />
                 <span className="sr-only">
                   {point.label}: {point.value.toLocaleString()}
@@ -72,11 +75,18 @@ export function ActivityChart({
               </li>
             ))}
           </ol>
+          {points.length === 0 && (
+            <p className="absolute inset-0 flex items-center justify-center text-body-s text-fg-muted">
+              No activity in this period yet.
+            </p>
+          )}
         </div>
-        <ol aria-hidden className="ml-[39px] flex justify-around">
+        <ol aria-hidden className="ml-[39px] flex justify-around gap-1 sm:gap-2">
           {points.map((point, index) => (
-            <li key={index} className="flex h-[37px] w-full max-w-[37px] items-center justify-center">
-              <span className="-rotate-[49deg] text-caption whitespace-nowrap text-fg-muted">{point.label}</span>
+            <li key={index} className="flex h-[37px] w-full max-w-[37px] min-w-0 items-center justify-center">
+              {index % labelEvery === 0 && (
+                <span className="-rotate-[49deg] text-caption whitespace-nowrap text-fg-muted">{point.label}</span>
+              )}
             </li>
           ))}
         </ol>

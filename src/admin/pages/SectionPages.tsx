@@ -6,7 +6,7 @@ import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ActivityChart, DistributionChart } from '../components/charts'
 import { QueuePreviewTable } from '../components/ReportTables'
-import { FORUM_STAT_ICONS, PROJECT_STAT_ICONS, USER_STAT_ICONS } from '../components/statIcons'
+import { FORUM_STAT_ICONS, PROJECT_STAT_ICONS } from '../components/statIcons'
 import { ErrorState, StatSkeleton } from '../components/states'
 import {
   AdminContent,
@@ -22,23 +22,16 @@ import {
   type Column,
 } from '../components/ui'
 import { useRecords, useSectionDashboard, useUpdateRecord } from '../hooks/queries'
-import type { AdminForumRow, AdminProjectRow, AdminUserRow, DateRange, RecordAction, RecordStatus } from '../types'
+import type { AdminForumRow, AdminProjectRow, DateRange, RecordAction, RecordStatus } from '../types'
 
-type Kind = 'users' | 'forums' | 'projects'
+// Users moved to UsersPage.tsx (real backend); Forums and Projects are still on sample data.
+type Kind = 'forums' | 'projects'
 
 const stamp = (iso: string) => iso.replace('T', ' ').slice(0, 19)
 const count = (value: number) => (value === 0 ? 'nil' : value)
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
 
 const CONFIG = {
-  users: {
-    title: 'Users',
-    activity: { title: 'User Activity', legend: 'Users per day' },
-    queueTitle: 'Moderation Queue',
-    tableTitle: 'Users',
-    searchLabel: 'Search users',
-    icons: USER_STAT_ICONS,
-  },
   forums: {
     title: 'Forums',
     activity: { title: 'Forum Activity', legend: 'Posts per day' },
@@ -57,7 +50,7 @@ const CONFIG = {
   },
 } as const
 
-/** Users / Forums / Projects dashboards (Figma "USERS", "FORUMNS", "PROJECTS"). */
+/** Forums / Projects dashboards (Figma "FORUMNS", "PROJECTS") — sample data. */
 function SectionPage({ kind }: { kind: Kind }) {
   const config = CONFIG[kind]
   const [range, setRange] = useState<DateRange>('30d')
@@ -118,7 +111,6 @@ function SectionPage({ kind }: { kind: Kind }) {
   )
 }
 
-export const UsersPage = () => <SectionPage kind="users" />
 export const ForumsPage = () => <SectionPage kind="forums" />
 export const ProjectsPage = () => <SectionPage kind="projects" />
 
@@ -170,7 +162,7 @@ function RowActions({ kind, id, name, status }: { kind: Kind; id: string; name: 
 
 const status = (row: { status: RecordStatus }) => <RecordStatusBadge status={row.status} />
 
-function columnsFor(kind: Kind): Column<AdminUserRow>[] | Column<AdminForumRow>[] | Column<AdminProjectRow>[] {
+function columnsFor(kind: Kind): Column<AdminForumRow>[] | Column<AdminProjectRow>[] {
   const actions = <T extends { id: string; status: RecordStatus }>(name: (row: T) => string): Column<T> => ({
     key: 'actions',
     header: 'Actions',
@@ -178,20 +170,6 @@ function columnsFor(kind: Kind): Column<AdminUserRow>[] | Column<AdminForumRow>[
     className: 'w-[80px]',
     cell: (row) => <RowActions kind={kind} id={row.id} name={name(row)} status={row.status} />,
   })
-  if (kind === 'users')
-    return [
-      { key: 'username', header: 'UserName', cell: (row) => row.username },
-      { key: 'id', header: 'User Id', cell: (row) => row.id },
-      { key: 'email', header: 'Email', cell: (row) => row.email },
-      { key: 'reports', header: 'Reports', cell: (row) => count(row.reports) },
-      {
-        key: 'joined',
-        header: 'Joined',
-        cell: (row) => <span className="whitespace-nowrap">{stamp(row.joinedAt)}</span>,
-      },
-      { key: 'status', header: 'Status', align: 'center', cell: status },
-      actions<AdminUserRow>((row) => row.username),
-    ] satisfies Column<AdminUserRow>[]
   if (kind === 'forums')
     return [
       {
@@ -263,7 +241,7 @@ function RecordsPanel({
       ) : (
         <>
           <DataTable
-            columns={columnsFor(kind) as Column<AdminUserRow | AdminForumRow | AdminProjectRow>[]}
+            columns={columnsFor(kind) as Column<AdminForumRow | AdminProjectRow>[]}
             rows={records.data?.items}
             rowKey={(row) => row.id}
             loading={records.isFetching}

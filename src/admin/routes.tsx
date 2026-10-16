@@ -31,7 +31,10 @@ export const adminRoutes: RouteObject = {
           lazy: async () => ({ Component: (await import('./components/AdminShell')).AdminShell }),
           children: [
             { index: true, lazy: async () => ({ Component: (await import('./pages/OverviewPage')).OverviewPage }) },
-            { path: adminPaths.users, lazy: async () => ({ Component: (await sections()).UsersPage }) },
+            {
+              path: adminPaths.users,
+              lazy: async () => ({ Component: (await import('./pages/UsersPage')).UsersPage }),
+            },
             { path: adminPaths.forums, lazy: async () => ({ Component: (await sections()).ForumsPage }) },
             { path: adminPaths.projects, lazy: async () => ({ Component: (await sections()).ProjectsPage }) },
             {

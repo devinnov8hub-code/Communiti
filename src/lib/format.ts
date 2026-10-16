@@ -88,3 +88,6 @@ export function formatLongDate(isoDate: string) {
   const date = new Date(year, month - 1, day)
   return `${date.toLocaleString('en-US', { month: 'long' })} ${date.getDate()} ${date.getFullYear()}`
 }
+
+/** "spam" → "Spam", "remove_content" → "Remove content" — backend enum values for display. */
+export const titleCase = (text: string) => text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ')

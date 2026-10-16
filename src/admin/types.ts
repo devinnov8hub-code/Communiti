@@ -18,11 +18,10 @@ export interface AdminSession {
 
 /* ------------------------------- Dashboard ------------------------------ */
 
-export type DateRange = '7d' | '30d' | '90d' | '12m'
+export type DateRange = '7d' | '30d' | '12m'
 export const DATE_RANGES: { value: DateRange; label: string }[] = [
   { value: '7d', label: 'Last 7 days' },
   { value: '30d', label: 'Last 30 days' },
-  { value: '90d', label: 'Last 90 days' },
   { value: '12m', label: 'Last 12 months' },
 ]
 
@@ -33,8 +32,8 @@ export interface StatCardData {
   label: string
   caption: string
   value: number
-  /** Percentage change vs the previous period. */
-  change: number
+  /** Percentage change vs the previous period; omitted when the backend has nothing to compare. */
+  change?: number
   tone: StatTone
 }
 
@@ -113,16 +112,7 @@ export interface Page<T> {
 
 /* -------------------------------- Records ------------------------------- */
 
-export type RecordStatus = 'active' | 'restricted' | 'flagged' | 'warned' | 'suspended'
-
-export interface AdminUserRow {
-  id: string
-  username: string
-  email: string
-  reports: number
-  joinedAt: string
-  status: RecordStatus
-}
+export type RecordStatus = 'active' | 'restricted' | 'flagged' | 'warned' | 'suspended' | 'blocked'
 
 export interface AdminForumRow {
   id: string
@@ -148,13 +138,6 @@ export interface AdminProjectRow {
 export type RecordAction = 'activate' | 'restrict' | 'warn' | 'suspend'
 
 /* ------------------------------- Dashboards ----------------------------- */
-
-export interface OverviewDashboard {
-  stats: StatCardData[]
-  activity: ActivityPoint[]
-  queue: Report[]
-  logs: AdminLog[]
-}
 
 export interface SectionDashboard {
   stats: StatCardData[]

@@ -1,4 +1,5 @@
 import {
+  Article,
   CalendarBlank,
   CalendarCheck,
   CalendarDots,
@@ -88,6 +89,7 @@ const TONES: Record<StatCardData['tone'], string> = {
 /** Icon per stat id, falling back to the tone's default. */
 const ICONS: Record<string, Icon> = {
   users: Users,
+  posts: Article,
   events: CalendarCheck,
   forums: ChatsCircle,
   projects: Folder,
@@ -125,11 +127,18 @@ function StatCard({ stat, icon: StatIcon }: { stat: StatCardData; icon: Icon }) 
       </div>
       <div className="flex items-end justify-between gap-3">
         <p className="text-[28px] leading-none font-bold text-fg">{formatCount(stat.value)}</p>
-        <p className="flex items-center gap-[7px] text-caption text-brand-green">
-          <TrendUp aria-hidden className="size-[18px]" />
-          {stat.change > 0 ? '+' : ''}
-          {stat.change}%<span className="sr-only"> vs previous period</span>
-        </p>
+        {stat.change !== undefined && (
+          <p
+            className={cn(
+              'flex items-center gap-[7px] text-caption',
+              stat.change < 0 ? 'text-error' : 'text-brand-green',
+            )}
+          >
+            <TrendUp aria-hidden className={cn('size-[18px]', stat.change < 0 && '-scale-y-100')} />
+            {stat.change > 0 ? '+' : ''}
+            {stat.change}%<span className="sr-only"> vs previous period</span>
+          </p>
+        )}
       </div>
     </article>
   )
@@ -194,6 +203,7 @@ const RECORD_STATUS: Record<RecordStatus, { label: string; className: string }> 
   flagged: { label: 'Flagged', className: 'bg-brand-orange-tint text-warning dark:bg-warning/15' },
   warned: { label: 'Warned', className: 'bg-brand-orange-tint text-warning dark:bg-warning/15' },
   suspended: { label: 'Suspended', className: 'bg-error-tint text-error dark:bg-error/15' },
+  blocked: { label: 'Blocked', className: 'bg-error text-white' },
 }
 
 /** Filled record status (Figma "Status": Active / Restricted / Flagged). */

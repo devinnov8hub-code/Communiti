@@ -1,10 +1,9 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
-import {  type ListQuery } from '../api/admin.service'
-import {adminApi} from '@/lib/api'
+import { adminApi as sampleApi, type ListQuery } from '../api/admin.service'
+import { adminApi, type AdminListUsersQuery, type AdminSetUserStatusBody } from '@/lib/api'
 import type {
   AdminForumRow,
   AdminProjectRow,
-  AdminUserRow,
   BroadcastNotification,
   DateRange,
   ModerationAction,
@@ -31,15 +30,62 @@ export const adminKeys = {
   logs: (query: ListQuery) => [...adminKeys.all, 'logs', query] as const,
 }
 
+// `adminApi` (from '@/lib/api') = the real backend. `sampleApi` = screens not connected yet;
+// it and src/admin/api are deleted once every admin screen uses `adminApi`.
+
 /* ------------------------------- Dashboards ----------------------------- */
 
+/** Overview: KPI numbers, sign-up chart, newest pending reports and latest audit-log entries. */
 export const useOverview = (range: DateRange) =>
-  useQuery({ queryKey: adminKeys.overview(range), queryFn: () => adminApi.getOverviewStats() })
+  useQuery({
+    queryKey: adminKeys.overview(range),
+    queryFn: async () => {
+      const [stats, activity, reports, logs] = await Promise.all([
+        adminApi.getOverviewStats(),
+        adminApi.getUserActivityStats({ period: range }),
+        adminApi.listReports({ status: 'pending', pageSize: 7 }),
+        adminApi.listAuditLogs({ pageSize: 4 }),
+      ])
+      return { stats, activity, reports: reports.data, logs: logs.data }
+    },
+  })
 
-export const useSectionDashboard = (section: 'users' | 'forums' | 'projects', range: DateRange) =>
+/** Users dashboard: KPI numbers, sign-up chart and pending reports about users. */
+export const useUsersDashboard = (range: DateRange) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'users-dashboard', range],
+    queryFn: async () => {
+      const [stats, activity, reports] = await Promise.all([
+        adminApi.getOverviewStats(),
+        adminApi.getUserActivityStats({ period: range }),
+        adminApi.listReports({ status: 'pending', targetType: 'user', pageSize: 7 }),
+      ])
+      return { stats, activity, reports: reports.data }
+    },
+  })
+
+/** Users table (search + pages). Keeps the previous page on screen while the next one loads. */
+export const useAdminUsers = (params: AdminListUsersQuery) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'users', params],
+    queryFn: () => adminApi.listUsers(params),
+    placeholderData: keepPreviousData,
+  })
+
+/** Warn / restrict / suspend / block / reinstate a user. */
+export function useSetUserStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: AdminSetUserStatusBody }) => adminApi.setUserStatus(id, data),
+    // Table, stat cards and audit log all change.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  })
+}
+
+export const useSectionDashboard = (section: 'forums' | 'projects', range: DateRange) =>
   useQuery({
     queryKey: adminKeys.section(section, range),
-    queryFn: () => adminApi.getSectionDashboard(section, range),
+    queryFn: () => sampleApi.getSectionDashboard(section, range),
   })
 
 /* ------------------------------ Moderation ------------------------------ */
@@ -47,7 +93,7 @@ export const useSectionDashboard = (section: 'users' | 'forums' | 'projects', ra
 export const useReports = (section: ModerationSection, filter: ReportFilter, query: ListQuery) =>
   useQuery({
     queryKey: adminKeys.reports(section, filter, query),
-    queryFn: () => adminApi.getReports(section, filter, query),
+    queryFn: () => sampleApi.getReports(section, filter, query),
     placeholderData: keepPreviousData,
   })
 
@@ -55,7 +101,7 @@ export function useModerate() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ reportId, action }: { reportId: string; action: ModerationAction }) =>
-      adminApi.moderate(reportId, action),
+      sampleApi.moderate(reportId, action),
     // Queues, dashboards and logs all reflect the new status.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
@@ -63,23 +109,21 @@ export function useModerate() {
 
 /* -------------------------------- Records ------------------------------- */
 
-type RecordKind = 'users' | 'forums' | 'projects'
+type RecordKind = 'forums' | 'projects'
 
 const recordFetchers = {
-  users: (query: ListQuery) => adminApi.getUsers(query),
-  forums: (query: ListQuery) => adminApi.getForums(query),
-  projects: (query: ListQuery) => adminApi.getProjects(query),
+  forums: (query: ListQuery) => sampleApi.getForums(query),
+  projects: (query: ListQuery) => sampleApi.getProjects(query),
 }
 
-export function useRecords(kind: 'users', query: ListQuery): UseQueryResult<Page<AdminUserRow>>
 export function useRecords(kind: 'forums', query: ListQuery): UseQueryResult<Page<AdminForumRow>>
 export function useRecords(kind: 'projects', query: ListQuery): UseQueryResult<Page<AdminProjectRow>>
 export function useRecords(
   kind: RecordKind,
   query: ListQuery,
-): UseQueryResult<Page<AdminUserRow> | Page<AdminForumRow> | Page<AdminProjectRow>>
+): UseQueryResult<Page<AdminForumRow> | Page<AdminProjectRow>>
 export function useRecords(kind: RecordKind, query: ListQuery) {
-  return useQuery<Page<AdminUserRow> | Page<AdminForumRow> | Page<AdminProjectRow>>({
+  return useQuery<Page<AdminForumRow> | Page<AdminProjectRow>>({
     queryKey: adminKeys.records(kind, query),
     queryFn: () => recordFetchers[kind](query),
     placeholderData: keepPreviousData,
@@ -89,22 +133,22 @@ export function useRecords(kind: RecordKind, query: ListQuery) {
 export function useUpdateRecord(kind: RecordKind) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, action }: { id: string; action: RecordAction }) => adminApi.updateRecord(kind, id, action),
+    mutationFn: ({ id, action }: { id: string; action: RecordAction }) => sampleApi.updateRecord(kind, id, action),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
 /* --------------------------------- Events ------------------------------- */
 
-export const useAdminEvents = () => useQuery({ queryKey: adminKeys.events(), queryFn: adminApi.getEvents })
+export const useAdminEvents = () => useQuery({ queryKey: adminKeys.events(), queryFn: sampleApi.getEvents })
 
 export const useAdminEvent = (id: string) =>
-  useQuery({ queryKey: adminKeys.event(id), queryFn: () => adminApi.getEvent(id) })
+  useQuery({ queryKey: adminKeys.event(id), queryFn: () => sampleApi.getEvent(id) })
 
 export function useCreateEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: NewEvent) => adminApi.createEvent(input),
+    mutationFn: (input: NewEvent) => sampleApi.createEvent(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
@@ -112,7 +156,7 @@ export function useCreateEvent() {
 export function useDeleteEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => adminApi.deleteEvent(id),
+    mutationFn: (id: string) => sampleApi.deleteEvent(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.events() }),
   })
 }
@@ -120,15 +164,15 @@ export function useDeleteEvent() {
 /* ------------------------------- Highlights ----------------------------- */
 
 export const useHighlightGroups = () =>
-  useQuery({ queryKey: adminKeys.highlights(), queryFn: adminApi.getHighlightGroups })
+  useQuery({ queryKey: adminKeys.highlights(), queryFn: sampleApi.getHighlightGroups })
 
 export const useHighlightGroup = (id: string) =>
-  useQuery({ queryKey: adminKeys.highlight(id), queryFn: () => adminApi.getHighlightGroup(id) })
+  useQuery({ queryKey: adminKeys.highlight(id), queryFn: () => sampleApi.getHighlightGroup(id) })
 
 export function useCreateHighlightGroup() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: NewHighlightGroup) => adminApi.createHighlightGroup(input),
+    mutationFn: (input: NewHighlightGroup) => sampleApi.createHighlightGroup(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.highlights() }),
   })
 }
@@ -136,7 +180,7 @@ export function useCreateHighlightGroup() {
 export function useDeleteHighlightGroup() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => adminApi.deleteHighlightGroup(id),
+    mutationFn: (id: string) => sampleApi.deleteHighlightGroup(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.highlights() }),
   })
 }
@@ -146,17 +190,17 @@ export function useDeleteHighlightGroup() {
 export function useSendNotification() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: BroadcastNotification) => adminApi.sendNotification(input),
+    mutationFn: (input: BroadcastNotification) => sampleApi.sendNotification(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'logs'] }),
   })
 }
 
-export const useInbox = () => useQuery({ queryKey: adminKeys.inbox(), queryFn: adminApi.getInbox })
+export const useInbox = () => useQuery({ queryKey: adminKeys.inbox(), queryFn: sampleApi.getInbox })
 
 export function useMarkInboxRead() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: adminApi.markInboxRead,
+    mutationFn: sampleApi.markInboxRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.inbox() }),
   })
 }
@@ -164,6 +208,6 @@ export function useMarkInboxRead() {
 export const useLogs = (query: ListQuery) =>
   useQuery({
     queryKey: adminKeys.logs(query),
-    queryFn: () => adminApi.getLogs(query),
+    queryFn: () => sampleApi.getLogs(query),
     placeholderData: keepPreviousData,
   })
