@@ -112,18 +112,7 @@ export interface Page<T> {
 
 /* -------------------------------- Records ------------------------------- */
 
-export type RecordStatus = 'active' | 'restricted' | 'flagged' | 'warned' | 'suspended' | 'blocked'
-
-export interface AdminForumRow {
-  id: string
-  name: string
-  avatarUrl?: string
-  creator: string
-  members: number
-  reports: number
-  createdAt: string
-  status: RecordStatus
-}
+export type RecordStatus = 'active' | 'restricted' | 'flagged' | 'warned' | 'suspended' | 'blocked' | 'removed'
 
 export interface AdminProjectRow {
   id: string

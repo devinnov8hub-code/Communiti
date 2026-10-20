@@ -17,7 +17,7 @@ const includes = (text: string, search: string) => text.toLowerCase().includes(s
 const percentChange = (current: number, previous: number) =>
   previous > 0 ? Math.round(((current - previous) / previous) * 100) : undefined
 
-/** The four KPI cards (Figma "Card Container"). */
+/** The four KPI cards ("Card Container"). */
 function statCards(stats: AdminGetOverviewStatsResponse): StatCardData[] {
   return [
     {
@@ -43,7 +43,7 @@ function signupBars(activity: AdminGetUserActivityStatsResponse) {
   return activity.data.map((point) => ({ label: label.format(new Date(point.date)), value: point.signups }))
 }
 
-/** Admin home (Figma "ADMIN" › Overview), on real backend data. */
+/** Admin home ("ADMIN" › Overview), on real backend data. */
 export function OverviewPage() {
   const [range, setRange] = useState<DateRange>('30d')
   const [search, setSearch] = useState('')

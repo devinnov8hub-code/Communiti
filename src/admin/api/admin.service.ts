@@ -2,7 +2,6 @@ import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import { local } from '@/lib/storage'
 import type {
   AdminEvent,
-  AdminForumRow,
   AdminInboxItem,
   AdminLog,
   AdminProjectRow,
@@ -39,14 +38,13 @@ export interface AdminApi {
   updateProfile(input: Omit<AdminUser, 'id' | 'avatarUrl'> & { avatar?: File | null }): Promise<AdminUser>
   changePassword(oldPassword: string, newPassword: string): Promise<void>
 
-  getSectionDashboard(section: 'users' | 'forums' | 'projects', range: DateRange): Promise<SectionDashboard>
+  getSectionDashboard(section: 'projects', range: DateRange): Promise<SectionDashboard>
 
   getReports(section: ModerationSection, filter: ReportFilter, query: ListQuery): Promise<Page<Report>>
   moderate(reportId: string, action: ModerationAction): Promise<Report>
 
-  getForums(query: ListQuery): Promise<Page<AdminForumRow>>
   getProjects(query: ListQuery): Promise<Page<AdminProjectRow>>
-  updateRecord(kind: 'forums' | 'projects', id: string, action: RecordAction): Promise<void>
+  updateRecord(kind: 'projects', id: string, action: RecordAction): Promise<void>
 
   getEvents(): Promise<AdminEvent[]>
   getEvent(id: string): Promise<AdminEvent>
@@ -109,7 +107,6 @@ const httpAdminApi: AdminApi = {
     adminRequest(`/reports?${qs({ section, status: filter, page, q: search })}`),
   moderate: (reportId, action) => adminRequest(`/reports/${reportId}/actions`, { method: 'POST', body: { action } }),
 
-  getForums: ({ page, search }) => adminRequest(`/forums?${qs({ page, q: search })}`),
   getProjects: ({ page, search }) => adminRequest(`/projects?${qs({ page, q: search })}`),
   updateRecord: (kind, id, action) => adminRequest(`/${kind}/${id}/status`, { method: 'PATCH', body: { action } }),
 

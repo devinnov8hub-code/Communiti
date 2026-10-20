@@ -1,8 +1,7 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi as sampleApi, type ListQuery } from '../api/admin.service'
-import { adminApi, type AdminListUsersQuery, type AdminSetUserStatusBody } from '@/lib/api'
+import { adminApi, type AdminListForumsQuery, type AdminListUsersQuery, type AdminSetUserStatusBody } from '@/lib/api'
 import type {
-  AdminForumRow,
   AdminProjectRow,
   BroadcastNotification,
   DateRange,
@@ -82,7 +81,43 @@ export function useSetUserStatus() {
   })
 }
 
-export const useSectionDashboard = (section: 'forums' | 'projects', range: DateRange) =>
+/**
+ * Forums dashboard: total forums, pending forum reports and post activity.
+ * The backend has no forum-only post stats yet, so posts are platform-wide.
+ */
+export const useForumsDashboard = (range: DateRange) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'forums-dashboard', range],
+    queryFn: async () => {
+      const [stats, activity, reports] = await Promise.all([
+        adminApi.getOverviewStats(),
+        adminApi.getUserActivityStats({ period: range }),
+        adminApi.listReports({ status: 'pending', targetType: 'forum', pageSize: 7 }),
+      ])
+      return { stats, activity, reports: reports.data, pendingReports: reports.total }
+    },
+  })
+
+/** Forums table (search + pages). */
+export const useAdminForums = (params: AdminListForumsQuery) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'forums', params],
+    queryFn: () => adminApi.listForums(params),
+    placeholderData: keepPreviousData,
+  })
+
+/** Hide a forum from members, or bring it back. */
+export function useSetForumRemoved() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, removed }: { id: string; removed: boolean }) =>
+      removed ? adminApi.removeContent('forum', id, null) : adminApi.restoreContent('forum', id, null),
+    // Table, stat cards and audit log all change.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  })
+}
+
+export const useSectionDashboard = (section: 'projects', range: DateRange) =>
   useQuery({
     queryKey: adminKeys.section(section, range),
     queryFn: () => sampleApi.getSectionDashboard(section, range),
@@ -109,28 +144,15 @@ export function useModerate() {
 
 /* -------------------------------- Records ------------------------------- */
 
-type RecordKind = 'forums' | 'projects'
-
-const recordFetchers = {
-  forums: (query: ListQuery) => sampleApi.getForums(query),
-  projects: (query: ListQuery) => sampleApi.getProjects(query),
-}
-
-export function useRecords(kind: 'forums', query: ListQuery): UseQueryResult<Page<AdminForumRow>>
-export function useRecords(kind: 'projects', query: ListQuery): UseQueryResult<Page<AdminProjectRow>>
-export function useRecords(
-  kind: RecordKind,
-  query: ListQuery,
-): UseQueryResult<Page<AdminForumRow> | Page<AdminProjectRow>>
-export function useRecords(kind: RecordKind, query: ListQuery) {
-  return useQuery<Page<AdminForumRow> | Page<AdminProjectRow>>({
+// Projects are still on sample data; forums use useAdminForums above.
+export const useRecords = (kind: 'projects', query: ListQuery) =>
+  useQuery<Page<AdminProjectRow>>({
     queryKey: adminKeys.records(kind, query),
-    queryFn: () => recordFetchers[kind](query),
+    queryFn: () => sampleApi.getProjects(query),
     placeholderData: keepPreviousData,
   })
-}
 
-export function useUpdateRecord(kind: RecordKind) {
+export function useUpdateRecord(kind: 'projects') {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, action }: { id: string; action: RecordAction }) => sampleApi.updateRecord(kind, id, action),

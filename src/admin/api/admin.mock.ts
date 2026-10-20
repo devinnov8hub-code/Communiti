@@ -4,16 +4,13 @@ import eventCard from '@/assets/mock/explore/event-card.webp'
 import eventHero from '@/assets/mock/explore/event-hero.webp'
 import highlightHero from '@/assets/mock/explore/highlight-hero.webp'
 import organizerLogo from '@/assets/mock/explore/organizer.webp'
-import forumTractor from '@/assets/mock/forum-tractor.webp'
 import member1 from '@/assets/mock/member-1.webp'
 import member2 from '@/assets/mock/member-2.webp'
 import member3 from '@/assets/mock/member-3.webp'
 import member4 from '@/assets/mock/member-4.webp'
 import { ApiError } from '@/lib/api/errors'
 import type {
-  ActivityPoint,
   AdminEvent,
-  AdminForumRow,
   AdminInboxItem,
   AdminLog,
   AdminProjectRow,
@@ -166,24 +163,6 @@ let reports: Report[] = [
   ),
 ]
 
-const FORUM_NAMES = [
-  'Agritech Hub Forum',
-  'Jolly farmers kaduna',
-  'Solar Innovators',
-  'Youth in Tech',
-  'AgroFinance Circle',
-]
-let forums: AdminForumRow[] = Array.from({ length: 23 }, (_, index) => ({
-  id: ['f47ac10b', '9c0b8d7f'][index] ?? Math.random().toString(16).slice(2, 10),
-  name: FORUM_NAMES[index % FORUM_NAMES.length],
-  avatarUrl: forumTractor,
-  creator: ['Homer watson', 'Unice Gertrude', 'Ada Obi'][index % 3],
-  members: [5200, 1500, 870][index % 3],
-  reports: [3, 0, 1][index % 3],
-  createdAt: STAMP,
-  status: (['flagged', 'active', 'restricted'] as const)[index % 3],
-}))
-
 const PROJECT_NAMES = [
   'Smart Agriculture',
   'Renewable Energy',
@@ -281,8 +260,6 @@ function paginate<T>(items: T[], { page }: ListQuery, pageSize = PAGE_SIZE): Pag
 
 const matches = (value: string, search?: string) => !search || value.toLowerCase().includes(search.toLowerCase())
 
-const bars = (values: number[]): ActivityPoint[] => values.map((value) => ({ label: 'Feb 15', value }))
-
 const stat = (id: string, label: string, caption: string, value: number, tone: StatCardData['tone']): StatCardData => ({
   id,
   label,
@@ -361,28 +338,6 @@ export const mockAdminApi: AdminApi = {
   async getSectionDashboard(section) {
     await delay()
     const queue = reports.filter((item) => item.section === section && item.type !== 'Post').slice(0, 7)
-    if (section === 'users')
-      return {
-        stats: [
-          stat('total', 'Total', 'Last 30 days', 324000, 'indigo'),
-          stat('active', 'Active', 'Last 30 days', 32000, 'green'),
-          stat('new', 'New', 'Last 30 days', 32000, 'orange'),
-          stat('blocked', 'Blocked', 'Last 30 days', 32000, 'red'),
-        ],
-        activity: bars([22000, 15000, 4200, 9600, 18500, 2900, 6700, 12500]),
-        queue: reports.filter((item) => item.type === 'User').slice(0, 7),
-      }
-    if (section === 'forums')
-      return {
-        stats: [
-          stat('total', 'Total', 'Last 30 days', 32000, 'indigo'),
-          stat('active', 'Active', 'Last 30 days', 3000, 'green'),
-          stat('restricted', 'Restricted', 'Last 30 days', 324000, 'red'),
-          stat('flagged', 'Flagged', 'Last 30 days', 32000, 'orange'),
-        ],
-        activity: bars([7200, 9600, 4400, 9600, 7200, 2900, 6700, 9600]),
-        queue,
-      }
     return {
       stats: [
         stat('total', 'Total', 'Created projects', projects.length * 7 + 22, 'violet'),
@@ -423,13 +378,6 @@ export const mockAdminApi: AdminApi = {
     return updated
   },
 
-  async getForums(query) {
-    await delay()
-    return paginate(
-      forums.filter((row) => matches(`${row.name} ${row.creator}`, query.search)),
-      query,
-    )
-  },
   async getProjects(query) {
     await delay()
     return paginate(
@@ -440,7 +388,6 @@ export const mockAdminApi: AdminApi = {
   async updateRecord(kind, id, action) {
     await delay(400)
     const status = RECORD_RESULT[action]
-    if (kind === 'forums') forums = forums.map((row) => (row.id === id ? { ...row, status } : row))
     if (kind === 'projects') projects = projects.map((row) => (row.id === id ? { ...row, status } : row))
     log('Status updated', `${kind.slice(0, -1)} ${id} set to ${status}`)
   },

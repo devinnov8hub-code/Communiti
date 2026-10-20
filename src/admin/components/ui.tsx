@@ -204,6 +204,7 @@ const RECORD_STATUS: Record<RecordStatus, { label: string; className: string }> 
   warned: { label: 'Warned', className: 'bg-brand-orange-tint text-warning dark:bg-warning/15' },
   suspended: { label: 'Suspended', className: 'bg-error-tint text-error dark:bg-error/15' },
   blocked: { label: 'Blocked', className: 'bg-error text-white' },
+  removed: { label: 'Removed', className: 'bg-error-tint text-error dark:bg-error/15' },
 }
 
 /** Filled record status (Figma "Status": Active / Restricted / Flagged). */

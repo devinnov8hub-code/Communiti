@@ -1,4 +1,5 @@
 import {
+  Article,
   CalendarBlank,
   CalendarCheck,
   CalendarDots,
@@ -10,7 +11,6 @@ import {
   UserCheck,
   UserPlus,
   Users,
-  UsersThree,
   type Icon,
 } from '@phosphor-icons/react'
 
@@ -23,9 +23,8 @@ export const EVENT_STAT_ICONS: Record<string, Icon> = {
 }
 export const FORUM_STAT_ICONS: Record<string, Icon> = {
   total: ChatsCircle,
-  active: UsersThree,
-  restricted: Prohibit,
   flagged: Flag,
+  posts: Article,
 }
 export const PROJECT_STAT_ICONS: Record<string, Icon> = { total: Folder, active: Lightning }
 export const USER_STAT_ICONS: Record<string, Icon> = {

@@ -36,7 +36,7 @@ const NAV = [
 ] as const
 
 /**
- * Admin layout (Figma ADMIN page): 298px sidebar on desktop, drawer with a
+ * Admin layout
  * menu toggle below lg. Pages render their own <AdminTopBar>.
  */
 export function AdminShell() {

@@ -6,7 +6,7 @@ import { ActionButton, SelectField, TextAreaField, TextField, useToast } from '@
 import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { AdminContent, Panel } from '../components/ui'
-import { useRecords, useSendNotification } from '../hooks/queries'
+import { useAdminForums, useRecords, useSendNotification } from '../hooks/queries'
 
 const AUDIENCES = [
   { value: 'all', label: 'All(Users, Forums, Projects)' },
@@ -41,9 +41,9 @@ export function NotificationsPage() {
   const audience = useWatch({ control, name: 'audience' })
   const groupKind = audience === 'forums' || audience === 'projects' ? audience : null
   // Only forums/projects can be narrowed to one group; first page of each is enough to pick from.
-  const forums = useRecords('forums', { page: 1 })
+  const forums = useAdminForums({ page: 1 })
   const projects = useRecords('projects', { page: 1 })
-  const groups = groupKind === 'forums' ? forums.data?.items : groupKind === 'projects' ? projects.data?.items : []
+  const groups = groupKind === 'forums' ? forums.data?.data : groupKind === 'projects' ? projects.data?.items : []
   const groupOptions = (groups ?? []).map((group) => ({ value: group.id, label: group.name }))
 
   const submit = handleSubmit((values) =>
