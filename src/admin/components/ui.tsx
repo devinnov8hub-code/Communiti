@@ -205,6 +205,13 @@ const RECORD_STATUS: Record<RecordStatus, { label: string; className: string }> 
   suspended: { label: 'Suspended', className: 'bg-error-tint text-error dark:bg-error/15' },
   blocked: { label: 'Blocked', className: 'bg-error text-white' },
   removed: { label: 'Removed', className: 'bg-error-tint text-error dark:bg-error/15' },
+  open: { label: 'Open', className: 'bg-info-tint text-info-strong dark:bg-info/15' },
+  ongoing: { label: 'Ongoing', className: 'bg-brand-orange-tint text-warning dark:bg-warning/15' },
+  completed: {
+    label: 'Completed',
+    className: 'bg-brand-green-tint text-success dark:bg-success/15 dark:text-brand-green',
+  },
+  archived: { label: 'Archived', className: 'bg-grey-30/50 text-grey-40' },
 }
 
 /** Filled record status (Figma "Status": Active / Restricted / Flagged). */

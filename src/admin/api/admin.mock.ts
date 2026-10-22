@@ -13,17 +13,13 @@ import type {
   AdminEvent,
   AdminInboxItem,
   AdminLog,
-  AdminProjectRow,
   AdminUser,
   HighlightGroup,
   ModerationAction,
   Page,
-  RecordAction,
-  RecordStatus,
   Report,
   ReportedContent,
   ReportFilter,
-  StatCardData,
 } from '../types'
 import type { AdminApi, ListQuery } from './admin.service'
 
@@ -163,23 +159,6 @@ let reports: Report[] = [
   ),
 ]
 
-const PROJECT_NAMES = [
-  'Smart Agriculture',
-  'Renewable Energy',
-  'HealthTech Innovation',
-  'Agricultural Drone',
-  'Water Watch',
-]
-let projects: AdminProjectRow[] = Array.from({ length: 31 }, (_, index) => ({
-  id: ['a7f3b9d2', '4c2e1f8b', '9d3a7e6c'][index] ?? Math.random().toString(16).slice(2, 10),
-  name: PROJECT_NAMES[index % PROJECT_NAMES.length],
-  creator: ['David beckham', 'elvis troy', 'chimdi ebube'][index % 3],
-  members: [32, 12, 2][index % 3],
-  reports: [3, 0, 2][index % 3],
-  createdAt: STAMP,
-  status: (['warned', 'active', 'suspended'] as const)[index % 3],
-}))
-
 const ABOUT =
   "Innovate Challenge 2026 is a 48-hour hackathon that brings together innovators, developers, designers, entrepreneurs, and problem-solvers to collaborate on real-world challenges. Participants will work in teams to develop creative solutions, receive guidance from experienced mentors, expand their professional networks, and showcase their ideas to a panel of judges. Whether you're an experienced innovator or just getting started, this event offers a unique opportunity to learn, collaborate, and turn bold ideas into impactful solutions."
 
@@ -260,15 +239,6 @@ function paginate<T>(items: T[], { page }: ListQuery, pageSize = PAGE_SIZE): Pag
 
 const matches = (value: string, search?: string) => !search || value.toLowerCase().includes(search.toLowerCase())
 
-const stat = (id: string, label: string, caption: string, value: number, tone: StatCardData['tone']): StatCardData => ({
-  id,
-  label,
-  caption,
-  value,
-  change: 24,
-  tone,
-})
-
 const REVIEWED: Report['status'][] = ['banned', 'suspended', 'resolved']
 
 function filterReports(filter: ReportFilter) {
@@ -287,13 +257,6 @@ const ACTION_RESULT: Record<ModerationAction, Report['status']> = {
   'block-user': 'banned',
   'suspend-group': 'suspended',
   'delete-group': 'banned',
-}
-
-const RECORD_RESULT: Record<RecordAction, RecordStatus> = {
-  activate: 'active',
-  restrict: 'restricted',
-  warn: 'warned',
-  suspend: 'suspended',
 }
 
 /* -------------------------------- Mock API ------------------------------ */
@@ -335,25 +298,6 @@ export const mockAdminApi: AdminApi = {
     log('Password changed', 'Administrator password updated')
   },
 
-  async getSectionDashboard(section) {
-    await delay()
-    const queue = reports.filter((item) => item.section === section && item.type !== 'Post').slice(0, 7)
-    return {
-      stats: [
-        stat('total', 'Total', 'Created projects', projects.length * 7 + 22, 'violet'),
-        stat('active', 'Active', 'Last 30 days', 209, 'green'),
-      ],
-      activity: [],
-      distribution: [
-        { label: 'Featured', value: 11.2, tone: 'blue' },
-        { label: 'In Development', value: 52.1, tone: 'orange' },
-        { label: 'Inactive', value: 22.8, tone: 'grey' },
-        { label: 'Completed', value: 13.9, tone: 'green' },
-      ],
-      queue,
-    }
-  },
-
   async getReports(section, filter, query) {
     await delay()
     const inSection = section === 'overview' ? reports : reports.filter((item) => item.section === section)
@@ -376,20 +320,6 @@ export const mockAdminApi: AdminApi = {
     reports = reports.map((item) => (item.id === reportId ? updated : item))
     log('Moderation action', `Report #${target.number}: ${action.replace('-', ' ')}`)
     return updated
-  },
-
-  async getProjects(query) {
-    await delay()
-    return paginate(
-      projects.filter((row) => matches(`${row.name} ${row.creator}`, query.search)),
-      query,
-    )
-  },
-  async updateRecord(kind, id, action) {
-    await delay(400)
-    const status = RECORD_RESULT[action]
-    if (kind === 'projects') projects = projects.map((row) => (row.id === id ? { ...row, status } : row))
-    log('Status updated', `${kind.slice(0, -1)} ${id} set to ${status}`)
   },
 
   async getEvents() {

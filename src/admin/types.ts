@@ -112,28 +112,19 @@ export interface Page<T> {
 
 /* -------------------------------- Records ------------------------------- */
 
-export type RecordStatus = 'active' | 'restricted' | 'flagged' | 'warned' | 'suspended' | 'blocked' | 'removed'
-
-export interface AdminProjectRow {
-  id: string
-  name: string
-  creator: string
-  members: number
-  reports: number
-  createdAt: string
-  status: RecordStatus
-}
-
-export type RecordAction = 'activate' | 'restrict' | 'warn' | 'suspend'
-
-/* ------------------------------- Dashboards ----------------------------- */
-
-export interface SectionDashboard {
-  stats: StatCardData[]
-  activity: ActivityPoint[]
-  distribution?: DistributionSlice[]
-  queue: Report[]
-}
+export type RecordStatus =
+  | 'active'
+  | 'restricted'
+  | 'flagged'
+  | 'warned'
+  | 'suspended'
+  | 'blocked'
+  | 'removed'
+  // project lifecycle (backend `Project['status']`)
+  | 'open'
+  | 'ongoing'
+  | 'completed'
+  | 'archived'
 
 /* ---------------------------- Events & content --------------------------- */
 

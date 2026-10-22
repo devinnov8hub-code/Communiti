@@ -3,7 +3,6 @@ import { adminPaths } from './paths'
 
 const session = () => import('./session/AdminRoot')
 const auth = () => import('./pages/AdminAuthPages')
-const sections = () => import('./pages/SectionPages')
 const events = () => import('./pages/EventsPages')
 const highlights = () => import('./pages/HighlightsPages')
 
@@ -39,7 +38,10 @@ export const adminRoutes: RouteObject = {
               path: adminPaths.forums,
               lazy: async () => ({ Component: (await import('./pages/ForumsPage')).ForumsPage }),
             },
-            { path: adminPaths.projects, lazy: async () => ({ Component: (await sections()).ProjectsPage }) },
+            {
+              path: adminPaths.projects,
+              lazy: async () => ({ Component: (await import('./pages/ProjectsPage')).ProjectsPage }),
+            },
             {
               path: adminPaths.moderation(),
               lazy: async () => ({ Component: (await import('./pages/ModerationPage')).ModerationPage }),

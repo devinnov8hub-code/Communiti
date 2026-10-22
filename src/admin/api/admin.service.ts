@@ -4,21 +4,17 @@ import type {
   AdminEvent,
   AdminInboxItem,
   AdminLog,
-  AdminProjectRow,
   AdminSession,
   AdminUser,
   BroadcastNotification,
-  DateRange,
   HighlightGroup,
   ModerationAction,
   ModerationSection,
   NewEvent,
   NewHighlightGroup,
   Page,
-  RecordAction,
   Report,
   ReportFilter,
-  SectionDashboard,
 } from '../types'
 import { mockAdminApi } from './admin.mock'
 
@@ -38,13 +34,8 @@ export interface AdminApi {
   updateProfile(input: Omit<AdminUser, 'id' | 'avatarUrl'> & { avatar?: File | null }): Promise<AdminUser>
   changePassword(oldPassword: string, newPassword: string): Promise<void>
 
-  getSectionDashboard(section: 'projects', range: DateRange): Promise<SectionDashboard>
-
   getReports(section: ModerationSection, filter: ReportFilter, query: ListQuery): Promise<Page<Report>>
   moderate(reportId: string, action: ModerationAction): Promise<Report>
-
-  getProjects(query: ListQuery): Promise<Page<AdminProjectRow>>
-  updateRecord(kind: 'projects', id: string, action: RecordAction): Promise<void>
 
   getEvents(): Promise<AdminEvent[]>
   getEvent(id: string): Promise<AdminEvent>
@@ -101,14 +92,9 @@ const httpAdminApi: AdminApi = {
   changePassword: (oldPassword, newPassword) =>
     adminRequest('/me/password', { method: 'PUT', body: { oldPassword, newPassword } }),
 
-  getSectionDashboard: (section, range) => adminRequest(`/dashboard/${section}?${qs({ range })}`),
-
   getReports: (section, filter, { page, search }) =>
     adminRequest(`/reports?${qs({ section, status: filter, page, q: search })}`),
   moderate: (reportId, action) => adminRequest(`/reports/${reportId}/actions`, { method: 'POST', body: { action } }),
-
-  getProjects: ({ page, search }) => adminRequest(`/projects?${qs({ page, q: search })}`),
-  updateRecord: (kind, id, action) => adminRequest(`/${kind}/${id}/status`, { method: 'PATCH', body: { action } }),
 
   getEvents: () => adminRequest('/events'),
   getEvent: (id) => adminRequest(`/events/${id}`),

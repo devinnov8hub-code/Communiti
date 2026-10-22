@@ -1,26 +1,27 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi as sampleApi, type ListQuery } from '../api/admin.service'
-import { adminApi, type AdminListForumsQuery, type AdminListProjectsQuery, type AdminListUsersQuery, type AdminSetUserStatusBody } from '@/lib/api'
+import {
+  adminApi,
+  type AdminListForumsQuery,
+  type AdminListProjectsQuery,
+  type AdminListUsersQuery,
+  type AdminSetUserStatusBody,
+} from '@/lib/api'
 import type {
-  AdminProjectRow,
   BroadcastNotification,
   DateRange,
   ModerationAction,
   ModerationSection,
   NewEvent,
   NewHighlightGroup,
-  Page,
-  RecordAction,
   ReportFilter,
 } from '../types'
 
 export const adminKeys = {
   all: ['admin'] as const,
   overview: (range: DateRange) => [...adminKeys.all, 'overview', range] as const,
-  section: (section: string, range: DateRange) => [...adminKeys.all, 'section', section, range] as const,
   reports: (section: ModerationSection, filter: ReportFilter, query: ListQuery) =>
     [...adminKeys.all, 'reports', section, filter, query] as const,
-  records: (kind: string, query: ListQuery) => [...adminKeys.all, 'records', kind, query] as const,
   events: () => [...adminKeys.all, 'events'] as const,
   event: (id: string) => [...adminKeys.all, 'events', id] as const,
   highlights: () => [...adminKeys.all, 'highlights'] as const,
@@ -106,21 +107,46 @@ export const useAdminForums = (params: AdminListForumsQuery) =>
     placeholderData: keepPreviousData,
   })
 
-/** Hide a forum from members, or bring it back. */
-export function useSetForumRemoved() {
+/** Hide a forum or project from members, or bring it back. */
+export function useSetContentRemoved(type: 'forum' | 'project') {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, removed }: { id: string; removed: boolean }) =>
-      removed ? adminApi.removeContent('forum', id, null) : adminApi.restoreContent('forum', id, null),
+      removed ? adminApi.removeContent(type, id, null) : adminApi.restoreContent(type, id, null),
     // Table, stat cards and audit log all change.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
-export const useProjectDashboard = (section: 'projects', range: DateRange , params:AdminListProjectsQuery) =>
+/**
+ * Projects dashboard: total projects, pending project reports and the status breakdown.
+ * The backend has no project-status stats yet, so the breakdown counts the newest
+ * 100 projects (the largest page it allows); `sampled` says when there are more.
+ */
+export const useProjectsDashboard = () =>
   useQuery({
-    queryKey: adminKeys.section(section, range),
+    queryKey: [...adminKeys.all, 'projects-dashboard'],
+    queryFn: async () => {
+      const [stats, reports, newest] = await Promise.all([
+        adminApi.getOverviewStats(),
+        adminApi.listReports({ status: 'pending', targetType: 'project', pageSize: 7 }),
+        adminApi.listProjects({ pageSize: 100 }),
+      ])
+      return {
+        stats,
+        reports: reports.data,
+        projects: newest.data,
+        sampled: newest.total > newest.data.length,
+      }
+    },
+  })
+
+/** Projects table (search + pages). */
+export const useAdminProjects = (params: AdminListProjectsQuery) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'projects', params],
     queryFn: () => adminApi.listProjects(params),
+    placeholderData: keepPreviousData,
   })
 
 /* ------------------------------ Moderation ------------------------------ */
@@ -138,24 +164,6 @@ export function useModerate() {
     mutationFn: ({ reportId, action }: { reportId: string; action: ModerationAction }) =>
       sampleApi.moderate(reportId, action),
     // Queues, dashboards and logs all reflect the new status.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
-  })
-}
-
-/* -------------------------------- Records ------------------------------- */
-
-// Projects are still on sample data; forums use useAdminForums above.
-export const useRecords = (kind: 'projects', query: ListQuery) =>
-  useQuery<Page<AdminProjectRow>>({
-    queryKey: adminKeys.records(kind, query),
-    queryFn: () => sampleApi.getProjects(query),
-    placeholderData: keepPreviousData,
-  })
-
-export function useUpdateRecord(kind: 'projects') {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, action }: { id: string; action: RecordAction }) => sampleApi.updateRecord(kind, id, action),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }

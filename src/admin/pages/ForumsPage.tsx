@@ -26,7 +26,7 @@ import {
   TableSearch,
   type Column,
 } from '../components/ui'
-import { useAdminForums, useForumsDashboard, useSetForumRemoved } from '../hooks/queries'
+import { useAdminForums, useForumsDashboard, useSetContentRemoved } from '../hooks/queries'
 import { adminPaths } from '../paths'
 import type { DateRange, StatCardData } from '../types'
 
@@ -207,7 +207,7 @@ function ForumsTable({
 
 /** Remove (hide from members, asks first) or restore a forum. */
 function ForumActions({ forum }: { forum: AdminForum }) {
-  const setRemoved = useSetForumRemoved()
+  const setRemoved = useSetContentRemoved('forum')
   const toast = useToast()
   const [confirming, setConfirming] = useState(false)
   const removed = forum.removedAt !== null

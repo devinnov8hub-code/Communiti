@@ -61,48 +61,6 @@ export function PendingReportsTable({
   return <DataTable columns={columns} rows={reports} rowKey={(row) => row.id} loading={loading} empty="No reports 🎉" />
 }
 
-/**
- * Compact queue on the Users / Forums / Projects dashboards (sample data).
- * Removed once those screens use PendingReportsTable.
- */
-export function QueuePreviewTable({
-  section,
-  reports,
-  loading,
-}: {
-  section: ModerationSection
-  reports: Report[] | undefined
-  loading?: boolean
-}) {
-  const columns: Column<Report>[] = [
-    {
-      key: 'name',
-      header: section === 'overview' ? 'UserName' : nameHeader[section],
-      cell: (row) => <span className="block max-w-[180px] truncate">{row.subject}</span>,
-    },
-    ...(section === 'overview'
-      ? [{ key: 'type', header: 'Type', align: 'center' as const, cell: (row: Report) => row.type }]
-      : []),
-    {
-      key: 'reason',
-      header: 'Reason',
-      align: 'center',
-      cell: (row) => (
-        <span className={section === 'overview' ? (REASON_TONE[row.reason] ?? 'text-fg') : 'text-fg'}>
-          {row.reason}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      align: 'center',
-      cell: (row) => <ReportStatusPill status={row.status} size={section === 'overview' ? 'xs' : 'sm'} />,
-    },
-  ]
-  return <DataTable columns={columns} rows={reports} rowKey={(row) => row.id} loading={loading} empty="No reports 🎉" />
-}
-
 /** Full moderation queue with a Review action per row (Figma "moderation view"). */
 export function QueueTable({
   section,
