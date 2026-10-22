@@ -20,8 +20,9 @@ import {
   TableSearch,
   type Column,
 } from '../components/ui'
-import { useRecords, useSectionDashboard, useUpdateRecord } from '../hooks/queries'
-import type { AdminProjectRow, RecordAction, RecordStatus } from '../types'
+import { useRecords, useProjectDashboard, useUpdateRecord } from '../hooks/queries'
+import type { AdminProjectRow, RecordAction, RecordStatus, StatCardData } from '../types'
+import type { AdminGetOverviewStatsResponse } from '@/lib/api'
 
 // Users and Forums moved to UsersPage.tsx / ForumsPage.tsx (real backend); Projects is still on sample data.
 type Kind = 'projects'
@@ -39,13 +40,21 @@ const CONFIG = {
   },
 } as const
 
+function statCards(stats: AdminGetOverviewStatsResponse): StatCardData[]{
+  return [
+     { id: 'total', label: 'Total', caption: 'All forums', value: stats.totalForums, tone: 'indigo' },
+    { id: 'flagged', label: 'Flagged', caption: 'Pending reports', value: 0, tone: 'orange' },
+    { id: 'posts', label: 'Posts', caption: 'Last 7 days', value: stats.posts7d, tone: 'green' },
+  ]
+}
+
 /** Projects dashboard (Figma "PROJECTS") — sample data. */
-function SectionPage({ kind }: { kind: Kind }) {
-  const config = CONFIG[kind]
+function SectionPage() {
+  // const config = CONFIG[kind]
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const deferredSearch = useDeferredValue(search.trim())
-  const dashboard = useSectionDashboard(kind, '30d')
+  const dashboard = useProjectDashboard(page, '30d')
 
   const onSearch = (value: string) => {
     setSearch(value)
@@ -54,14 +63,14 @@ function SectionPage({ kind }: { kind: Kind }) {
 
   return (
     <>
-      <AdminTopBar title={config.title} searchPlaceholder="Search in overview" search={search} onSearch={onSearch} />
+      <AdminTopBar title="Projects" searchPlaceholder="Search in overview" search={search} onSearch={onSearch} />
       <AdminContent>
         {dashboard.isError ? (
           <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
         ) : (
           <>
             {dashboard.data ? (
-              <StatGrid stats={dashboard.data.stats} icons={config.icons} />
+              <StatGrid stats={statCards(dashboard.data.total)} icons={PROJECT_STAT_ICONS} />
             ) : (
               <StatSkeleton count={2} />
             )}

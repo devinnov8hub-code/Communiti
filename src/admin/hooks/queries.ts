@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi as sampleApi, type ListQuery } from '../api/admin.service'
-import { adminApi, type AdminListForumsQuery, type AdminListUsersQuery, type AdminSetUserStatusBody } from '@/lib/api'
+import { adminApi, type AdminListForumsQuery, type AdminListProjectsQuery, type AdminListUsersQuery, type AdminSetUserStatusBody } from '@/lib/api'
 import type {
   AdminProjectRow,
   BroadcastNotification,
@@ -117,10 +117,10 @@ export function useSetForumRemoved() {
   })
 }
 
-export const useSectionDashboard = (section: 'projects', range: DateRange) =>
+export const useProjectDashboard = (section: 'projects', range: DateRange , params:AdminListProjectsQuery) =>
   useQuery({
     queryKey: adminKeys.section(section, range),
-    queryFn: () => sampleApi.getSectionDashboard(section, range),
+    queryFn: () => adminApi.listProjects(params),
   })
 
 /* ------------------------------ Moderation ------------------------------ */

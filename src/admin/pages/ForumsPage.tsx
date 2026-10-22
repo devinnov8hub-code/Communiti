@@ -37,7 +37,7 @@ const PAGE_SIZE = 10
 const stamp = (iso: string) => iso.replace('T', ' ').slice(0, 19)
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
 
-/** Total forums / pending forum reports / posts this week (Figma "FORUMNS"). */
+/** Total forums / pending forum reports / posts this week ( "FORUMNS"). */
 function statCards(stats: AdminGetOverviewStatsResponse, pendingReports: number): StatCardData[] {
   return [
     { id: 'total', label: 'Total', caption: 'All forums', value: stats.totalForums, tone: 'indigo' },
@@ -54,7 +54,7 @@ function postBars(activity: AdminGetUserActivityStatsResponse) {
   return activity.data.map((point) => ({ label: label.format(new Date(point.date)), value: point.posts }))
 }
 
-/** Forums dashboard (Figma "FORUMNS"), on real backend data. */
+/** Forums dashboard ("FORUMNS"), on real backend data. */
 export function ForumsPage() {
   const [range, setRange] = useState<DateRange>('30d')
   const [search, setSearch] = useState('')
