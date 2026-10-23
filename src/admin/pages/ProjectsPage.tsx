@@ -33,7 +33,7 @@ const stamp = (iso: string) => iso.replace('T', ' ').slice(0, 19)
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
 const isActive = (project: AdminProject) => project.status === 'open' || project.status === 'ongoing'
 
-/** Total / Active cards (Figma "PROJECTS"). */
+/** Total / Active cards ("PROJECTS"). */
 function statCards(stats: AdminGetOverviewStatsResponse, projects: AdminProject[], sampled: boolean): StatCardData[] {
   return [
     { id: 'total', label: 'Total', caption: 'Created projects', value: stats.totalProjects, tone: 'violet' },
