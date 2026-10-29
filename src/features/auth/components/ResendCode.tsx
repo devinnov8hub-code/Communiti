@@ -26,7 +26,7 @@ export function ResendCode({ pending, onResent }: ResendCodeProps) {
   }, [deadline])
 
   const resend = useAsyncAction(async () => {
-    const request = pending.flow === 'login' ? authApi.requestLoginCode : authApi.requestSignUpCode
+    const request = pending.flow === 'reset' ? authApi.forgotPassword : authApi.resendVerificationEmail
     await request(pending.email)
     setSent(true)
     setDeadline(Date.now() + COOLDOWN_SECONDS * 1000)

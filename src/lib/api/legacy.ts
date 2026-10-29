@@ -4,7 +4,7 @@ import { TOKEN_STORAGE_KEY } from './tokens'
 
 /**
  * TEMPORARY — the fetch helper and sample-data switch used by feature services that are
- * not connected to the real backend yet (each feature's own api folder, and src/admin/api). Each one is
+ * not connected to the real backend yet (each feature's own api folder). Each one is
  * deleted as its feature moves to the axios services in ./services; then this file goes too.
  */
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')

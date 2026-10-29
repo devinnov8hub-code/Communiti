@@ -4,10 +4,11 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { adminPaths } from '../paths'
 import { api, SESSION_EXPIRED_EVENT, tokens } from '@/lib/api'
 import { local, session as tabStorage } from '@/lib/storage'
-import { ADMIN_SESSION_KEY } from '../api/admin.service'
 import type { AdminSession, AdminUser } from '../types'
 import { AdminSessionContext, useAdminSession, type ResetFlow } from './adminSessionContext'
 
+/** Where the signed-in admin is remembered (the token itself is kept by `tokens`). */
+export const ADMIN_SESSION_KEY = 'communiti-admin-session'
 const RESET_KEY = 'communiti-admin-reset'
 
 /** Layout route for everything under /admin: provides the admin session (separate from members). */

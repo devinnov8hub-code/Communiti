@@ -125,7 +125,7 @@ function StatCard({ stat, icon: StatIcon }: { stat: StatCardData; icon: Icon }) 
           <StatIcon aria-hidden className="size-3.5" />
         </span>
       </div>
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
         <p className="text-[28px] leading-none font-bold text-fg">{formatCount(stat.value)}</p>
         {stat.change !== undefined && (
           <p
@@ -205,13 +205,6 @@ const RECORD_STATUS: Record<RecordStatus, { label: string; className: string }> 
   suspended: { label: 'Suspended', className: 'bg-error-tint text-error dark:bg-error/15' },
   blocked: { label: 'Blocked', className: 'bg-error text-white' },
   removed: { label: 'Removed', className: 'bg-error-tint text-error dark:bg-error/15' },
-  open: { label: 'Open', className: 'bg-info-tint text-info-strong dark:bg-info/15' },
-  ongoing: { label: 'Ongoing', className: 'bg-brand-orange-tint text-warning dark:bg-warning/15' },
-  completed: {
-    label: 'Completed',
-    className: 'bg-brand-green-tint text-success dark:bg-success/15 dark:text-brand-green',
-  },
-  archived: { label: 'Archived', className: 'bg-grey-30/50 text-grey-40' },
 }
 
 /** Filled record status (Figma "Status": Active / Restricted / Flagged). */
@@ -318,6 +311,7 @@ export function DataTable<T>({
   empty = 'Nothing here yet.',
   headerTint = true,
   onRowClick,
+  selectedKey,
 }: {
   columns: Column<T>[]
   rows: T[] | undefined
@@ -326,6 +320,8 @@ export function DataTable<T>({
   empty?: string
   headerTint?: boolean
   onRowClick?: (row: T) => void
+  /** Highlights the row whose `rowKey` matches (e.g. the one open in a side panel). */
+  selectedKey?: string
 }) {
   return (
     <div className="overflow-x-auto">
@@ -356,6 +352,7 @@ export function DataTable<T>({
                 className={cn(
                   'h-[39px] border-b border-hairline last:border-b-0',
                   onRowClick && 'cursor-pointer hover:bg-fg/[0.02]',
+                  selectedKey === rowKey(row) && 'bg-fg/[0.05] hover:bg-fg/[0.05]',
                 )}
               >
                 {columns.map((column) => (

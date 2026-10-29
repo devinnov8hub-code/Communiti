@@ -10,6 +10,8 @@ export interface AuthContextValue {
   /** First name of the last user who signed in on this device ("Welcome back Demilade"). */
   lastUserName: string | null
   startVerification: (pending: PendingVerification) => void
+  /** Forget the pending code (e.g. after a password reset finishes). */
+  clearVerification: () => void
   signIn: (session: Session) => void
   updateUser: (user: User) => void
   signOut: () => void

@@ -1,10 +1,10 @@
 import { EnvelopeSimple } from '@phosphor-icons/react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { BrandWelcome } from '@/components/brand/Logo'
-import { Button, Divider, TextField } from '@/components/ui'
+import { Button, Divider, PasswordField, TextField } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
 import { authApi } from '../api/auth.service'
 import { AuthHeading } from '../components/AuthHeading'
@@ -16,21 +16,22 @@ import { useAuth } from '../hooks/useAuth'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import { loginSchema, type LoginValues } from '../schemas'
 
+/** "Welcome back": email and password. */
 export function LoginPage() {
   const navigate = useNavigate()
-  const { startVerification, lastUserName } = useAuth()
+  const { signIn, lastUserName } = useAuth()
   const google = useGoogleSignIn()
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: '' } })
+  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
 
-  const submit = useAsyncAction(async ({ email }: LoginValues) => {
-    await authApi.requestLoginCode(email)
-    startVerification({ email, flow: 'login' })
-    navigate(paths.verify)
+  const submit = useAsyncAction(async (values: LoginValues) => {
+    const session = await authApi.login(values)
+    signIn(session)
+    navigate(session.user.onboardingComplete ? paths.home : paths.onboardingProfile, { replace: true })
   })
 
   return (
@@ -45,15 +46,32 @@ export function LoginPage() {
           />
 
           <form noValidate onSubmit={handleSubmit(submit.run)} className="flex flex-col gap-gap-xl">
-            <TextField
-              label="Enter email"
-              type="email"
-              autoComplete="email"
-              placeholder="Email"
-              icon={<EnvelopeSimple className="size-6" />}
-              error={errors.email?.message}
-              {...register('email')}
-            />
+            <div className="flex flex-col gap-gap-md">
+              <TextField
+                label="Enter email"
+                type="email"
+                autoComplete="email"
+                placeholder="Email"
+                icon={<EnvelopeSimple className="size-6" />}
+                error={errors.email?.message}
+                {...register('email')}
+              />
+              <div className="flex flex-col gap-2">
+                <PasswordField
+                  label="Enter password"
+                  autoComplete="current-password"
+                  placeholder="******"
+                  error={errors.password?.message}
+                  {...register('password')}
+                />
+                <Link
+                  to={paths.forgotPassword}
+                  className="self-end text-body-s font-semibold text-brand-green hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
 
             <FormAlert message={submit.error ?? google.error} />
 

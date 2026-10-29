@@ -1,7 +1,7 @@
 import type { SelectOption } from '@/components/ui'
 import type { UserRole } from './types'
 
-export const OTP_LENGTH = 4
+export const OTP_LENGTH = 6
 
 export const ROLE_OPTIONS: readonly (SelectOption & { value: UserRole })[] = [
   { value: 'artisan', label: 'Artisan' },

@@ -3,6 +3,8 @@ export const paths = {
   login: '/login',
   signUp: '/signup',
   verify: '/verify',
+  forgotPassword: '/forgot-password',
+  newPassword: '/forgot-password/new',
   onboardingProfile: '/onboarding/profile',
   onboardingInterests: '/onboarding/interests',
   terms: '/terms',

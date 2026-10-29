@@ -1,10 +1,10 @@
-import { EnvelopeSimple } from '@phosphor-icons/react'
+import { EnvelopeSimple, NavigationArrow, User } from '@phosphor-icons/react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { BrandWelcome } from '@/components/brand/Logo'
-import { Button, Checkbox, Divider, TextField } from '@/components/ui'
+import { Button, Checkbox, Divider, PasswordField, TextField } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
 import { authApi } from '../api/auth.service'
 import { AuthLayout } from '../components/AuthLayout'
@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import { signUpSchema, type SignUpValues } from '../schemas'
 
+/** "Create account" (name, email, location, password). Emails a code to verify the address. */
 export function SignUpPage() {
   const navigate = useNavigate()
   const { startVerification } = useAuth()
@@ -26,11 +27,18 @@ export function SignUpPage() {
     formState: { errors },
   } = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { email: '', acceptTerms: false },
+    defaultValues: {
+      fullName: '',
+      email: '',
+      location: '',
+      password: '',
+      confirmPassword: '',
+      acceptTerms: false,
+    },
   })
 
-  const submit = useAsyncAction(async ({ email }: SignUpValues) => {
-    await authApi.requestSignUpCode(email)
+  const submit = useAsyncAction(async ({ fullName, email, location, password }: SignUpValues) => {
+    await authApi.register({ fullName, email, location, password })
     startVerification({ email, flow: 'signup' })
     navigate(paths.verify)
   })
@@ -46,6 +54,14 @@ export function SignUpPage() {
           <form noValidate onSubmit={handleSubmit(submit.run)} className="flex flex-col gap-gap-xl">
             <div className="flex flex-col gap-gap-md">
               <TextField
+                label="Enter fullname"
+                autoComplete="name"
+                placeholder="e.g John adeboye"
+                icon={<User className="size-6" />}
+                error={errors.fullName?.message}
+                {...register('fullName')}
+              />
+              <TextField
                 label="Enter email"
                 type="email"
                 autoComplete="email"
@@ -53,6 +69,28 @@ export function SignUpPage() {
                 icon={<EnvelopeSimple className="size-6" />}
                 error={errors.email?.message}
                 {...register('email')}
+              />
+              <TextField
+                label="Input your location"
+                autoComplete="address-level2"
+                placeholder="Input your location"
+                icon={<NavigationArrow className="size-6 -scale-x-100" />}
+                error={errors.location?.message}
+                {...register('location')}
+              />
+              <PasswordField
+                label="Create password"
+                autoComplete="new-password"
+                placeholder="******"
+                error={errors.password?.message}
+                {...register('password')}
+              />
+              <PasswordField
+                label="Confirm password"
+                autoComplete="new-password"
+                placeholder="******"
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
               />
               <Checkbox
                 error={errors.acceptTerms?.message}
@@ -82,7 +120,7 @@ export function SignUpPage() {
           <div className="flex flex-col items-center gap-gap-sm">
             <Divider label="Or" />
             <GoogleButton onClick={() => google.run()} loading={google.pending} />
-            <AuthSwitchPrompt prompt="Already have an account?" linkLabel="LogIn" to={paths.login} />
+            <AuthSwitchPrompt prompt="Already have an account?" linkLabel="Login" to={paths.login} />
           </div>
         </div>
       </div>

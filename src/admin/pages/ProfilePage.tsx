@@ -5,10 +5,11 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { ActionButton, Avatar, Button, FieldError, TextField, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
-import { adminApi } from '../api/admin.service'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { AdminContent, Panel } from '../components/ui'
+import { useAdminMe, useChangeAdminPassword, useUpdateAdminProfile } from '../hooks/queries'
 import { useAdminSession } from '../session/adminSessionContext'
+import { toAdminUser } from '../session/toAdminSession'
 import type { AdminUser } from '../types'
 
 const MAX_PHOTO = 2 * 1024 * 1024
@@ -16,7 +17,6 @@ const MAX_PHOTO = 2 * 1024 * 1024
 const profileSchema = z.object({
   firstName: z.string().trim().min(1, 'Enter your first name').max(50),
   lastName: z.string().trim().min(1, 'Enter your last name').max(50),
-  email: z.string().trim().email('Enter a valid email address'),
   phone: z
     .string()
     .trim()
@@ -28,7 +28,11 @@ type ProfileValues = z.infer<typeof profileSchema>
 const passwordSchema = z
   .object({
     oldPassword: z.string().min(1, 'Enter your current password'),
-    newPassword: z.string().min(8, 'Use at least 8 characters'),
+    newPassword: z
+      .string()
+      .min(8, 'Use at least 8 characters')
+      .regex(/[A-Za-z]/, 'Include at least one letter')
+      .regex(/\d/, 'Include at least one number'),
   })
   .refine((values) => values.oldPassword !== values.newPassword, {
     path: ['newPassword'],
@@ -38,13 +42,16 @@ type PasswordValues = z.infer<typeof passwordSchema>
 
 /** Admin profile & password (Figma "SETTINGS" › Profile). */
 export function ProfilePage() {
-  const { admin } = useAdminSession()
+  const { admin: signedIn } = useAdminSession()
+  const me = useAdminMe()
+  // The full record (with phone) once it loads; the sign-in copy until then.
+  const admin = me.data ? toAdminUser(me.data) : signedIn
   return (
     <>
       <AdminTopBar title="Profile" />
       <AdminContent>
         <Panel className="flex max-w-[1104px] flex-col gap-gap-md px-3.5 py-5 sm:px-[13px]">
-          {admin && <ProfileForm admin={admin} />}
+          {admin && <ProfileForm key={me.data ? 'loaded' : 'session'} admin={admin} />}
           <PasswordForm />
         </Panel>
       </AdminContent>
@@ -59,13 +66,12 @@ function ProfileForm({ admin }: { admin: AdminUser }) {
   const [photo, setPhoto] = useState<File | null | undefined>(undefined)
   const [photoError, setPhotoError] = useState<string>()
   const [preview, setPreview] = useState<string>()
-  const [saving, setSaving] = useState(false)
+  const save = useUpdateAdminProfile()
   useEffect(() => () => (preview ? URL.revokeObjectURL(preview) : undefined), [preview])
 
   const defaults = {
     firstName: admin.firstName,
     lastName: admin.lastName,
-    email: admin.email,
     phone: admin.phone ?? '',
   }
   const {
@@ -85,21 +91,22 @@ function ProfileForm({ admin }: { admin: AdminUser }) {
     setPhotoError(undefined)
   }
 
-  const submit = handleSubmit(async (values) => {
-    setSaving(true)
-    try {
-      const updated = await adminApi.updateProfile({ ...values, avatar: photo })
-      updateAdmin(updated)
-      reset({ ...values })
-      setPhoto(undefined)
-      setPreview(undefined)
-      toast('Profile saved')
-    } catch (error) {
-      toast(getErrorMessage(error))
-    } finally {
-      setSaving(false)
-    }
-  })
+  const submit = handleSubmit((values) =>
+    save.mutate(
+      { fullName: `${values.firstName} ${values.lastName}`, phone: values.phone || null, avatar: photo },
+      {
+        onSuccess: (me) => {
+          updateAdmin(toAdminUser(me))
+          reset({ ...values })
+          setPhoto(undefined)
+          setPreview(undefined)
+          toast('Profile saved')
+        },
+        onError: (error) => toast(getErrorMessage(error)),
+      },
+    ),
+  )
+  const saving = save.isPending
 
   return (
     <form noValidate onSubmit={submit} className="flex flex-col gap-4 border-b border-hairline pb-6">
@@ -159,13 +166,8 @@ function ProfileForm({ admin }: { admin: AdminUser }) {
           error={errors.lastName?.message}
           {...register('lastName')}
         />
-        <TextField
-          label="Email Address"
-          type="email"
-          autoComplete="email"
-          error={errors.email?.message}
-          {...register('email')}
-        />
+        {/* Changing the sign-in email needs a code sent to the new address — not offered here yet. */}
+        <TextField label="Email Address" type="email" value={admin.email} readOnly disabled />
         <TextField
           label="Phone Number(optional)"
           type="tel"
@@ -200,7 +202,7 @@ function ProfileForm({ admin }: { admin: AdminUser }) {
 
 function PasswordForm() {
   const toast = useToast()
-  const [saving, setSaving] = useState(false)
+  const change = useChangeAdminPassword()
   const {
     register,
     handleSubmit,
@@ -211,18 +213,19 @@ function PasswordForm() {
     defaultValues: { oldPassword: '', newPassword: '' },
   })
 
-  const submit = handleSubmit(async (values) => {
-    setSaving(true)
-    try {
-      await adminApi.changePassword(values.oldPassword, values.newPassword)
-      reset()
-      toast('Password changed')
-    } catch (error) {
-      toast(getErrorMessage(error))
-    } finally {
-      setSaving(false)
-    }
-  })
+  const submit = handleSubmit((values) =>
+    change.mutate(
+      { currentPassword: values.oldPassword, newPassword: values.newPassword },
+      {
+        onSuccess: () => {
+          reset()
+          toast('Password changed')
+        },
+        onError: (error) => toast(getErrorMessage(error)),
+      },
+    ),
+  )
+  const saving = change.isPending
 
   return (
     <form noValidate onSubmit={submit} className="flex flex-col gap-4">

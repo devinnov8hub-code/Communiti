@@ -2,6 +2,7 @@
 // Re-run `npm run api:sync` after the backend changes.
 
 export interface PresignUploadBody {
+  /** Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip) */
   purpose:
     | 'avatar'
     | 'cover'
@@ -14,6 +15,9 @@ export interface PresignUploadBody {
     | 'forum'
     | 'event'
     | 'highlight'
+    | 'comment'
+    | 'verification'
+    | 'featured'
   /** (max 120 characters) */
   mimeType: string
   sizeBytes: number

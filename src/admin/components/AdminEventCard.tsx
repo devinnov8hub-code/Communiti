@@ -2,15 +2,16 @@ import { CalendarDots, DotsThree, Eye, NavigationArrow, Trash } from '@phosphor-
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
+import type { Event as CommunityEvent } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
-import { formatDateRange } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { eventCategoryLabel, eventPlace } from '@/lib/events'
+import { formatDateRange } from '@/lib/format'
 import { useDeleteEvent } from '../hooks/queries'
 import { adminPaths } from '../paths'
-import type { AdminEvent } from '../types'
 
 /** Admin event tile: image on top, details below (Figma "EVENTS PAGE" cards). */
-export function AdminEventCard({ event, className }: { event: AdminEvent; className?: string }) {
+export function AdminEventCard({ event, className }: { event: CommunityEvent; className?: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const remove = useDeleteEvent()
   const toast = useToast()
@@ -19,11 +20,22 @@ export function AdminEventCard({ event, className }: { event: AdminEvent; classN
 
   return (
     <article className={cn('relative flex flex-col rounded-control bg-surface-raised', className)}>
-      <img src={event.imageUrl} alt="" loading="lazy" className="h-[162px] w-full rounded-t-control object-cover" />
+      {event.coverUrl ? (
+        <img src={event.coverUrl} alt="" loading="lazy" className="h-[162px] w-full rounded-t-control object-cover" />
+      ) : (
+        <div aria-hidden className="h-[162px] w-full rounded-t-control bg-brand-orange-tint dark:bg-brand-orange/10" />
+      )}
       <div className="flex flex-col gap-[7px] p-2">
         <div className="flex items-center justify-between">
-          <span className="rounded-full bg-brand-orange-tint px-2 py-[5px] text-caption text-brand-orange uppercase dark:bg-brand-orange/15">
-            {event.category}
+          <span className="flex items-center gap-1.5">
+            <span className="rounded-full bg-brand-orange-tint px-2 py-[5px] text-caption text-brand-orange uppercase dark:bg-brand-orange/15">
+              {eventCategoryLabel(event.category)}
+            </span>
+            {event.status !== 'published' && (
+              <span className="rounded-full bg-grey-30/50 px-2 py-[5px] text-caption text-grey-40 capitalize">
+                {event.status}
+              </span>
+            )}
           </span>
           <Menu
             trigger={
@@ -74,7 +86,7 @@ export function AdminEventCard({ event, className }: { event: AdminEvent; classN
           </span>
           <span className="flex items-center gap-[3px]">
             <NavigationArrow aria-hidden className="size-6 -scale-x-100 text-brand-orange" />
-            {event.location}
+            {eventPlace(event)}
           </span>
         </div>
       </div>

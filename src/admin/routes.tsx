@@ -35,6 +35,10 @@ export const adminRoutes: RouteObject = {
               lazy: async () => ({ Component: (await import('./pages/UsersPage')).UsersPage }),
             },
             {
+              path: adminPaths.userLogs(),
+              lazy: async () => ({ Component: (await import('./pages/UserLogsPage')).UserLogsPage }),
+            },
+            {
               path: adminPaths.forums,
               lazy: async () => ({ Component: (await import('./pages/ForumsPage')).ForumsPage }),
             },
@@ -56,6 +60,10 @@ export const adminRoutes: RouteObject = {
             {
               path: adminPaths.notifications,
               lazy: async () => ({ Component: (await import('./pages/NotificationsPage')).NotificationsPage }),
+            },
+            {
+              path: adminPaths.settings,
+              lazy: async () => ({ Component: (await import('./pages/SettingsPage')).SettingsPage }),
             },
             { path: adminPaths.logs, lazy: async () => ({ Component: (await import('./pages/LogsPage')).LogsPage }) },
             {

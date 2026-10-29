@@ -1,35 +1,47 @@
 import { CloudArrowUp, X } from '@phosphor-icons/react'
-import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
+import { useDeferredValue, useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 import { Button, Divider, FieldError, Modal, SelectField, TextField, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
-import { useAdminEvents, useCreateHighlightGroup } from '../hooks/queries'
+import { formatDateRange } from '@/lib/format'
+import { useCreateHighlight, useEventOptions } from '../hooks/queries'
 
 const MAX_BYTES = 10 * 1024 * 1024
+const MAX_IMAGES = 20
 
 /** "Add Highlights" sheet: name a new group or attach it to an event, then add photos. */
 export function AddHighlightsModal({ onClose }: { onClose: () => void }) {
-  const create = useCreateHighlightGroup()
-  const events = useAdminEvents()
+  const create = useCreateHighlight()
   const toast = useToast()
   const inputId = useId()
   const [title, setTitle] = useState('')
   const [eventId, setEventId] = useState('')
+  const [eventSearch, setEventSearch] = useState('')
+  const events = useEventOptions(useDeferredValue(eventSearch.trim()) || undefined)
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<{ source?: string; images?: string }>({})
 
   const previews = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files])
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews])
 
-  const eventOptions = (events.data ?? []).map((event) => ({ value: event.id, label: event.title }))
+  const eventOptions = (events.data?.data ?? []).map((event) => ({
+    value: event.id,
+    label: `${event.title} · ${formatDateRange(event.startsAt, event.endsAt)}`,
+  }))
 
   const addFiles = (list: FileList | null) => {
     const picked = Array.from(list ?? [])
     const valid = picked.filter((file) => /^image\/(png|jpe?g|webp)$/.test(file.type) && file.size <= MAX_BYTES)
+    const room = MAX_IMAGES - files.length
     setErrors((current) => ({
       ...current,
-      images: valid.length < picked.length ? 'Some files were skipped (PNG, JPG or WEBP up to 10MB)' : undefined,
+      images:
+        valid.length > room
+          ? `Up to ${MAX_IMAGES} images per highlight`
+          : valid.length < picked.length
+            ? 'Some files were skipped (PNG, JPG or WEBP up to 10MB)'
+            : undefined,
     }))
-    setFiles((current) => [...current, ...valid])
+    setFiles((current) => [...current, ...valid.slice(0, room)])
   }
 
   const submit = (event: FormEvent) => {
@@ -83,13 +95,25 @@ export function AddHighlightsModal({ onClose }: { onClose: () => void }) {
           onChange={(event) => setTitle(event.target.value)}
         />
         <Divider label="OR" />
-        <SelectField
-          label="Use an existing event"
-          placeholder={events.isPending ? 'Loading events…' : 'Search and select an event'}
-          options={eventOptions}
-          value={eventId}
-          onChange={(event) => setEventId(event.target.value)}
-        />
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-body-s text-fg-label">Use an existing event</legend>
+          <TextField
+            label="Search events"
+            type="search"
+            placeholder="Search past and upcoming events"
+            value={eventSearch}
+            onChange={(event) => setEventSearch(event.target.value)}
+            className="[&>label]:sr-only"
+          />
+          <SelectField
+            label="Event"
+            placeholder={events.isPending ? 'Loading events…' : 'Select an event'}
+            options={eventOptions}
+            value={eventId}
+            onChange={(event) => setEventId(event.target.value)}
+            className="[&>label]:sr-only"
+          />
+        </fieldset>
         {errors.source && <FieldError>{errors.source}</FieldError>}
 
         <div className="flex flex-col gap-2 pt-2">

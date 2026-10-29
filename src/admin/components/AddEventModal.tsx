@@ -1,29 +1,27 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CalendarDots, CloudArrowUp, X } from '@phosphor-icons/react'
+import { CalendarDots, CloudArrowUp, LinkSimple, X } from '@phosphor-icons/react'
 import { useEffect, useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button, DateField, FieldError, Modal, SelectField, TextAreaField, TextField, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
+import { EVENT_CATEGORIES } from '@/lib/events'
 import { useCreateEvent } from '../hooks/queries'
 
-const CATEGORIES = ['Hackathon', 'Workshop', 'Conference', 'Meetup', 'Webinar', 'Exhibition'].map((value) => ({
-  value,
-  label: value.toUpperCase(),
-}))
-const ORGANIZERS = ['Innovation Hub', 'Creative Media', 'CommUniti'].map((value) => ({ value, label: value }))
+const CATEGORIES = EVENT_CATEGORIES.map(({ value, label }) => ({ value, label: label.toUpperCase() }))
 const MAX_BYTES = 5 * 1024 * 1024
 
 const schema = z
   .object({
-    title: z.string().trim().min(3, 'Give the event a title').max(80),
-    category: z.string().min(1, 'Pick a category'),
+    title: z.string().trim().min(3, 'Give the event a title').max(160),
+    category: z.enum(['hackathon', 'workshop', 'bootcamp', 'networking_fair'], { message: 'Pick an event type' }),
     startsAt: z.string().min(1, 'Pick a start date'),
     endsAt: z.string().min(1, 'Pick an end date'),
-    location: z.string().trim().max(120).optional(),
-    about: z.string().trim().min(20, 'Describe the event (20+ characters)').max(2000),
-    organizer: z.string().min(1, 'Choose the organizer'),
+    location: z.string().trim().max(120),
+    registrationUrl: z.string().trim().url('Enter the full link, starting with https://'),
+    about: z.string().trim().min(20, 'Describe the event (20+ characters)').max(10000),
+    organizer: z.string().trim().max(120),
   })
   .refine((values) => !values.startsAt || !values.endsAt || values.endsAt >= values.startsAt, {
     path: ['endsAt'],
@@ -46,7 +44,15 @@ export function AddEventModal({ onClose }: { onClose: () => void }) {
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { title: '', category: '', startsAt: '', endsAt: '', location: '', about: '', organizer: '' },
+    defaultValues: {
+      title: '',
+      startsAt: '',
+      endsAt: '',
+      location: '',
+      registrationUrl: '',
+      about: '',
+      organizer: '',
+    },
   })
 
   const pickCover = (file?: File) => {
@@ -60,7 +66,21 @@ export function AddEventModal({ onClose }: { onClose: () => void }) {
 
   const submit = handleSubmit((values) =>
     create.mutate(
-      { ...values, cover },
+      {
+        title: values.title,
+        category: values.category,
+        // Whole days, in the admin's time zone.
+        startsAt: new Date(`${values.startsAt}T00:00`).toISOString(),
+        endsAt: new Date(`${values.endsAt}T23:59`).toISOString(),
+        venue: values.location || null,
+        registrationUrl: values.registrationUrl,
+        description: values.about,
+        // The card shows a two-line summary.
+        summary: values.about.slice(0, 300),
+        organizerName: values.organizer || null,
+        status: 'published',
+        cover,
+      },
       {
         onSuccess: () => {
           toast('Event added')
@@ -112,7 +132,7 @@ export function AddEventModal({ onClose }: { onClose: () => void }) {
         />
         <SelectField
           label="Event Type/ Category"
-          placeholder="Select a category"
+          placeholder="Select an event type"
           options={CATEGORIES}
           className="[&_select]:text-brand-orange"
           error={errors.category?.message}
@@ -145,6 +165,15 @@ export function AddEventModal({ onClose }: { onClose: () => void }) {
           error={errors.location?.message}
           {...register('location')}
         />
+        <TextField
+          label="Registration link(required)"
+          type="url"
+          inputMode="url"
+          placeholder="http://www."
+          icon={<LinkSimple />}
+          error={errors.registrationUrl?.message}
+          {...register('registrationUrl')}
+        />
         <TextAreaField
           label="About this event"
           placeholder="What happens at this event, who it’s for, and what attendees will get out of it."
@@ -153,11 +182,10 @@ export function AddEventModal({ onClose }: { onClose: () => void }) {
           error={errors.about?.message}
           {...register('about')}
         />
-        <SelectField
+        <TextField
           label="Organized by"
-          placeholder="Select an organizer"
-          options={ORGANIZERS}
-          className="[&_select]:text-brand-green"
+          placeholder="e.g Innovation Hub"
+          className="[&_input]:text-brand-green"
           error={errors.organizer?.message}
           {...register('organizer')}
         />

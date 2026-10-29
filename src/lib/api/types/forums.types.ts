@@ -8,7 +8,7 @@ export interface ListForumsQuery {
   /** (1–50, default 20) */
   limit?: number
   /** (default 'discover') */
-  tab?: 'discover' | 'joined' | 'mine'
+  tab?: 'for-you' | 'discover' | 'joined' | 'mine'
   /** (max 80 characters) */
   q?: string
   topicId?: string
@@ -30,6 +30,11 @@ export interface CreateForumBody {
   /** (max 5 items, default []) */
   topicIds?: string[]
 }
+
+export type MuteForumBody = {
+  /** (default true) */
+  muted?: boolean
+} | null
 
 export interface UpdateForumBody {
   /** (3–80 characters) */
@@ -56,7 +61,9 @@ export interface ListForumMembersResponse {
     username: string | null
     avatarUrl: string | null
     headline: string | null
-    memberRole: 'innovator' | 'researcher' | 'expert' | 'investor' | 'student' | null
+    memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
+    /** Role verified by an admin (show the verified badge) */
+    verified: boolean
     role: 'owner' | 'moderator' | 'member'
     joinedAt: string
   }[]
@@ -74,6 +81,8 @@ export interface ListForumPostsQuery {
   cursor?: string
   /** (1–50, default 20) */
   limit?: number
+  /** (default 'latest') */
+  sort?: 'latest' | 'popular' | 'mine' | 'my_replies'
 }
 
 export interface ListForumPostsResponse {

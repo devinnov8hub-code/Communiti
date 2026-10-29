@@ -25,6 +25,11 @@ declare module 'axios' {
   }
 }
 
+/** Optional last argument of member services, e.g. `{ scope: 'admin' }` to call them as the admin. */
+export interface CallOptions {
+  scope?: AuthScope
+}
+
 /** The axios instance every service in `./services` uses. */
 export const api = axios.create({
   baseURL: API_ORIGIN,
@@ -73,6 +78,16 @@ api.interceptors.response.use(
       if (tokens.get(scope) && (await refreshAccessToken(scope))) return api.request({ ...config, retried: true })
       tokens.set(scope, null)
       window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: scope }))
+    }
+    // Development only: print what the backend actually said, so server errors are easy to report.
+    if (import.meta.env.DEV && response.status >= 500) {
+      console.error(
+        `[api] ${response.status} ${config?.method?.toUpperCase()} ${config?.url}`,
+        '\nBackend response:',
+        response.data,
+        '\nrequestId:',
+        (response.data as { error?: { requestId?: string } } | undefined)?.error?.requestId ?? 'none',
+      )
     }
     // Carries the backend's `code`, `fields` and `requestId`.
     throw toApiError(response.status, response.data)

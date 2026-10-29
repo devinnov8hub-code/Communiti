@@ -15,7 +15,7 @@
  */
 export * from './services'
 export type * from './types'
-export { api, API_ORIGIN } from './client'
+export { api, API_ORIGIN, type CallOptions } from './client'
 export { ApiError, getErrorMessage, type ApiFieldErrors } from './errors'
 export { SESSION_EXPIRED_EVENT, tokens, type AuthScope } from './tokens'
 export { uploadFile, type UploadedFile } from './upload'

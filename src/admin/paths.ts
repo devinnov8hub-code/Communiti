@@ -6,6 +6,8 @@ export const adminPaths = {
   newPassword: '/admin/new-password',
   overview: '/admin',
   users: '/admin/users',
+  /** One member's account logs ("user logs"). */
+  userLogs: (id = ':userId') => `/admin/users/${id}/logs`,
   forums: '/admin/forums',
   projects: '/admin/projects',
   /** Moderation queue for a section: overview (all content), users, forums, projects. */
@@ -16,5 +18,6 @@ export const adminPaths = {
   highlight: (id = ':highlightId') => `/admin/highlights/${id}`,
   notifications: '/admin/notifications',
   logs: '/admin/logs',
+  settings: '/admin/settings',
   profile: '/admin/profile',
 } as const

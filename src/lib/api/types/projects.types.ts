@@ -8,7 +8,7 @@ export interface ListProjectsQuery {
   /** (1–50, default 20) */
   limit?: number
   /** (default 'discover') */
-  tab?: 'discover' | 'joined' | 'mine'
+  tab?: 'all' | 'discover' | 'joined' | 'mine'
   /** (max 80 characters) */
   q?: string
   status?: 'open' | 'ongoing' | 'completed' | 'archived'

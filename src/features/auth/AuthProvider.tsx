@@ -30,6 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStore.set(PENDING_KEY, next)
   }, [])
 
+  const clearVerification = useCallback(() => {
+    setPending(null)
+    sessionStore.set(PENDING_KEY, null)
+  }, [])
+
   const signIn = useCallback(
     (next: Session) => {
       persistSession(next)
@@ -60,11 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pending,
       lastUserName,
       startVerification,
+      clearVerification,
       signIn,
       updateUser,
       signOut,
     }),
-    [session, pending, lastUserName, startVerification, signIn, updateUser, signOut],
+    [session, pending, lastUserName, startVerification, clearVerification, signIn, updateUser, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

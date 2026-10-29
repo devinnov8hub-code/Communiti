@@ -19,7 +19,7 @@ import { verificationSchema, type VerificationValues } from '../schemas'
 
 export function VerifyCodePage() {
   const navigate = useNavigate()
-  const { pending, signIn } = useAuth()
+  const { pending, signIn, startVerification } = useAuth()
 
   const {
     control,
@@ -30,16 +30,21 @@ export function VerifyCodePage() {
 
   const submit = useAsyncAction(async ({ code }: VerificationValues) => {
     if (!pending) return
-    const session = await authApi.verifyCode({ email: pending.email, code, flow: pending.flow })
+    if (pending.flow === 'reset') {
+      const { resetToken } = await authApi.verifyResetCode({ email: pending.email, code })
+      startVerification({ ...pending, resetToken })
+      navigate(paths.newPassword, { replace: true })
+      return
+    }
+    const session = await authApi.verifyEmail({ email: pending.email, code })
     signIn(session)
-    const done = pending.flow === 'login' && session.user.onboardingComplete
-    navigate(done ? paths.home : paths.onboardingProfile, { replace: true })
+    navigate(session.user.onboardingComplete ? paths.home : paths.onboardingProfile, { replace: true })
   })
 
   // Nothing to verify (e.g. page refreshed in a new tab) — start over.
   if (!pending) return <Navigate to={paths.signUp} replace />
 
-  const backTo = pending.flow === 'login' ? paths.login : paths.signUp
+  const backTo = pending.flow === 'reset' ? paths.forgotPassword : paths.signUp
   const errorId = 'verification-code-error'
 
   return (

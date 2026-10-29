@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ApiError } from './errors'
 import * as uploadsApi from './services/uploads.service'
+import type { AuthScope } from './tokens'
 import type { PresignUploadBody } from './types/uploads.types'
 
 export interface UploadedFile {
@@ -13,20 +14,19 @@ export interface UploadedFile {
 /**
  * Uploads a file the way the backend expects: presign → PUT the bytes straight to
  * storage → confirm. Returns the `mediaId` to reference from other requests.
+ * Pass `scope: 'admin'` from the admin console so the admin's sign-in is used.
  */
 export async function uploadFile(
   file: File,
   purpose: PresignUploadBody['purpose'],
   meta: Pick<PresignUploadBody, 'width' | 'height' | 'durationSeconds'> = {},
+  scope: AuthScope = 'member',
 ): Promise<UploadedFile> {
   const mimeType = file.type || 'application/octet-stream'
-  const presigned = await uploadsApi.presignUpload({
-    purpose,
-    mimeType,
-    sizeBytes: file.size,
-    fileName: file.name.slice(0, 200),
-    ...meta,
-  })
+  const presigned = await uploadsApi.presignUpload(
+    { purpose, mimeType, sizeBytes: file.size, fileName: file.name.slice(0, 200), ...meta },
+    { scope },
+  )
   // Straight to storage, not through our API instance (no auth header or cookies).
   await axios.put(presigned.uploadUrl, file, { headers: { 'Content-Type': mimeType } }).catch((error) => {
     throw new ApiError(
@@ -34,6 +34,6 @@ export async function uploadFile(
       axios.isAxiosError(error) ? (error.response?.status ?? 0) : 0,
     )
   })
-  await uploadsApi.completeUpload(presigned.mediaId)
+  await uploadsApi.completeUpload(presigned.mediaId, { scope })
   return { mediaId: presigned.mediaId, publicUrl: presigned.publicUrl }
 }

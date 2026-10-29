@@ -1,6 +1,7 @@
-import { titleCase } from '@/lib/format'
 import type { AdminReport } from '@/lib/api'
-import type { ModerationSection, Report } from '../types'
+import { titleCase } from '@/lib/format'
+import { reasonLabel, reportPill, reportSubject } from '../reports'
+import type { ModerationSection } from '../types'
 import { DataTable, ReportStatusPill, type Column } from './ui'
 
 const REASON_TONE: Record<string, string> = { Spam: 'text-warning', Insults: 'text-fg-muted' }
@@ -12,9 +13,7 @@ const nameHeader: Record<ModerationSection, string> = {
   projects: 'Project Name',
 }
 
-const REPORT_STATUS = { pending: 'pending', reviewed: 'resolved', dismissed: 'dismissed' } as const
-
-/** Overview "Moderation Queue" card: the newest pending reports, straight from the backend. */
+/** Dashboard "Moderation Queue" card: the newest pending reports. */
 export function PendingReportsTable({
   reports,
   loading,
@@ -31,9 +30,7 @@ export function PendingReportsTable({
     {
       key: 'name',
       header: nameHeader,
-      cell: (row) => (
-        <span className="block max-w-[180px] truncate">{row.targetUser?.fullName ?? row.preview ?? '—'}</span>
-      ),
+      cell: (row) => <span className="block max-w-[180px] truncate">{reportSubject(row)}</span>,
     },
     ...(showType
       ? [
@@ -49,13 +46,15 @@ export function PendingReportsTable({
       key: 'reason',
       header: 'Reason',
       align: 'center',
-      cell: (row) => <span className={REASON_TONE[titleCase(row.reason)] ?? 'text-fg'}>{titleCase(row.reason)}</span>,
+      cell: (row) => (
+        <span className={REASON_TONE[reasonLabel(row.reason)] ?? 'text-fg'}>{reasonLabel(row.reason)}</span>
+      ),
     },
     {
       key: 'status',
       header: 'Status',
       align: 'center',
-      cell: (row) => <ReportStatusPill status={REPORT_STATUS[row.status]} size="xs" />,
+      cell: (row) => <ReportStatusPill status={reportPill(row)} size="xs" />,
     },
   ]
   return <DataTable columns={columns} rows={reports} rowKey={(row) => row.id} loading={loading} empty="No reports 🎉" />
@@ -70,31 +69,38 @@ export function QueueTable({
   onReview,
 }: {
   section: ModerationSection
-  reports: Report[] | undefined
+  reports: AdminReport[] | undefined
   loading?: boolean
   selectedId?: string
-  onReview: (report: Report) => void
+  onReview: (report: AdminReport) => void
 }) {
-  const columns: Column<Report>[] = [
+  const columns: Column<AdminReport>[] = [
     {
       key: 'name',
       header: nameHeader[section],
-      cell: (row) => <span className="block max-w-[220px] truncate">{row.subject}</span>,
+      cell: (row) => <span className="block max-w-[220px] truncate">{reportSubject(row)}</span>,
     },
     ...(section === 'overview'
-      ? [{ key: 'type', header: 'Type', align: 'center' as const, cell: (row: Report) => row.type }]
+      ? [
+          {
+            key: 'type',
+            header: 'Type',
+            align: 'center' as const,
+            cell: (row: AdminReport) => titleCase(row.targetType),
+          },
+        ]
       : []),
     {
       key: 'reason',
       header: 'Reason',
       className: section === 'overview' ? undefined : 'text-caption',
-      cell: (row) => row.reason,
+      cell: (row) => reasonLabel(row.reason),
     },
     {
       key: 'status',
       header: 'Status',
       align: 'center',
-      cell: (row) => <ReportStatusPill status={row.status} size={section === 'overview' ? 'xs' : 'sm'} />,
+      cell: (row) => <ReportStatusPill status={reportPill(row)} size={section === 'overview' ? 'xs' : 'sm'} />,
     },
     {
       key: 'action',

@@ -32,6 +32,15 @@ export interface GetConversationResponse {
   title: string
   avatarUrl: string | null
   otherUser: UserSummary | null
+  /** Direct chats: the profile card at the top of the conversation (followers, collaborations, online) */
+  otherUserProfile: {
+    followerCount: number
+    collaborationCount: number
+    /** "Online" under the name: active in the last 2 minutes (false when they hide their online status) */
+    online: boolean
+    /** null when they hide their online status */
+    lastSeenAt: string | null
+  } | null
   project: {
     id: string
     title: string
@@ -49,6 +58,8 @@ export interface ListConversationMessagesQuery {
   cursor?: string
   /** (1–100, default 30) */
   limit?: number
+  /** "Search in Chat": only messages containing this text (1–80 characters) */
+  q?: string
 }
 
 export interface ListConversationMessagesResponse {

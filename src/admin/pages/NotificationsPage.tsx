@@ -6,7 +6,7 @@ import { ActionButton, SelectField, TextAreaField, TextField, useToast } from '@
 import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { AdminContent, Panel } from '../components/ui'
-import { useAdminForums, useAdminProjects, useSendNotification } from '../hooks/queries'
+import { useAdminForums, useAdminProjects, useSendBroadcast } from '../hooks/queries'
 
 const AUDIENCES = [
   { value: 'all', label: 'All(Users, Forums, Projects)' },
@@ -15,18 +15,26 @@ const AUDIENCES = [
   { value: 'projects', label: 'Projects' },
 ]
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** "id1, id2 id3" → ["id1", "id2", "id3"] */
+const splitIds = (text = '') => text.split(/[\s,]+/).filter(Boolean)
+
 const schema = z.object({
   audience: z.enum(['all', 'users', 'forums', 'projects']),
   targetId: z.string().optional(),
   title: z.string().trim().min(3, 'Add a title').max(120),
-  ids: z.string().trim().max(500).optional(),
-  body: z.string().trim().min(10, 'Write the message (10+ characters)').max(2000),
+  ids: z
+    .string()
+    .trim()
+    .refine((text) => splitIds(text).every((id) => UUID.test(id)), 'Use full ids, separated by commas')
+    .optional(),
+  body: z.string().trim().min(10, 'Write the message (10+ characters)').max(5000),
 })
 type Values = z.infer<typeof schema>
 
 /** System-wide notifications (Figma "NOTIFICATIONS"). */
 export function NotificationsPage() {
-  const send = useSendNotification()
+  const send = useSendBroadcast()
   const toast = useToast()
   const {
     register,
@@ -46,15 +54,27 @@ export function NotificationsPage() {
   const groups = groupKind === 'forums' ? forums.data?.data : groupKind === 'projects' ? projects.data?.data : []
   const groupOptions = (groups ?? []).map((group) => ({ value: group.id, label: group.name }))
 
-  const submit = handleSubmit((values) =>
-    send.mutate(values, {
-      onSuccess: () => {
-        toast('Notification sent')
-        reset()
+  const submit = handleSubmit(({ audience, targetId, title, ids, body }) => {
+    const recipients = [...new Set([targetId, ...splitIds(ids)].filter((id): id is string => Boolean(id)))]
+    send.mutate(
+      {
+        title,
+        body,
+        audience: { platform: audience, ...(recipients.length && { ids: recipients }) },
+        // Members get it by email, not in the app (Figma note).
+        channels: { email: true, inApp: false },
       },
-      onError: (error) => toast(getErrorMessage(error)),
-    }),
-  )
+      {
+        onSuccess: (broadcast) => {
+          toast(
+            `Sending to ${broadcast.recipientCount} ${broadcast.recipientCount === 1 ? 'person' : 'people'} by email`,
+          )
+          reset()
+        },
+        onError: (error) => toast(getErrorMessage(error)),
+      },
+    )
+  })
 
   return (
     <>

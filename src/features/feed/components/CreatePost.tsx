@@ -10,7 +10,8 @@ import { AttachmentList } from './CommentComposer'
 
 const AUDIENCES: { value: Audience; label: string }[] = [
   { value: 'everyone', label: 'Everyone' },
-  { value: 'followers', label: 'Followers' },
+  // "Following" in the design; the backend value is `followers` (only people who follow you see it).
+  { value: 'followers', label: 'Following' },
 ]
 
 const MAX_LENGTH = 3000

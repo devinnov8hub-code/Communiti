@@ -7,8 +7,12 @@ export interface RegisterBody {
   fullName: string
   /** Email address (case-insensitive) (email, max 254 characters) */
   email: string
+  /** "Input your location", e.g. Lugbe, Abuja (2–120 characters) */
+  location?: string
   /** 8–128 characters with at least one letter and one number (8–128 characters) */
   password: string
+  /** "Confirm password". When sent, it must match `password` (max 128 characters) */
+  confirmPassword?: string
   acceptTerms: true
 }
 

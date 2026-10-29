@@ -1,37 +1,34 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminApi as sampleApi, type ListQuery } from '../api/admin.service'
 import {
   adminApi,
+  type AdminCreateEventBody,
+  type AdminCreateHighlightBody,
+  type AdminCreateMaintenanceBody,
+  type AdminListAuditLogsQuery,
   type AdminListForumsQuery,
   type AdminListProjectsQuery,
+  type AdminListReportsQuery,
+  type AdminListUserLogsQuery,
+  type AdminResolveReportBody,
+  type AdminSetForumStatusBody,
   type AdminListUsersQuery,
+  type AdminSendBroadcastBody,
   type AdminSetUserStatusBody,
+  type AdminUpdateSettingsBody,
+  authApi,
+  meApi,
+  notificationsApi,
+  type ChangePasswordBody,
+  type UpdateMeBody,
+  uploadFile,
 } from '@/lib/api'
-import type {
-  BroadcastNotification,
-  DateRange,
-  ModerationAction,
-  ModerationSection,
-  NewEvent,
-  NewHighlightGroup,
-  ReportFilter,
-} from '../types'
+import type { DateRange, ModerationSection } from '../types'
 
 export const adminKeys = {
   all: ['admin'] as const,
   overview: (range: DateRange) => [...adminKeys.all, 'overview', range] as const,
-  reports: (section: ModerationSection, filter: ReportFilter, query: ListQuery) =>
-    [...adminKeys.all, 'reports', section, filter, query] as const,
-  events: () => [...adminKeys.all, 'events'] as const,
-  event: (id: string) => [...adminKeys.all, 'events', id] as const,
-  highlights: () => [...adminKeys.all, 'highlights'] as const,
-  highlight: (id: string) => [...adminKeys.all, 'highlights', id] as const,
   inbox: () => [...adminKeys.all, 'inbox'] as const,
-  logs: (query: ListQuery) => [...adminKeys.all, 'logs', query] as const,
 }
-
-// `adminApi` (from '@/lib/api') = the real backend. `sampleApi` = screens not connected yet;
-// it and src/admin/api are deleted once every admin screen uses `adminApi`.
 
 /* ------------------------------- Dashboards ----------------------------- */
 
@@ -41,8 +38,8 @@ export const useOverview = (range: DateRange) =>
     queryKey: adminKeys.overview(range),
     queryFn: async () => {
       const [stats, activity, reports, logs] = await Promise.all([
-        adminApi.getOverviewStats(),
-        adminApi.getUserActivityStats({ period: range }),
+        adminApi.getOverviewStats({ range }),
+        adminApi.getUserActivityStats({ range }),
         adminApi.listReports({ status: 'pending', pageSize: 7 }),
         adminApi.listAuditLogs({ pageSize: 4 }),
       ])
@@ -50,15 +47,15 @@ export const useOverview = (range: DateRange) =>
     },
   })
 
-/** Users dashboard: KPI numbers, sign-up chart and pending reports about users. */
+/** Users dashboard: KPI cards, sign-up chart and pending reports about users. */
 export const useUsersDashboard = (range: DateRange) =>
   useQuery({
     queryKey: [...adminKeys.all, 'users-dashboard', range],
     queryFn: async () => {
       const [stats, activity, reports] = await Promise.all([
-        adminApi.getOverviewStats(),
-        adminApi.getUserActivityStats({ period: range }),
-        adminApi.listReports({ status: 'pending', targetType: 'user', pageSize: 7 }),
+        adminApi.getUserStats({ range }),
+        adminApi.getUserActivityStats({ range }),
+        adminApi.listReports({ status: 'pending', targetType: SECTION_TARGETS.users, pageSize: 7 }),
       ])
       return { stats, activity, reports: reports.data }
     },
@@ -72,6 +69,18 @@ export const useAdminUsers = (params: AdminListUsersQuery) =>
     placeholderData: keepPreviousData,
   })
 
+/** User details panel: profile, role form, report history. */
+export const useAdminUser = (id: string) =>
+  useQuery({ queryKey: [...adminKeys.all, 'user', id], queryFn: () => adminApi.getUser(id) })
+
+/** A member's account logs (sign-ins, email changes, moderation), newest first. */
+export const useUserLogs = (id: string, params: AdminListUserLogsQuery) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'user-logs', id, params],
+    queryFn: () => adminApi.listUserLogs(id, params),
+    placeholderData: keepPreviousData,
+  })
+
 /** Warn / restrict / suspend / block / reinstate a user. */
 export function useSetUserStatus() {
   const queryClient = useQueryClient()
@@ -82,20 +91,17 @@ export function useSetUserStatus() {
   })
 }
 
-/**
- * Forums dashboard: total forums, pending forum reports and post activity.
- * The backend has no forum-only post stats yet, so posts are platform-wide.
- */
+/** Forums dashboard: KPI cards, forum-post activity and pending forum reports. */
 export const useForumsDashboard = (range: DateRange) =>
   useQuery({
     queryKey: [...adminKeys.all, 'forums-dashboard', range],
     queryFn: async () => {
       const [stats, activity, reports] = await Promise.all([
-        adminApi.getOverviewStats(),
-        adminApi.getUserActivityStats({ period: range }),
+        adminApi.getForumStats({ range }),
+        adminApi.getUserActivityStats({ range }),
         adminApi.listReports({ status: 'pending', targetType: 'forum', pageSize: 7 }),
       ])
-      return { stats, activity, reports: reports.data, pendingReports: reports.total }
+      return { stats, activity, reports: reports.data }
     },
   })
 
@@ -107,37 +113,39 @@ export const useAdminForums = (params: AdminListForumsQuery) =>
     placeholderData: keepPreviousData,
   })
 
-/** Hide a forum or project from members, or bring it back. */
+/** Delete (hide from members) or restore a forum / project, with the typed reason. */
 export function useSetContentRemoved(type: 'forum' | 'project') {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, removed }: { id: string; removed: boolean }) =>
-      removed ? adminApi.removeContent(type, id, null) : adminApi.restoreContent(type, id, null),
+    mutationFn: ({ id, removed, note }: { id: string; removed: boolean; note?: string }) =>
+      removed
+        ? adminApi.removeContent(type, id, note ? { note } : null)
+        : adminApi.restoreContent(type, id, note ? { note } : null),
     // Table, stat cards and audit log all change.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
-/**
- * Projects dashboard: total projects, pending project reports and the status breakdown.
- * The backend has no project-status stats yet, so the breakdown counts the newest
- * 100 projects (the largest page it allows); `sampled` says when there are more.
- */
-export const useProjectsDashboard = () =>
+/** Warn / restrict / suspend / reinstate a forum or project. */
+export function useSetGroupStatus(type: 'forum' | 'project') {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: AdminSetForumStatusBody }) =>
+      type === 'forum' ? adminApi.setForumStatus(id, data) : adminApi.setProjectStatus(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  })
+}
+
+/** Projects dashboard: KPI cards, status distribution and pending project reports. */
+export const useProjectsDashboard = (range: DateRange) =>
   useQuery({
-    queryKey: [...adminKeys.all, 'projects-dashboard'],
+    queryKey: [...adminKeys.all, 'projects-dashboard', range],
     queryFn: async () => {
-      const [stats, reports, newest] = await Promise.all([
-        adminApi.getOverviewStats(),
+      const [stats, reports] = await Promise.all([
+        adminApi.getProjectStats({ range }),
         adminApi.listReports({ status: 'pending', targetType: 'project', pageSize: 7 }),
-        adminApi.listProjects({ pageSize: 100 }),
       ])
-      return {
-        stats,
-        reports: reports.data,
-        projects: newest.data,
-        sampled: newest.total > newest.data.length,
-      }
+      return { stats, reports: reports.data }
     },
   })
 
@@ -151,34 +159,60 @@ export const useAdminProjects = (params: AdminListProjectsQuery) =>
 
 /* ------------------------------ Moderation ------------------------------ */
 
-export const useReports = (section: ModerationSection, filter: ReportFilter, query: ListQuery) =>
+/** What each moderation queue lists. Users covers people and what they post. */
+export const SECTION_TARGETS: Record<ModerationSection, string | undefined> = {
+  overview: undefined,
+  users: 'user,post,comment,message',
+  forums: 'forum',
+  projects: 'project',
+}
+
+export const useReports = (section: ModerationSection, params: Omit<AdminListReportsQuery, 'targetType'>) =>
   useQuery({
-    queryKey: adminKeys.reports(section, filter, query),
-    queryFn: () => sampleApi.getReports(section, filter, query),
+    queryKey: [...adminKeys.all, 'reports', section, params],
+    queryFn: () => adminApi.listReports({ ...params, targetType: SECTION_TARGETS[section] }),
     placeholderData: keepPreviousData,
   })
 
-export function useModerate() {
+/** Review panel: the report with the reported content and the owner's history. */
+export const useReport = (id: string) =>
+  useQuery({ queryKey: [...adminKeys.all, 'report', id], queryFn: () => adminApi.getReport(id) })
+
+/** Dismiss, remove content, warn / restrict / suspend / block (with the typed reason as `note`). */
+export function useResolveReport() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ reportId, action }: { reportId: string; action: ModerationAction }) =>
-      sampleApi.moderate(reportId, action),
-    // Queues, dashboards and logs all reflect the new status.
+    mutationFn: ({ id, data }: { id: string; data: AdminResolveReportBody }) => adminApi.resolveReport(id, data),
+    // Queues, dashboards, user/forum/project status and logs all change.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
 /* --------------------------------- Events ------------------------------- */
 
-export const useAdminEvents = () => useQuery({ queryKey: adminKeys.events(), queryFn: sampleApi.getEvents })
+/** Total / Active / Concluded / Upcoming cards. */
+export const useEventStats = () =>
+  useQuery({ queryKey: [...adminKeys.all, 'event-stats'], queryFn: () => adminApi.getEventStats() })
+
+/** Events running now, coming up or finished; drafts included. */
+export const useAdminEventList = (when: 'active' | 'upcoming' | 'concluded', q?: string) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'events', when, q],
+    queryFn: () => adminApi.listEvents({ when, q, pageSize: 50 }),
+    placeholderData: keepPreviousData,
+  })
 
 export const useAdminEvent = (id: string) =>
-  useQuery({ queryKey: adminKeys.event(id), queryFn: () => sampleApi.getEvent(id) })
+  useQuery({ queryKey: [...adminKeys.all, 'event', id], queryFn: () => adminApi.getEvent(id) })
 
+/** Uploads the cover (if any), then creates and publishes the event. */
 export function useCreateEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: NewEvent) => sampleApi.createEvent(input),
+    mutationFn: async ({ cover, ...event }: AdminCreateEventBody & { cover?: File }) => {
+      const coverUrl = cover ? (await uploadFile(cover, 'event', {}, 'admin')).publicUrl : null
+      return adminApi.createEvent({ ...event, coverUrl })
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
@@ -186,58 +220,141 @@ export function useCreateEvent() {
 export function useDeleteEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => sampleApi.deleteEvent(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.events() }),
+    mutationFn: (id: string) => adminApi.deleteEvent(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
 /* ------------------------------- Highlights ----------------------------- */
 
-export const useHighlightGroups = () =>
-  useQuery({ queryKey: adminKeys.highlights(), queryFn: sampleApi.getHighlightGroups })
+export const useHighlights = (q?: string) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'highlights', q],
+    queryFn: () => adminApi.listHighlights({ q, pageSize: 50 }),
+    placeholderData: keepPreviousData,
+  })
 
-export const useHighlightGroup = (id: string) =>
-  useQuery({ queryKey: adminKeys.highlight(id), queryFn: () => sampleApi.getHighlightGroup(id) })
+export const useHighlight = (id: string) =>
+  useQuery({ queryKey: [...adminKeys.all, 'highlight', id], queryFn: () => adminApi.getHighlight(id) })
 
-export function useCreateHighlightGroup() {
+/** Events to attach highlights to, past ones included ("Use an existing event"). */
+export const useEventOptions = (q?: string) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'event-options', q],
+    queryFn: () => adminApi.listEvents({ q, pageSize: 50 }),
+    placeholderData: keepPreviousData,
+  })
+
+/** Uploads the photos, then publishes the album. */
+export function useCreateHighlight() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: NewHighlightGroup) => sampleApi.createHighlightGroup(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.highlights() }),
+    mutationFn: async ({ images, ...album }: Omit<AdminCreateHighlightBody, 'mediaIds'> & { images: File[] }) => {
+      const uploaded = await Promise.all(images.map((file) => uploadFile(file, 'highlight', {}, 'admin')))
+      return adminApi.createHighlight({ ...album, mediaIds: uploaded.map((item) => item.mediaId), publish: true })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
-export function useDeleteHighlightGroup() {
+export function useDeleteHighlight() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => sampleApi.deleteHighlightGroup(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.highlights() }),
+    mutationFn: (id: string) => adminApi.deleteHighlight(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
 /* ------------------------- Notifications & logs ------------------------- */
 
-export function useSendNotification() {
+/** Email every member of a platform, or only some users / forums / projects. */
+export function useSendBroadcast() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: BroadcastNotification) => sampleApi.sendNotification(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'logs'] }),
+    mutationFn: (data: AdminSendBroadcastBody) => adminApi.sendBroadcast(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
 }
 
-export const useInbox = () => useQuery({ queryKey: adminKeys.inbox(), queryFn: sampleApi.getInbox })
+const ADMIN = { scope: 'admin' } as const
+
+/** The admin's own notifications (bell in the top bar). */
+export const useInbox = () =>
+  useQuery({
+    queryKey: adminKeys.inbox(),
+    queryFn: () => notificationsApi.listNotifications({ limit: 20 }, ADMIN),
+  })
 
 export function useMarkInboxRead() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: sampleApi.markInboxRead,
+    mutationFn: () => notificationsApi.markNotificationsRead({ all: true }, ADMIN),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.inbox() }),
   })
 }
 
-export const useLogs = (query: ListQuery) =>
+/** Logs page: every admin action, searchable, newest first. */
+export const useAuditLogs = (params: AdminListAuditLogsQuery) =>
   useQuery({
-    queryKey: adminKeys.logs(query),
-    queryFn: () => sampleApi.getLogs(query),
+    queryKey: [...adminKeys.all, 'audit-logs', params],
+    queryFn: () => adminApi.listAuditLogs(params),
     placeholderData: keepPreviousData,
   })
+
+/* -------------------------------- Settings ------------------------------ */
+
+export const usePlatformSettings = () =>
+  useQuery({ queryKey: [...adminKeys.all, 'settings'], queryFn: () => adminApi.getSettings() })
+
+export function useUpdateSettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: AdminUpdateSettingsBody) => adminApi.updateSettings(data),
+    onSuccess: (settings) => queryClient.setQueryData([...adminKeys.all, 'settings'], settings),
+  })
+}
+
+/** Scheduled and running maintenance windows. */
+export const useUpcomingMaintenance = () =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'maintenance'],
+    queryFn: () => adminApi.listMaintenance({ state: 'upcoming', pageSize: 5 }),
+  })
+
+/** Schedule maintenance; members are emailed the message. */
+export function useScheduleMaintenance() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: AdminCreateMaintenanceBody) => adminApi.createMaintenance(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  })
+}
+
+export function useCancelMaintenance() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteMaintenance(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  })
+}
+
+/* --------------------------------- Profile ------------------------------ */
+
+/** The signed-in admin's own account (phone etc. aren't in the sign-in response). */
+export const useAdminMe = () => useQuery({ queryKey: [...adminKeys.all, 'me'], queryFn: () => meApi.getMe(ADMIN) })
+
+/** Save name, phone and photo; uploads a new photo first. `avatar: null` removes it. */
+export function useUpdateAdminProfile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ avatar, ...fields }: Pick<UpdateMeBody, 'fullName' | 'phone'> & { avatar?: File | null }) => {
+      const avatarUrl =
+        avatar === undefined ? undefined : avatar && (await uploadFile(avatar, 'avatar', {}, 'admin')).publicUrl
+      return meApi.updateMe({ ...fields, ...(avatarUrl !== undefined && { avatarUrl }) }, ADMIN)
+    },
+    onSuccess: (me) => queryClient.setQueryData([...adminKeys.all, 'me'], me),
+  })
+}
+
+export const useChangeAdminPassword = () =>
+  useMutation({ mutationFn: (data: ChangePasswordBody) => authApi.changePassword(data, ADMIN) })

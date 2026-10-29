@@ -47,6 +47,8 @@ const TAGS = {
   Explore: { file: 'explore', strip: [] },
   Notifications: { file: 'notifications', strip: [] },
   Reports: { file: 'reports', strip: [] },
+  App: { file: 'app', strip: [] },
+  Collaboration: { file: 'collaboration', strip: [] },
   Admin: { file: 'admin', strip: ['admin'], typePrefix: 'Admin' },
 }
 
@@ -63,6 +65,16 @@ const NAME_OVERRIDES = {
   'DELETE /auth/sessions/{sessionId}': 'revokeSession',
   'GET /me/username-available': 'checkUsernameAvailable',
   'PATCH /me/onboarding': 'completeOnboarding',
+  'GET /me/onboarding': 'getOnboardingStatus',
+  'PUT /me/role': 'submitRole',
+  'POST /admin/forums/{id}/status': 'setForumStatus',
+  'POST /admin/projects/{id}/status': 'setProjectStatus',
+  'GET /admin/stats/users': 'getUserStats',
+  'GET /admin/stats/forums': 'getForumStats',
+  'GET /admin/stats/projects': 'getProjectStats',
+  'GET /admin/stats/events': 'getEventStats',
+  'POST /me/email': 'requestEmailChange',
+  'POST /me/email/verify': 'confirmEmailChange',
   'GET /users/suggested': 'listSuggestedUsers',
   'GET /users/by-username/{username}': 'getUserByUsername',
   'GET /users/lookup': 'lookupUsers',
@@ -398,7 +410,12 @@ for (const [fullPath, pathItem] of Object.entries(spec.paths)) {
       } else returns = declare('Response', responseSchema)
     }
 
+    // Member endpoints take an optional `options` (e.g. `{ scope: 'admin' }` from the admin console).
     if (ADMIN_SCOPE(key, tag)) config.push(`scope: 'admin'`)
+    else if (!REDIRECTS[key]) {
+      args.push('options?: CallOptions')
+      config.unshift('...options')
+    }
     if (!operation.security?.length) config.push('skipAuth: true')
     if (NO_REFRESH(path)) config.push('skipRefresh: true')
 
@@ -462,7 +479,7 @@ for (const [fileName, area] of areas) {
 
   const body = area.services.join('\n\n')
   const imports = [
-    `import { ${body.includes('.then(unwrap)') ? 'api, unwrap' : 'api'} } from '../client'`,
+    `import { ${[body.includes('.then(unwrap)') ? 'api, unwrap' : 'api', body.includes('CallOptions') && 'type CallOptions'].filter(Boolean).join(', ')} } from '../client'`,
     area.usedTypes.size && `import type { ${importList(area.usedTypes)} } from '../types/${fileName}.types'`,
     area.serviceModels.size && `import type { ${importList(area.serviceModels)} } from '../types/models.types'`,
   ].filter(Boolean)

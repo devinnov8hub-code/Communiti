@@ -2,6 +2,7 @@ import {
   Bell,
   CalendarDots,
   File,
+  GearSix,
   GlobeHemisphereWest,
   House,
   List,
@@ -33,6 +34,7 @@ const NAV = [
   { label: 'Community Highlights', to: adminPaths.highlights, icon: Sparkle, match: [] },
   { label: 'Notifications', to: adminPaths.notifications, icon: Bell, match: [] },
   { label: 'Logs', to: adminPaths.logs, icon: File, match: [] },
+  { label: 'Settings', to: adminPaths.settings, icon: GearSix, match: [] },
 ] as const
 
 /**

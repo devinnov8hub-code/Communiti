@@ -1,17 +1,17 @@
 import { useDeferredValue, useState } from 'react'
 import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
-import { LogsTable } from '../components/LogsTable'
+import { AuditLogTable } from '../components/LogsTable'
 import { ErrorState } from '../components/states'
 import { AdminContent, Pagination, Panel, PanelHeader } from '../components/ui'
-import { useLogs } from '../hooks/queries'
+import { useAuditLogs } from '../hooks/queries'
 
-/** Full admin activity log (Figma "Admin Logs"). */
+/** Full admin audit log (Figma "Admin Logs"). */
 export function LogsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const query = useDeferredValue(search.trim())
-  const logs = useLogs({ page, search: query })
+  const logs = useAuditLogs({ page, pageSize: 15, q: query || undefined })
 
   return (
     <>
@@ -31,13 +31,13 @@ export function LogsPage() {
             <ErrorState message={getErrorMessage(logs.error)} onRetry={() => logs.refetch()} />
           ) : (
             <>
-              <LogsTable logs={logs.data?.items} loading={logs.isFetching} />
+              <AuditLogTable entries={logs.data?.data} loading={logs.isFetching} showIp />
               {logs.data && (
                 <Pagination
                   page={logs.data.page}
                   pageSize={logs.data.pageSize}
                   total={logs.data.total}
-                  shown={logs.data.items.length}
+                  shown={logs.data.data.length}
                   onPage={setPage}
                 />
               )}

@@ -1,17 +1,13 @@
 import { DotsThree } from '@phosphor-icons/react'
 import { useDeferredValue, useState } from 'react'
 import { Avatar, ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
-import type {
-  AdminGetOverviewStatsResponse,
-  AdminGetUserActivityStatsResponse,
-  AdminSetUserStatusBody,
-  AdminUser,
-} from '@/lib/api'
+import type { AdminGetUserStatsResponse, AdminSetUserStatusBody, AdminUser } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ActivityChart } from '../components/charts'
 import { PendingReportsTable } from '../components/ReportTables'
 import { USER_STAT_ICONS } from '../components/statIcons'
+import { UserDetailsPanel } from '../components/UserDetailsPanel'
 import { ErrorState, StatSkeleton } from '../components/states'
 import {
   AdminContent,
@@ -28,43 +24,21 @@ import {
 } from '../components/ui'
 import { useAdminUsers, useSetUserStatus, useUsersDashboard } from '../hooks/queries'
 import { adminPaths } from '../paths'
+import { activityBars, kpiCard, rangeLabel } from '../stats'
 import type { DateRange, StatCardData } from '../types'
 
 const PAGE_SIZE = 10
 
 const stamp = (iso: string) => iso.replace('T', ' ').slice(0, 19)
-const percentChange = (current: number, previous: number) =>
-  previous > 0 ? Math.round(((current - previous) / previous) * 100) : undefined
-
-/** Total / Active / New / Blocked cards (Figma "USERS"). */
-function statCards(stats: AdminGetOverviewStatsResponse): StatCardData[] {
+/** Total / Active / New / Blocked cards ("USERS"). */
+function statCards(stats: AdminGetUserStatsResponse, range: DateRange): StatCardData[] {
+  const caption = rangeLabel(range)
   return [
-    { id: 'total', label: 'Total', caption: 'All members', value: stats.totalUsers, tone: 'indigo' },
-    { id: 'active', label: 'Active', caption: 'Last 30 days', value: stats.activeUsers30d, tone: 'green' },
-    {
-      id: 'new',
-      label: 'New',
-      caption: 'This week',
-      value: stats.newUsers7d,
-      change: percentChange(stats.newUsers7d, stats.newUsersPrev7d),
-      tone: 'orange',
-    },
-    {
-      id: 'blocked',
-      label: 'Blocked',
-      caption: `${stats.suspendedUsers} suspended`,
-      value: stats.blockedUsers,
-      tone: 'red',
-    },
+    kpiCard('total', 'Total', caption, stats.total, 'indigo'),
+    kpiCard('active', 'Active', caption, stats.active, 'green'),
+    kpiCard('new', 'New', caption, stats.new, 'orange'),
+    kpiCard('blocked', 'Blocked', caption, stats.blocked, 'red'),
   ]
-}
-
-function signupBars(activity: AdminGetUserActivityStatsResponse) {
-  const label = new Intl.DateTimeFormat(
-    'en',
-    activity.bucket === 'month' ? { month: 'short', year: '2-digit' } : { month: 'short', day: 'numeric' },
-  )
-  return activity.data.map((point) => ({ label: label.format(new Date(point.date)), value: point.signups }))
 }
 
 /** Users dashboard (Figma "USERS"), on real backend data. */
@@ -72,6 +46,7 @@ export function UsersPage() {
   const [range, setRange] = useState<DateRange>('30d')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [openUserId, setOpenUserId] = useState<string | null>(null)
   const query = useDeferredValue(search.trim())
   const dashboard = useUsersDashboard(range)
 
@@ -82,43 +57,54 @@ export function UsersPage() {
   }
 
   return (
-    <>
-      <AdminTopBar title="Users" searchPlaceholder="Search users" search={search} onSearch={onSearch} />
-      <AdminContent>
-        <DateRangeSelect value={range} onChange={setRange} />
-        {dashboard.isError ? (
-          <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
-        ) : (
-          <>
-            {dashboard.data ? (
-              <StatGrid stats={statCards(dashboard.data.stats)} icons={USER_STAT_ICONS} />
-            ) : (
-              <StatSkeleton />
-            )}
-            <div className="grid gap-gap-lg xl:grid-cols-2">
-              <ActivityChart
-                title="User Activity"
-                legend={range === '12m' ? 'Sign-ups per month' : 'Sign-ups per day'}
-                points={dashboard.data ? signupBars(dashboard.data.activity) : []}
-              />
-              <Panel className="px-1.5 pt-[15px] pb-1">
-                <PanelHeader
-                  title="Moderation Queue"
-                  action={<PanelLink to={adminPaths.moderation('users')}>View All</PanelLink>}
+    <div className="flex">
+      <div className="min-w-0 flex-1">
+        <AdminTopBar title="Users" searchPlaceholder="Search users" search={search} onSearch={onSearch} />
+        <AdminContent>
+          <DateRangeSelect value={range} onChange={setRange} />
+          {dashboard.isError ? (
+            <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
+          ) : (
+            <>
+              {dashboard.data ? (
+                <StatGrid stats={statCards(dashboard.data.stats, range)} icons={USER_STAT_ICONS} />
+              ) : (
+                <StatSkeleton />
+              )}
+              <div className="grid gap-gap-lg xl:grid-cols-2">
+                <ActivityChart
+                  title="User Activity"
+                  legend={range === '12m' ? 'Sign-ups per month' : 'Sign-ups per day'}
+                  points={dashboard.data ? activityBars(dashboard.data.activity, 'signups') : []}
                 />
-                <PendingReportsTable
-                  reports={dashboard.data?.reports}
-                  loading={dashboard.isPending}
-                  nameHeader="Username"
-                  showType={false}
-                />
-              </Panel>
-            </div>
-          </>
-        )}
-        <UsersTable search={search} query={query} onSearch={onSearch} page={page} onPage={setPage} />
-      </AdminContent>
-    </>
+                <Panel className="px-1.5 pt-[15px] pb-1">
+                  <PanelHeader
+                    title="Moderation Queue"
+                    action={<PanelLink to={adminPaths.moderation('users')}>View All</PanelLink>}
+                  />
+                  <PendingReportsTable
+                    reports={dashboard.data?.reports}
+                    loading={dashboard.isPending}
+                    nameHeader="Username"
+                    showType={false}
+                  />
+                </Panel>
+              </div>
+            </>
+          )}
+          <UsersTable
+            search={search}
+            query={query}
+            onSearch={onSearch}
+            page={page}
+            onPage={setPage}
+            openUserId={openUserId}
+            onOpenUser={setOpenUserId}
+          />
+        </AdminContent>
+      </div>
+      {openUserId && <UserDetailsPanel userId={openUserId} onClose={() => setOpenUserId(null)} />}
+    </div>
   )
 }
 
@@ -130,12 +116,16 @@ function UsersTable({
   onSearch,
   page,
   onPage,
+  openUserId,
+  onOpenUser,
 }: {
   search: string
   query: string
   onSearch: (value: string) => void
   page: number
   onPage: (page: number) => void
+  openUserId: string | null
+  onOpenUser: (id: string) => void
 }) {
   const users = useAdminUsers({ page, pageSize: PAGE_SIZE, q: query || undefined })
 
@@ -144,17 +134,25 @@ function UsersTable({
       key: 'name',
       header: 'UserName',
       cell: (user) => (
-        <span className="flex max-w-[200px] items-center gap-2">
+        // A real button so the details panel opens from the keyboard too.
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenUser(user.id)
+          }}
+          className="flex max-w-[200px] items-center gap-2 text-left hover:underline"
+        >
           <Avatar src={user.avatarUrl ?? undefined} name={user.fullName} size={24} />
           <span className="truncate">{user.fullName}</span>
-        </span>
+        </button>
       ),
     },
     {
       key: 'id',
       header: 'User Id',
       // Full UUIDs are long; the first block is enough to tell rows apart (hover for the full id).
-      cell: (user) => <span title={user.id}>{user.id.slice(0, 8)}</span>,
+      cell: (user) => <span title={user.id}>{user.shortId}</span>,
     },
     { key: 'email', header: 'Email', cell: (user) => user.email },
     { key: 'reports', header: 'Reports', cell: (user) => user.reportCount || 'nil' },
@@ -169,7 +167,12 @@ function UsersTable({
       header: 'Actions',
       align: 'center',
       className: 'w-[80px]',
-      cell: (user) => <UserActions user={user} />,
+      // Its own clicks shouldn't also open the details panel.
+      cell: (user) => (
+        <span onClick={(event) => event.stopPropagation()}>
+          <UserActions user={user} />
+        </span>
+      ),
     },
   ]
 
@@ -188,6 +191,8 @@ function UsersTable({
             columns={columns}
             rows={users.data?.data}
             rowKey={(user) => user.id}
+            onRowClick={(user) => onOpenUser(user.id)}
+            selectedKey={openUserId ?? undefined}
             loading={users.isFetching}
             headerTint={false}
             empty={query ? 'No users match your search.' : 'No users yet.'}
@@ -222,8 +227,22 @@ const ACTIONS: {
   confirm?: (name: string) => string
 }[] = [
   { action: 'reinstate', label: 'Reinstate', done: 'reinstated', hideFor: ['active'] },
-  { action: 'warn', label: 'Send warning', done: 'warned', tone: 'warning', hideFor: ['suspended', 'blocked'] },
-  { action: 'restrict', label: 'Restrict', done: 'restricted', tone: 'warning', hideFor: ['restricted', 'blocked'] },
+  {
+    action: 'warn',
+    label: 'Send warning',
+    done: 'warned',
+    tone: 'warning',
+    hideFor: ['suspended', 'blocked'],
+    confirm: (name) => `${name} is told why. Repeated warnings can lead to suspension.`,
+  },
+  {
+    action: 'restrict',
+    label: 'Restrict',
+    done: 'restricted',
+    tone: 'warning',
+    hideFor: ['restricted', 'blocked'],
+    confirm: (name) => `${name} can still sign in, but can’t post, comment or message until reinstated.`,
+  },
   {
     action: 'suspend',
     label: 'Suspend',
@@ -238,7 +257,8 @@ const ACTIONS: {
     done: 'blocked',
     tone: 'danger',
     hideFor: ['blocked'],
-    confirm: (name) => `${name} will be blocked from CommUniti.`,
+    confirm: () =>
+      'Are you sure you want to block this user? Blocking this account will restrict the user from accessing Communiti',
   },
 ]
 
@@ -247,9 +267,9 @@ function UserActions({ user }: { user: AdminUser }) {
   const toast = useToast()
   const [confirming, setConfirming] = useState<(typeof ACTIONS)[number] | null>(null)
 
-  const run = (item: (typeof ACTIONS)[number]) =>
+  const run = (item: (typeof ACTIONS)[number], reason = '') =>
     setStatus.mutate(
-      { id: user.id, data: { action: item.action } },
+      { id: user.id, data: { action: item.action, ...(reason && { reason }) } },
       {
         onSuccess: () => {
           toast(`${user.fullName} ${item.done}`)
@@ -288,12 +308,13 @@ function UserActions({ user }: { user: AdminUser }) {
       </Menu>
       <ConfirmDialog
         open={confirming !== null}
+        withReason
         title={`${confirming?.label ?? ''} ${user.fullName}?`}
         message={confirming?.confirm?.(user.fullName) ?? ''}
         confirmLabel={confirming?.label ?? ''}
         loading={setStatus.isPending}
         onClose={() => setConfirming(null)}
-        onConfirm={() => confirming && run(confirming)}
+        onConfirm={(reason) => confirming && run(confirming, reason)}
       />
     </>
   )

@@ -1,17 +1,17 @@
-import { DotsThree } from '@phosphor-icons/react'
 import { useDeferredValue, useState } from 'react'
-import { Avatar, ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
-import type { AdminGetOverviewStatsResponse, AdminListProjectsResponse } from '@/lib/api'
+import { Avatar } from '@/components/ui'
+import type { AdminGetProjectStatsResponse, AdminListProjectsResponse } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
-import { titleCase } from '@/lib/format'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { DistributionChart } from '../components/charts'
+import { GroupActions } from '../components/GroupActions'
 import { PendingReportsTable } from '../components/ReportTables'
 import { PROJECT_STAT_ICONS } from '../components/statIcons'
 import { ErrorState, StatSkeleton } from '../components/states'
 import {
   AdminContent,
   DataTable,
+  DateRangeSelect,
   Pagination,
   Panel,
   PanelHeader,
@@ -21,9 +21,10 @@ import {
   TableSearch,
   type Column,
 } from '../components/ui'
-import { useAdminProjects, useProjectsDashboard, useSetContentRemoved } from '../hooks/queries'
+import { useAdminProjects, useProjectsDashboard } from '../hooks/queries'
 import { adminPaths } from '../paths'
-import type { DistributionSlice, RecordStatus, StatCardData } from '../types'
+import { kpiCard, rangeLabel } from '../stats'
+import type { DateRange, DistributionSlice, RecordStatus, StatCardData } from '../types'
 
 type AdminProject = AdminListProjectsResponse['data'][number]
 
@@ -31,59 +32,39 @@ const PAGE_SIZE = 10
 
 const stamp = (iso: string) => iso.replace('T', ' ').slice(0, 19)
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-const isActive = (project: AdminProject) => project.status === 'open' || project.status === 'ongoing'
 
-/** Total / Active cards ("PROJECTS"). */
-function statCards(stats: AdminGetOverviewStatsResponse, projects: AdminProject[], sampled: boolean): StatCardData[] {
+/** Total / Active / Completed / New ("PROJECTS"). */
+function statCards(stats: AdminGetProjectStatsResponse, range: DateRange): StatCardData[] {
+  const caption = rangeLabel(range)
   return [
-    { id: 'total', label: 'Total', caption: 'Created projects', value: stats.totalProjects, tone: 'violet' },
-    {
-      id: 'active',
-      label: 'Active',
-      caption: sampled ? `Open or ongoing, newest ${projects.length}` : 'Open or ongoing',
-      value: projects.filter(isActive).length,
-      tone: 'green',
-    },
-      {
-      id: 'completed',
-      label: 'Completed',
-      caption: sampled ? `Completed, newest ${projects.length}` : 'Completed',
-      value: projects.filter((project) => project.status === 'completed').length,
-      tone: 'blue',
-    },
-      {
-      id: 'new',
-      label: 'New',
-      caption: sampled ? `new, newest ${projects.length}` : 'New',
-      value: projects.filter((project) => project.status === 'new').length,
-      tone: 'orange',
-    }
+    kpiCard('total', 'Total', 'Created projects', stats.total, 'violet'),
+    kpiCard('active', 'Active', caption, stats.active, 'green'),
+    kpiCard('completed', 'Completed', caption, stats.completed, 'blue'),
+    kpiCard('new', 'New', caption, stats.new, 'orange'),
   ]
 }
 
-/** Figma's four slices. A featured project counts as Featured whatever its status. */
-function distribution(projects: AdminProject[]): DistributionSlice[] {
-  const count = (test: (project: AdminProject) => boolean) => projects.filter(test).length
-  const notFeatured = (test: (project: AdminProject) => boolean) => (project: AdminProject) =>
-    project.featuredAt === null && test(project)
+/** Figma's four donut slices. */
+function distribution({ distribution: slices }: AdminGetProjectStatsResponse): DistributionSlice[] {
   return [
-    { label: 'Featured', value: count((project) => project.featuredAt !== null), tone: 'blue' },
-    { label: 'In Development', value: count(notFeatured(isActive)), tone: 'orange' },
-    { label: 'Inactive', value: count(notFeatured((project) => project.status === 'archived')), tone: 'grey' },
-    { label: 'Completed', value: count(notFeatured((project) => project.status === 'completed')), tone: 'green' },
+    { label: 'Featured', value: slices.featured.count, tone: 'blue' },
+    { label: 'In Development', value: slices.inDevelopment.count, tone: 'orange' },
+    { label: 'Inactive', value: slices.inactive.count, tone: 'grey' },
+    { label: 'Completed', value: slices.completed.count, tone: 'green' },
   ]
 }
 
-/** Removed projects show "Removed"; otherwise their lifecycle status. */
+/** Status pill: removed, or the moderation status (projects call "flagged" Warned). */
 const statusOf = (project: AdminProject): RecordStatus =>
-  project.removedAt ? 'removed' : (project.status as RecordStatus)
+  project.removedAt ? 'removed' : project.moderationStatus === 'flagged' ? 'warned' : project.moderationStatus
 
 /** Projects dashboard (Figma "PROJECTS"), on real backend data. */
 export function ProjectsPage() {
+  const [range, setRange] = useState<DateRange>('30d')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const query = useDeferredValue(search.trim())
-  const dashboard = useProjectsDashboard()
+  const dashboard = useProjectsDashboard(range)
 
   // The top-bar search and the table search are the same search.
   const onSearch = (value: string) => {
@@ -95,22 +76,20 @@ export function ProjectsPage() {
     <>
       <AdminTopBar title="Projects" searchPlaceholder="Search projects" search={search} onSearch={onSearch} />
       <AdminContent>
+        <DateRangeSelect value={range} onChange={setRange} />
         {dashboard.isError ? (
           <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
         ) : (
           <>
             {dashboard.data ? (
-              <StatGrid
-                stats={statCards(dashboard.data.stats, dashboard.data.projects, dashboard.data.sampled)}
-                icons={PROJECT_STAT_ICONS}
-              />
+              <StatGrid stats={statCards(dashboard.data.stats, range)} icons={PROJECT_STAT_ICONS} />
             ) : (
-              <StatSkeleton count={2} />
+              <StatSkeleton />
             )}
             <div className="grid gap-gap-lg xl:grid-cols-2">
               <DistributionChart
                 title="Project distribution"
-                slices={dashboard.data ? distribution(dashboard.data.projects) : []}
+                slices={dashboard.data ? distribution(dashboard.data.stats) : []}
               />
               <Panel className="px-1.5 pt-[15px] pb-1">
                 <PanelHeader
@@ -120,7 +99,7 @@ export function ProjectsPage() {
                 <PendingReportsTable
                   reports={dashboard.data?.reports}
                   loading={dashboard.isPending}
-                  nameHeader="Project / Owner"
+                  nameHeader="Project Name"
                   showType={false}
                 />
               </Panel>
@@ -160,7 +139,7 @@ function ProjectsTable({
       key: 'id',
       header: 'Project Id',
       // Full UUIDs are long; the first block is enough to tell rows apart (hover for the full id).
-      cell: (project) => <span title={project.id}>{project.id.slice(0, 8)}</span>,
+      cell: (project) => <span title={project.id}>{project.shortId}</span>,
     },
     {
       key: 'creator',
@@ -173,7 +152,7 @@ function ProjectsTable({
       ),
     },
     { key: 'members', header: 'Members', cell: (project) => compact.format(project.memberCount).toLowerCase() },
-    { key: 'visibility', header: 'Visibility', cell: (project) => titleCase(project.visibility) },
+    { key: 'reports', header: 'Reports', cell: (project) => project.reportCount || 'nil' },
     {
       key: 'created',
       header: 'Date created',
@@ -190,7 +169,15 @@ function ProjectsTable({
       header: 'Actions',
       align: 'center',
       className: 'w-[80px]',
-      cell: (project) => <ProjectActions project={project} />,
+      cell: (project) => (
+        <GroupActions
+          type="project"
+          id={project.id}
+          name={project.name}
+          status={project.moderationStatus}
+          removed={project.removedAt !== null}
+        />
+      ),
     },
   ]
 
@@ -225,74 +212,5 @@ function ProjectsTable({
         </>
       )}
     </Panel>
-  )
-}
-
-/* --------------------------------- Actions -------------------------------- */
-
-/** Remove (hide from members, asks first) or restore a project. */
-function ProjectActions({ project }: { project: AdminProject }) {
-  const setRemoved = useSetContentRemoved('project')
-  const toast = useToast()
-  const [confirming, setConfirming] = useState(false)
-  const removed = project.removedAt !== null
-
-  const run = (remove: boolean) =>
-    setRemoved.mutate(
-      { id: project.id, removed: remove },
-      {
-        onSuccess: () => {
-          toast(`${project.name} ${remove ? 'removed' : 'restored'}`)
-          setConfirming(false)
-        },
-        onError: (error) => toast(getErrorMessage(error)),
-      },
-    )
-
-  return (
-    <>
-      <Menu
-        trigger={
-          <IconButton label={`Actions for ${project.name}`} className="size-7 text-fg">
-            <DotsThree weight="bold" className="size-[18px]" />
-          </IconButton>
-        }
-        className="w-[200px]"
-      >
-        {(close) =>
-          removed ? (
-            <MenuItem
-              size="sm"
-              onSelect={() => {
-                close()
-                run(false)
-              }}
-            >
-              Restore project
-            </MenuItem>
-          ) : (
-            <MenuItem
-              size="sm"
-              tone="danger"
-              onSelect={() => {
-                close()
-                setConfirming(true)
-              }}
-            >
-              Remove project
-            </MenuItem>
-          )
-        }
-      </Menu>
-      <ConfirmDialog
-        open={confirming}
-        title={`Remove ${project.name}?`}
-        message="Members will no longer see this project. You can restore it later."
-        confirmLabel="Remove"
-        loading={setRemoved.isPending}
-        onClose={() => setConfirming(false)}
-        onConfirm={() => run(true)}
-      />
-    </>
   )
 }

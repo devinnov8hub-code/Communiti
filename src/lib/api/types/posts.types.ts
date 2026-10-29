@@ -23,7 +23,7 @@ export interface CreatePostBody {
   mediaIds?: string[]
   /** (max 5 items, default []) */
   topicIds?: string[]
-  /** Figma composer "Everyone" dropdown (default 'everyone') */
+  /** Composer dropdown: "Everyone" → everyone, "Following" → followers (only people who follow you see it) (default 'everyone') */
   audience?: 'everyone' | 'followers' | 'forum' | 'project'
   forumId?: string
   projectId?: string
@@ -68,8 +68,8 @@ export interface ListPostCommentsQuery {
   cursor?: string
   /** (1–50, default 20) */
   limit?: number
-  /** (default 'top') */
-  sort?: 'top' | 'newest' | 'oldest'
+  /** Sort comments: latest (newest first) or popular (most liked). top/newest/oldest still work (default 'top') */
+  sort?: 'latest' | 'popular' | 'top' | 'newest' | 'oldest'
 }
 
 export interface ListPostCommentsResponse {
@@ -78,9 +78,11 @@ export interface ListPostCommentsResponse {
 }
 
 export interface CreatePostCommentBody {
-  /** (1–2000 characters) */
-  body: string
+  /** (max 2000 characters, default '') */
+  body?: string
   parentId?: string
+  /** Up to 4 images/files (purpose `comment`) (max 4 items, default []) */
+  mediaIds?: string[]
 }
 
 export interface ListCommentRepliesQuery {

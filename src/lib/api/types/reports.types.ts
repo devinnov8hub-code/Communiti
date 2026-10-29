@@ -4,7 +4,18 @@
 export interface CreateReportBody {
   targetType: 'post' | 'comment' | 'forum' | 'project' | 'user' | 'message'
   targetId: string
-  reason: 'spam' | 'scam' | 'harassment' | 'insults' | 'hate' | 'misinformation' | 'nudity' | 'violence' | 'other'
+  /** Report Post options → value: Spam or misleading content → spam · Harassment or bullying → harassment · Hate or abusive content → hate · Intellectual property violation → intellectual_property · Violence or harmful content → violence · False or misleading information → misinformation · Scam or fraudulent activity → scam */
+  reason:
+    | 'spam'
+    | 'scam'
+    | 'harassment'
+    | 'insults'
+    | 'hate'
+    | 'misinformation'
+    | 'nudity'
+    | 'violence'
+    | 'intellectual_property'
+    | 'other'
   /** (max 1000 characters) */
   details?: string
 }

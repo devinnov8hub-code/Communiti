@@ -21,11 +21,20 @@ export interface Session {
 }
 
 /** Which flow a verification code was requested for. */
-export type VerificationFlow = 'signup' | 'login'
+export type VerificationFlow = 'signup' | 'reset'
 
 export interface PendingVerification {
   email: string
   flow: VerificationFlow
+  /** Password reset: set once the emailed code is confirmed. */
+  resetToken?: string
+}
+
+export interface SignUpDetails {
+  fullName: string
+  email: string
+  location: string
+  password: string
 }
 
 export interface ProfileDetails {

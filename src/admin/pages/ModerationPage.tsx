@@ -9,7 +9,8 @@ import { ReviewPanel } from '../components/ReviewPanel'
 import { ErrorState } from '../components/states'
 import { AdminContent, Breadcrumb, Pagination, Panel, PanelHeader } from '../components/ui'
 import { useReports } from '../hooks/queries'
-import { MODERATION_SECTIONS, type ModerationSection, type Report, type ReportFilter } from '../types'
+import type { AdminReport } from '@/lib/api'
+import { MODERATION_SECTIONS, type ModerationSection, type ReportFilter } from '../types'
 
 const FILTERS: { value: ReportFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -40,13 +41,13 @@ function ModerationQueue({ section }: { section: ModerationSection }) {
   const [filter, setFilter] = useState<ReportFilter>('all')
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [reviewing, setReviewing] = useState<Report | null>(null)
+  const [reviewing, setReviewing] = useState<AdminReport | null>(null)
   const query = useDeferredValue(search.trim())
-  const reports = useReports(section, filter, { page, search: query })
+  const reports = useReports(section, { status: filter, page, pageSize: 15, q: query || undefined })
   const { title, to } = SECTION[section]
 
   // Keep the open review in sync after an action refreshes the queue.
-  const current = reviewing ? (reports.data?.items.find((item) => item.id === reviewing.id) ?? reviewing) : null
+  const current = reviewing ? (reports.data?.data.find((item) => item.id === reviewing.id) ?? reviewing) : null
 
   return (
     <div className="flex">
@@ -91,7 +92,7 @@ function ModerationQueue({ section }: { section: ModerationSection }) {
               <>
                 <QueueTable
                   section={section}
-                  reports={reports.data?.items}
+                  reports={reports.data?.data}
                   loading={reports.isFetching}
                   selectedId={current?.id}
                   onReview={setReviewing}
@@ -101,7 +102,7 @@ function ModerationQueue({ section }: { section: ModerationSection }) {
                     page={reports.data.page}
                     pageSize={reports.data.pageSize}
                     total={reports.data.total}
-                    shown={reports.data.items.length}
+                    shown={reports.data.data.length}
                     onPage={setPage}
                   />
                 )}

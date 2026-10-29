@@ -8,17 +8,17 @@ import { AddHighlightsModal } from '../components/AddHighlightsModal'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ErrorState } from '../components/states'
 import { AdminContent } from '../components/ui'
-import { useDeleteHighlightGroup, useHighlightGroup, useHighlightGroups } from '../hooks/queries'
+import type { Highlight } from '@/lib/api'
+import { useDeleteHighlight, useHighlight, useHighlights } from '../hooks/queries'
 import { adminPaths } from '../paths'
-import type { HighlightGroup } from '../types'
 
 /** Community highlights grouped by event (Figma "Highlights"). */
 export function HighlightsPage() {
-  const groups = useHighlightGroups()
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
-  const query = useDeferredValue(search.trim().toLowerCase())
-  const visible = groups.data?.filter((group) => group.title.toLowerCase().includes(query))
+  const query = useDeferredValue(search.trim())
+  const groups = useHighlights(query || undefined)
+  const visible = groups.data?.data
 
   return (
     <>
@@ -57,10 +57,10 @@ export function HighlightsPage() {
  * 4 small photos + 1 large (Figma "Tetfair 2025"); alternate groups put the large
  * photo in the middle (Figma "R4i 2025 pt II").
  */
-function GroupMosaic({ group, mirrored }: { group: HighlightGroup; mirrored: boolean }) {
-  const [a, b, c, d, big] = group.images
-  const tile = (photo: HighlightGroup['images'][number] | undefined, className?: string) =>
-    photo && (
+function GroupMosaic({ group, mirrored }: { group: Highlight; mirrored: boolean }) {
+  const [a, b, c, d, big] = group.media.filter((photo) => photo.url)
+  const tile = (photo: Highlight['media'][number] | undefined, className?: string) =>
+    photo?.url && (
       <Link
         key={photo.id}
         to={adminPaths.highlight(group.id)}
@@ -68,7 +68,7 @@ function GroupMosaic({ group, mirrored }: { group: HighlightGroup; mirrored: boo
         className={cn('group block overflow-hidden rounded-sm bg-surface', className)}
       >
         <img
-          src={photo.imageUrl}
+          src={photo.url}
           alt=""
           loading="lazy"
           className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -107,12 +107,13 @@ function GroupMosaic({ group, mirrored }: { group: HighlightGroup; mirrored: boo
 /** One highlights group (Figma "Highlights view"). */
 export function HighlightDetailPage() {
   const { highlightId = '' } = useParams()
-  const group = useHighlightGroup(highlightId)
-  const remove = useDeleteHighlightGroup()
+  const group = useHighlight(highlightId)
+  const remove = useDeleteHighlight()
   const navigate = useNavigate()
   const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const photos = group.data?.media.filter((photo) => photo.url) ?? []
 
   return (
     <>
@@ -139,13 +140,15 @@ export function HighlightDetailPage() {
               </span>
             </nav>
             <figure className="flex flex-col gap-2 lg:px-2">
-              <img
-                src={group.data.cover.imageUrl}
-                alt=""
-                className="h-[240px] w-full rounded-sm object-cover sm:h-[465px]"
-              />
+              {photos[0] && (
+                <img
+                  src={photos[0].url ?? undefined}
+                  alt=""
+                  className="h-[240px] w-full rounded-sm object-cover sm:h-[465px]"
+                />
+              )}
               <figcaption className="flex items-center justify-between gap-3 border-b border-hairline pb-2">
-                <span className="text-h4 font-semibold text-innovation">{group.data.cover.title}</span>
+                <span className="text-h4 font-semibold text-innovation">{group.data.caption || group.data.title}</span>
                 <Menu
                   trigger={
                     <IconButton label="Highlight options" className="size-7 text-fg">
@@ -173,10 +176,10 @@ export function HighlightDetailPage() {
             <section className="flex flex-col gap-2 lg:px-2">
               <h2 className="text-caption font-semibold text-brand-orange">More like this</h2>
               <ul className="columns-2 gap-2 sm:gap-3">
-                {group.data.images.slice(1).map((photo, index) => (
+                {photos.slice(1).map((photo, index) => (
                   <li key={photo.id} className="mb-2 break-inside-avoid sm:mb-3">
                     <img
-                      src={photo.imageUrl}
+                      src={photo.url ?? undefined}
                       alt=""
                       loading="lazy"
                       className={cn(

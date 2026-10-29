@@ -1,15 +1,10 @@
-import { DotsThree } from '@phosphor-icons/react'
 import { useDeferredValue, useState } from 'react'
-import { Avatar, ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
-import type {
-  AdminGetOverviewStatsResponse,
-  AdminGetUserActivityStatsResponse,
-  AdminListForumsResponse,
-} from '@/lib/api'
+import { Avatar } from '@/components/ui'
+import type { AdminGetForumStatsResponse, AdminListForumsResponse } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
-import { titleCase } from '@/lib/format'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ActivityChart } from '../components/charts'
+import { GroupActions } from '../components/GroupActions'
 import { PendingReportsTable } from '../components/ReportTables'
 import { FORUM_STAT_ICONS } from '../components/statIcons'
 import { ErrorState, StatSkeleton } from '../components/states'
@@ -26,8 +21,9 @@ import {
   TableSearch,
   type Column,
 } from '../components/ui'
-import { useAdminForums, useForumsDashboard, useSetContentRemoved } from '../hooks/queries'
+import { useAdminForums, useForumsDashboard } from '../hooks/queries'
 import { adminPaths } from '../paths'
+import { activityBars, kpiCard, rangeLabel } from '../stats'
 import type { DateRange, StatCardData } from '../types'
 
 type AdminForum = AdminListForumsResponse['data'][number]
@@ -37,21 +33,15 @@ const PAGE_SIZE = 10
 const stamp = (iso: string) => iso.replace('T', ' ').slice(0, 19)
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
 
-/** Total forums / pending forum reports / posts this week ( "FORUMNS"). */
-function statCards(stats: AdminGetOverviewStatsResponse, pendingReports: number): StatCardData[] {
+/** Total / Active / Restricted / Flagged ("FORUMNS"). */
+function statCards(stats: AdminGetForumStatsResponse, range: DateRange): StatCardData[] {
+  const caption = rangeLabel(range)
   return [
-    { id: 'total', label: 'Total', caption: 'All forums', value: stats.totalForums, tone: 'indigo' },
-    { id: 'flagged', label: 'Flagged', caption: 'Pending reports', value: pendingReports, tone: 'orange' },
-    { id: 'posts', label: 'Posts', caption: 'Last 7 days', value: stats.posts7d, tone: 'green' },
+    kpiCard('total', 'Total', caption, stats.total, 'indigo'),
+    kpiCard('active', 'Active', caption, stats.active, 'green'),
+    kpiCard('restricted', 'Restricted', caption, stats.restricted, 'red'),
+    kpiCard('flagged', 'Flagged', caption, stats.flagged, 'orange'),
   ]
-}
-
-function postBars(activity: AdminGetUserActivityStatsResponse) {
-  const label = new Intl.DateTimeFormat(
-    'en',
-    activity.bucket === 'month' ? { month: 'short', year: '2-digit' } : { month: 'short', day: 'numeric' },
-  )
-  return activity.data.map((point) => ({ label: label.format(new Date(point.date)), value: point.posts }))
 }
 
 /** Forums dashboard ("FORUMNS"), on real backend data. */
@@ -78,18 +68,15 @@ export function ForumsPage() {
         ) : (
           <>
             {dashboard.data ? (
-              <StatGrid
-                stats={statCards(dashboard.data.stats, dashboard.data.pendingReports)}
-                icons={FORUM_STAT_ICONS}
-              />
+              <StatGrid stats={statCards(dashboard.data.stats, range)} icons={FORUM_STAT_ICONS} />
             ) : (
-              <StatSkeleton count={3} />
+              <StatSkeleton />
             )}
             <div className="grid gap-gap-lg xl:grid-cols-2">
               <ActivityChart
-                title="Post Activity"
+                title="Forum Activity"
                 legend={range === '12m' ? 'Posts per month' : 'Posts per day'}
-                points={dashboard.data ? postBars(dashboard.data.activity) : []}
+                points={dashboard.data ? activityBars(dashboard.data.activity, 'forumPosts') : []}
               />
               <Panel className="px-1.5 pt-[15px] pb-1">
                 <PanelHeader
@@ -99,7 +86,7 @@ export function ForumsPage() {
                 <PendingReportsTable
                   reports={dashboard.data?.reports}
                   loading={dashboard.isPending}
-                  nameHeader="Forum / Owner"
+                  nameHeader="Forum Name"
                   showType={false}
                 />
               </Panel>
@@ -144,11 +131,11 @@ function ForumsTable({
       key: 'id',
       header: 'Forum Id',
       // Full UUIDs are long; the first block is enough to tell rows apart (hover for the full id).
-      cell: (forum) => <span title={forum.id}>{forum.id.slice(0, 8)}</span>,
+      cell: (forum) => <span title={forum.id}>{forum.shortId}</span>,
     },
-    { key: 'creator', header: 'Creator', cell: (forum) => forum.owner.fullName },
+    { key: 'creator', header: 'Creator / Moderator', cell: (forum) => forum.owner.fullName },
     { key: 'members', header: 'Members', cell: (forum) => compact.format(forum.memberCount).toLowerCase() },
-    { key: 'visibility', header: 'Visibility', cell: (forum) => titleCase(forum.visibility) },
+    { key: 'reports', header: 'Reports', cell: (forum) => forum.reportCount || 'nil' },
     {
       key: 'created',
       header: 'Date created',
@@ -158,14 +145,22 @@ function ForumsTable({
       key: 'status',
       header: 'Status',
       align: 'center',
-      cell: (forum) => <RecordStatusBadge status={forum.removedAt ? 'removed' : 'active'} />,
+      cell: (forum) => <RecordStatusBadge status={forum.removedAt ? 'removed' : forum.moderationStatus} />,
     },
     {
       key: 'actions',
       header: 'Actions',
       align: 'center',
       className: 'w-[80px]',
-      cell: (forum) => <ForumActions forum={forum} />,
+      cell: (forum) => (
+        <GroupActions
+          type="forum"
+          id={forum.id}
+          name={forum.name}
+          status={forum.moderationStatus}
+          removed={forum.removedAt !== null}
+        />
+      ),
     },
   ]
 
@@ -200,74 +195,5 @@ function ForumsTable({
         </>
       )}
     </Panel>
-  )
-}
-
-/* --------------------------------- Actions -------------------------------- */
-
-/** Remove (hide from members, asks first) or restore a forum. */
-function ForumActions({ forum }: { forum: AdminForum }) {
-  const setRemoved = useSetContentRemoved('forum')
-  const toast = useToast()
-  const [confirming, setConfirming] = useState(false)
-  const removed = forum.removedAt !== null
-
-  const run = (remove: boolean) =>
-    setRemoved.mutate(
-      { id: forum.id, removed: remove },
-      {
-        onSuccess: () => {
-          toast(`${forum.name} ${remove ? 'removed' : 'restored'}`)
-          setConfirming(false)
-        },
-        onError: (error) => toast(getErrorMessage(error)),
-      },
-    )
-
-  return (
-    <>
-      <Menu
-        trigger={
-          <IconButton label={`Actions for ${forum.name}`} className="size-7 text-fg">
-            <DotsThree weight="bold" className="size-[18px]" />
-          </IconButton>
-        }
-        className="w-[200px]"
-      >
-        {(close) =>
-          removed ? (
-            <MenuItem
-              size="sm"
-              onSelect={() => {
-                close()
-                run(false)
-              }}
-            >
-              Restore forum
-            </MenuItem>
-          ) : (
-            <MenuItem
-              size="sm"
-              tone="danger"
-              onSelect={() => {
-                close()
-                setConfirming(true)
-              }}
-            >
-              Remove forum
-            </MenuItem>
-          )
-        }
-      </Menu>
-      <ConfirmDialog
-        open={confirming}
-        title={`Remove ${forum.name}?`}
-        message="Members will no longer see this forum or its posts. You can restore it later."
-        confirmLabel="Remove"
-        loading={setRemoved.isPending}
-        onClose={() => setConfirming(false)}
-        onConfirm={() => run(true)}
-      />
-    </>
   )
 }

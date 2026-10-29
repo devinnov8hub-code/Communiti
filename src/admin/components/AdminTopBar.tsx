@@ -114,7 +114,7 @@ function AdminInbox() {
   const root = useRef<HTMLDivElement>(null)
   const inbox = useInbox()
   const markRead = useMarkInboxRead()
-  const unread = inbox.data?.filter((item) => !item.read).length ?? 0
+  const unread = inbox.data?.data.filter((item) => !item.read).length ?? 0
 
   useEffect(() => {
     if (!open) return
@@ -162,16 +162,16 @@ function AdminInbox() {
               <li className="flex justify-center py-4 text-brand-orange">
                 <Spinner />
               </li>
-            ) : inbox.data?.length ? (
-              inbox.data.map((item) => (
+            ) : inbox.data?.data.length ? (
+              inbox.data.data.map((item) => (
                 <li key={item.id} className="flex flex-col gap-2 border-b border-hairline pb-2 last:border-b-0">
                   <div className="flex items-start justify-between gap-3">
                     <p className={cn('text-body-l text-fg', !item.read && 'font-semibold')}>{item.title}</p>
-                    <time dateTime={item.at} className="shrink-0 text-body-s text-fg-muted">
-                      {formatTime(item.at)}
+                    <time dateTime={item.createdAt} className="shrink-0 text-body-s text-fg-muted">
+                      {formatTime(item.createdAt)}
                     </time>
                   </div>
-                  <p className="text-body-m text-grey-40 dark:text-fg-body">{item.message}</p>
+                  <p className="text-body-m text-grey-40 dark:text-fg-body">{item.body}</p>
                 </li>
               ))
             ) : (

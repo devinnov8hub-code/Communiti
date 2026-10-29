@@ -2,13 +2,25 @@
 // Re-run `npm run api:sync` after the backend changes.
 import { api, unwrap } from '../client'
 import type {
+  AdminApproveVerificationBody,
   AdminCreateEventBody,
   AdminCreateFeaturedInnovationBody,
   AdminCreateHighlightBody,
+  AdminCreateMaintenanceBody,
+  AdminGetEventStatsQuery,
+  AdminGetEventStatsResponse,
+  AdminGetForumStatsQuery,
+  AdminGetForumStatsResponse,
+  AdminGetOverviewStatsQuery,
   AdminGetOverviewStatsResponse,
+  AdminGetProjectStatsQuery,
+  AdminGetProjectStatsResponse,
   AdminGetUserActivityStatsQuery,
   AdminGetUserActivityStatsResponse,
   AdminGetUserResponse,
+  AdminGetUserStatsQuery,
+  AdminGetUserStatsResponse,
+  AdminGetVerificationResponse,
   AdminListAuditLogsQuery,
   AdminListAuditLogsResponse,
   AdminListBroadcastsQuery,
@@ -20,38 +32,202 @@ import type {
   AdminListForumsResponse,
   AdminListHighlightsQuery,
   AdminListHighlightsResponse,
+  AdminListMaintenanceQuery,
+  AdminListMaintenanceResponse,
   AdminListPostsQuery,
   AdminListPostsResponse,
   AdminListProjectsQuery,
   AdminListProjectsResponse,
   AdminListReportsQuery,
   AdminListReportsResponse,
+  AdminListUserLogsQuery,
+  AdminListUserLogsResponse,
   AdminListUsersQuery,
   AdminListUsersResponse,
+  AdminListVerificationsQuery,
+  AdminListVerificationsResponse,
+  AdminRejectVerificationBody,
   AdminRemoveContentBody,
   AdminResolveReportBody,
   AdminRestoreContentBody,
   AdminSendBroadcastBody,
-  AdminSendBroadcastResponse,
+  AdminSetForumStatusBody,
+  AdminSetForumStatusResponse,
+  AdminSetProjectStatusBody,
+  AdminSetProjectStatusResponse,
   AdminSetUserRoleBody,
   AdminSetUserStatusBody,
   AdminSetUserStatusResponse,
   AdminUpdateEventBody,
   AdminUpdateFeaturedInnovationBody,
   AdminUpdateHighlightBody,
+  AdminUpdateMaintenanceBody,
+  AdminUpdateSettingsBody,
 } from '../types/admin.types'
-import type { AdminReport, Event, FeaturedInnovation, Highlight } from '../types/models.types'
+import type {
+  AdminReportDetail,
+  Broadcast,
+  Event,
+  FeaturedInnovation,
+  Highlight,
+  MaintenanceWindow,
+  PlatformSettings,
+  Verification,
+} from '../types/models.types'
+
+/**
+ * Users page KPI cards: Total, Active, New, Blocked
+ *
+ * active = members who signed in or used the app in the range; blocked = accounts blocked in the range. `totals` are current counts.
+ *
+ * `GET /api/v1/admin/stats/users`
+ */
+export const getUserStats = (params?: AdminGetUserStatsQuery) =>
+  api.get<AdminGetUserStatsResponse>(`/api/v1/admin/stats/users`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * Forums page KPI cards: Total, Active, Restricted, Flagged
+ *
+ * active = forums with posts in the range; restricted / flagged = forums restricted / warned in the range. `totals` are current counts by moderation status.
+ *
+ * `GET /api/v1/admin/stats/forums`
+ */
+export const getForumStats = (params?: AdminGetForumStatsQuery) =>
+  api.get<AdminGetForumStatsResponse>(`/api/v1/admin/stats/forums`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * Projects page KPI cards (Total, Active, Completed, New) and Project distribution donut
+ *
+ * active = projects with workspace activity in the range; completed = projects marked completed in the range; new = created in the range. Distribution slices do not overlap: completed, then featured, then inactive (archived, suspended, or no activity in 30 days), then in development.
+ *
+ * `GET /api/v1/admin/stats/projects`
+ */
+export const getProjectStats = (params?: AdminGetProjectStatsQuery) =>
+  api.get<AdminGetProjectStatsResponse>(`/api/v1/admin/stats/projects`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * Events page KPI cards: Total, Active, Concluded, Upcoming
+ *
+ * Published events. Each card compares the count now with the count at the start of the range.
+ *
+ * `GET /api/v1/admin/stats/events`
+ */
+export const getEventStats = (params?: AdminGetEventStatsQuery) =>
+  api.get<AdminGetEventStatsResponse>(`/api/v1/admin/stats/events`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * Platform settings
+ *
+ * `GET /api/v1/admin/settings`
+ */
+export const getSettings = () => api.get<PlatformSettings>(`/api/v1/admin/settings`, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Update platform settings (admin)
+ *
+ * `PATCH /api/v1/admin/settings`
+ */
+export const updateSettings = (data: AdminUpdateSettingsBody) =>
+  api.patch<PlatformSettings>(`/api/v1/admin/settings`, data, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Maintenance windows
+ *
+ * `GET /api/v1/admin/maintenance`
+ */
+export const listMaintenance = (params?: AdminListMaintenanceQuery) =>
+  api.get<AdminListMaintenanceResponse>(`/api/v1/admin/maintenance`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * Schedule maintenance (admin)
+ *
+ * Settings → Maintenance → Schedule maintenance. Emails `message` to every member ahead of time (`notifyUsers`, default true). GET /app-config exposes the window to the apps for a banner, and with `disableAccess` the API returns `503 MAINTENANCE` to members while it runs.
+ *
+ * `POST /api/v1/admin/maintenance`
+ */
+export const createMaintenance = (data: AdminCreateMaintenanceBody) =>
+  api.post<MaintenanceWindow>(`/api/v1/admin/maintenance`, data, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Edit a maintenance window (admin)
+ *
+ * Use it to extend the end date or turn access back on early. Members are not emailed again.
+ *
+ * `PATCH /api/v1/admin/maintenance/{id}`
+ */
+export const updateMaintenance = (id: string, data: AdminUpdateMaintenanceBody) =>
+  api
+    .patch<MaintenanceWindow>(`/api/v1/admin/maintenance/${encodeURIComponent(id)}`, data, { scope: 'admin' })
+    .then(unwrap)
+
+/**
+ * Cancel a maintenance window (admin)
+ *
+ * Ends it immediately if it is running.
+ *
+ * `DELETE /api/v1/admin/maintenance/{id}`
+ */
+export const deleteMaintenance = (id: string) =>
+  api.delete<void>(`/api/v1/admin/maintenance/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Role verification queue
+ *
+ * Forms submitted from onboarding or Settings. `status` defaults to pending; `q` matches name or email.
+ *
+ * `GET /api/v1/admin/verifications`
+ */
+export const listVerifications = (params?: AdminListVerificationsQuery) =>
+  api.get<AdminListVerificationsResponse>(`/api/v1/admin/verifications`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * A member's verification form with uploaded evidence
+ *
+ * `GET /api/v1/admin/verifications/{userId}`
+ */
+export const getVerification = (userId: string) =>
+  api
+    .get<AdminGetVerificationResponse>(`/api/v1/admin/verifications/${encodeURIComponent(userId)}`, { scope: 'admin' })
+    .then(unwrap)
+
+/**
+ * Approve a role verification (member gets the verified badge)
+ *
+ * The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).
+ *
+ * `POST /api/v1/admin/verifications/{userId}/approve`
+ */
+export const approveVerification = (userId: string, data: AdminApproveVerificationBody) =>
+  api
+    .post<Verification>(`/api/v1/admin/verifications/${encodeURIComponent(userId)}/approve`, data, { scope: 'admin' })
+    .then(unwrap)
+
+/**
+ * Reject a role verification
+ *
+ * The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).
+ *
+ * `POST /api/v1/admin/verifications/{userId}/reject`
+ */
+export const rejectVerification = (userId: string, data: AdminRejectVerificationBody) =>
+  api
+    .post<Verification>(`/api/v1/admin/verifications/${encodeURIComponent(userId)}/reject`, data, { scope: 'admin' })
+    .then(unwrap)
 
 /**
  * KPI cards: users, activity, content, moderation
  *
+ * Overview page. `cards` are the four KPI cards (Total Users, Active Events, Active Forums, Active Projects) for the chosen `range`, each with `changePct` against the previous window. The flat fields are kept for existing clients.
+ *
  * `GET /api/v1/admin/stats/overview`
  */
-export const getOverviewStats = () =>
-  api.get<AdminGetOverviewStatsResponse>(`/api/v1/admin/stats/overview`, { scope: 'admin' }).then(unwrap)
+export const getOverviewStats = (params?: AdminGetOverviewStatsQuery) =>
+  api.get<AdminGetOverviewStatsResponse>(`/api/v1/admin/stats/overview`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * Sign-ups and posts over time (chart)
+ * Activity over time (User Activity, Forum Activity charts)
+ *
+ * One series per chart: `signups` (Users per day), `forumPosts` (Forum Activity), `forumsCreated`, `projectsCreated`, `posts`. `range` is an alias of `period`.
  *
  * `GET /api/v1/admin/stats/user-activity`
  */
@@ -63,18 +239,32 @@ export const getUserActivityStats = (params?: AdminGetUserActivityStatsQuery) =>
 /**
  * Users table (search, filter, paginate)
  *
+ * `q` matches name, email, username or the short user id.
+ *
  * `GET /api/v1/admin/users`
  */
 export const listUsers = (params?: AdminListUsersQuery) =>
   api.get<AdminListUsersResponse>(`/api/v1/admin/users`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * User details with moderation history
+ * User details panel with report history and moderation history
  *
  * `GET /api/v1/admin/users/{id}`
  */
 export const getUser = (id: string) =>
   api.get<AdminGetUserResponse>(`/api/v1/admin/users/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
+
+/**
+ * A user's account logs (admin)
+ *
+ * Users → user → Account logs: sign-ins, sign-outs, email and password changes, and moderation on the account. `from`/`to` drive "Filter by date".
+ *
+ * `GET /api/v1/admin/users/{id}/logs`
+ */
+export const listUserLogs = (id: string, params?: AdminListUserLogsQuery) =>
+  api
+    .get<AdminListUserLogsResponse>(`/api/v1/admin/users/${encodeURIComponent(id)}/logs`, { params, scope: 'admin' })
+    .then(unwrap)
 
 /**
  * Warn, restrict, suspend, block or reinstate a user
@@ -99,28 +289,32 @@ export const setUserRole = (id: string, data: AdminSetUserRoleBody) =>
 /**
  * Moderation queue
  *
+ * Tabs: `status=all|pending|reviewed|dismissed` (default pending). The Users, Forums and Projects pages each show their own queue: `targetType=user|post|comment` / `forum` / `project` (comma-separated lists are allowed, e.g. `targetType=user,post,comment`). `q` searches the reported person, forum name, project title or report number.
+ *
  * `GET /api/v1/admin/reports`
  */
 export const listReports = (params?: AdminListReportsQuery) =>
   api.get<AdminListReportsResponse>(`/api/v1/admin/reports`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * Report details
+ * Review Report panel: reported content, details and history
  *
  * `GET /api/v1/admin/reports/{id}`
  */
 export const getReport = (id: string) =>
-  api.get<AdminReport>(`/api/v1/admin/reports/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
+  api.get<AdminReportDetail>(`/api/v1/admin/reports/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
 
 /**
  * Resolve a report
  *
- * `dismiss` closes it. `remove_content` hides the item. `warn` / `suspend` / `block` act on the content owner. Combine with `removeContent: true` to also hide the item. Other pending reports on the same item are resolved too.
+ * `dismiss` closes it. `remove_content` hides the item (for a forum or project this is **Delete Forum / Delete Project**). `warn` / `restrict` / `suspend` / `block` act on the content owner by default. For forum and project reports, `warn`, `restrict` and `suspend` act on the forum/project itself (Send warning, Suspend Forum); pass `applyTo: "owner"` to act on its owner instead. `block` always blocks the owner (admins only). Add `removeContent: true` to also hide the item. Other pending reports on the same item are resolved too.
  *
  * `POST /api/v1/admin/reports/{id}/action`
  */
 export const resolveReport = (id: string, data: AdminResolveReportBody) =>
-  api.post<AdminReport>(`/api/v1/admin/reports/${encodeURIComponent(id)}/action`, data, { scope: 'admin' }).then(unwrap)
+  api
+    .post<AdminReportDetail>(`/api/v1/admin/reports/${encodeURIComponent(id)}/action`, data, { scope: 'admin' })
+    .then(unwrap)
 
 /**
  * Remove content (hide from members)
@@ -155,7 +349,7 @@ export const listPosts = (params?: AdminListPostsQuery) =>
   api.get<AdminListPostsResponse>(`/api/v1/admin/content/posts`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * Forums table
+ * All Forums table
  *
  * `GET /api/v1/admin/forums`
  */
@@ -163,7 +357,7 @@ export const listForums = (params?: AdminListForumsQuery) =>
   api.get<AdminListForumsResponse>(`/api/v1/admin/forums`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * Projects table
+ * All projects table
  *
  * `GET /api/v1/admin/projects`
  */
@@ -171,7 +365,37 @@ export const listProjects = (params?: AdminListProjectsQuery) =>
   api.get<AdminListProjectsResponse>(`/api/v1/admin/projects`, { params, scope: 'admin' }).then(unwrap)
 
 /**
+ * Warn, restrict, suspend or reinstate a forum
+ *
+ * warn → flagged (owner emailed and notified). restrict → no new members or posts. suspend → hidden from members until reinstated or `durationDays` pass. To delete use POST /admin/content/forum/{id}/remove.
+ *
+ * `POST /api/v1/admin/forums/{id}/status`
+ */
+export const setForumStatus = (id: string, data: AdminSetForumStatusBody) =>
+  api
+    .post<AdminSetForumStatusResponse>(`/api/v1/admin/forums/${encodeURIComponent(id)}/status`, data, {
+      scope: 'admin',
+    })
+    .then(unwrap)
+
+/**
+ * Warn, restrict, suspend or reinstate a project
+ *
+ * warn → flagged (owner emailed and notified). restrict → no new join requests. suspend → hidden from members until reinstated or `durationDays` pass. To delete use POST /admin/content/project/{id}/remove.
+ *
+ * `POST /api/v1/admin/projects/{id}/status`
+ */
+export const setProjectStatus = (id: string, data: AdminSetProjectStatusBody) =>
+  api
+    .post<AdminSetProjectStatusResponse>(`/api/v1/admin/projects/${encodeURIComponent(id)}/status`, data, {
+      scope: 'admin',
+    })
+    .then(unwrap)
+
+/**
  * All events (including drafts)
+ *
+ * Events page sections: `when=upcoming` (soonest first), `when=active` (running now), `when=concluded` (latest first). `q` searches title, venue and organizer; also used by the "Use an existing event" picker in Add Highlights.
  *
  * `GET /api/v1/admin/events`
  */
@@ -181,10 +405,20 @@ export const listEvents = (params?: AdminListEventsQuery) =>
 /**
  * Create an event (admin)
  *
+ * Add Event form → fields: cover (upload with purpose `event`, pass `coverUrl`), title, category, date range (`startsAt`/`endsAt`), location (`venue`, optional), registration link (`registrationUrl`, required), about (`description`), organized by (`organizerName`, optional `organizerLogoUrl` / `organizerTagline`). Send `status: "published"` to show it to members.
+ *
  * `POST /api/v1/admin/events`
  */
 export const createEvent = (data: AdminCreateEventBody) =>
   api.post<Event>(`/api/v1/admin/events`, data, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Event view (including drafts)
+ *
+ * `GET /api/v1/admin/events/{id}`
+ */
+export const getEvent = (id: string) =>
+  api.get<Event>(`/api/v1/admin/events/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
 
 /**
  * Edit an event (admin)
@@ -221,6 +455,8 @@ export const createFeaturedInnovation = (data: AdminCreateFeaturedInnovationBody
 /**
  * Edit or publish a featured innovation (admin)
  *
+ * Sending `topicIds` or `mediaIds` replaces them.
+ *
  * `PATCH /api/v1/admin/featured/{id}`
  */
 export const updateFeaturedInnovation = (id: string, data: AdminUpdateFeaturedInnovationBody) =>
@@ -239,6 +475,8 @@ export const deleteFeaturedInnovation = (id: string) =>
 /**
  * Highlights (including unpublished)
  *
+ * Albums, newest first. `q` searches titles; `eventId` lists the albums of one event ("More like this").
+ *
  * `GET /api/v1/admin/highlights`
  */
 export const listHighlights = (params?: AdminListHighlightsQuery) =>
@@ -253,7 +491,17 @@ export const createHighlight = (data: AdminCreateHighlightBody) =>
   api.post<Highlight>(`/api/v1/admin/highlights`, data, { scope: 'admin' }).then(unwrap)
 
 /**
+ * Highlight view
+ *
+ * `GET /api/v1/admin/highlights/{id}`
+ */
+export const getHighlight = (id: string) =>
+  api.get<Highlight>(`/api/v1/admin/highlights/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
+
+/**
  * Edit or publish a highlight (admin)
+ *
+ * Sending `mediaIds` replaces the album's images, in that order.
  *
  * `PATCH /api/v1/admin/highlights/{id}`
  */
@@ -269,7 +517,7 @@ export const deleteHighlight = (id: string) =>
   api.delete<void>(`/api/v1/admin/highlights/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
 
 /**
- * Sent broadcasts
+ * Sent broadcasts (history)
  *
  * `GET /api/v1/admin/broadcasts`
  */
@@ -277,17 +525,37 @@ export const listBroadcasts = (params?: AdminListBroadcastsQuery) =>
   api.get<AdminListBroadcastsResponse>(`/api/v1/admin/broadcasts`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * Send an in-app notification to all members or a segment (admin)
+ * Send a notification email to all members or a segment (admin)
  *
- * Inserted in one SQL statement, so it scales to large audiences inside a serverless request. Members see it in their notifications list.
+ * Notifications page → Send notification. Members are alerted **by email** (`channels.email`, default true); set `channels.inApp: true` to also add it to their in-app notifications. Large audiences are emailed in batches: the response comes back after about 20 seconds at most with `status: "sending"` if emails are still queued. Continue with POST /admin/broadcasts/{id}/resume (or let the daily cron finish it). Members who turned off broadcast emails (`notificationPrefs.broadcast.email = false`), unverified and blocked accounts are skipped.
  *
  * `POST /api/v1/admin/broadcasts`
  */
 export const sendBroadcast = (data: AdminSendBroadcastBody) =>
-  api.post<AdminSendBroadcastResponse>(`/api/v1/admin/broadcasts`, data, { scope: 'admin' }).then(unwrap)
+  api.post<Broadcast>(`/api/v1/admin/broadcasts`, data, { scope: 'admin' }).then(unwrap)
 
 /**
- * Audit logs (admin)
+ * Broadcast details and delivery progress
+ *
+ * `GET /api/v1/admin/broadcasts/{id}`
+ */
+export const getBroadcast = (id: string) =>
+  api.get<Broadcast>(`/api/v1/admin/broadcasts/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Continue sending a broadcast that is still "sending" (admin)
+ *
+ * `POST /api/v1/admin/broadcasts/{id}/resume`
+ */
+export const resumeBroadcast = (id: string) =>
+  api
+    .post<Broadcast>(`/api/v1/admin/broadcasts/${encodeURIComponent(id)}/resume`, undefined, { scope: 'admin' })
+    .then(unwrap)
+
+/**
+ * Admin logs (admin)
+ *
+ * Logs page and the Overview "Admin logs" card. `label` is the Action column, `details` the Log Message column. `q` searches action, message and actor name.
  *
  * `GET /api/v1/admin/audit-logs`
  */

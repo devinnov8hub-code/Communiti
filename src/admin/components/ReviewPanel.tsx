@@ -1,120 +1,165 @@
-import { ChatCenteredText, DotsThree, ShareNetwork, ThumbsUp, X } from '@phosphor-icons/react'
-import { useEffect, useState, type ReactNode } from 'react'
-import { Avatar, AvatarStack, ConfirmDialog, IconButton, Tag, useToast } from '@/components/ui'
+import { ChatCenteredText, ShareNetwork, ThumbsUp } from '@phosphor-icons/react'
+import { useState } from 'react'
+import { Avatar, AvatarStack, ConfirmDialog, Tag, type TagTone, useToast } from '@/components/ui'
+import type { AdminReport, AdminReportDetail, AdminResolveReportBody, ReportedContent } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
-import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { useModerate } from '../hooks/queries'
-import { isGroupContent, type ModerationAction, type Report } from '../types'
+import { timeAgo, titleCase } from '@/lib/format'
+import { useReport, useResolveReport } from '../hooks/queries'
+import { reasonLabel, reportPill, reportSubject } from '../reports'
+import { DetailRow, DetailSection, PanelLoading, SidePanel } from './SidePanel'
 import { ReportStatusPill } from './ui'
+import { ErrorState } from './states'
 
 interface ActionSpec {
-  action: ModerationAction
+  key: string
   label: string
   className: string
-  /** Irreversible or heavy actions ask first. */
-  confirm?: { title: string; message: string }
+  body: AdminResolveReportBody
+  done: string
+  /** Heavier actions ask first, with a reason box (Figma "action model"). */
+  confirm?: { title: string; message: string; label: string }
 }
 
-function actionsFor(report: Report): { primary: ActionSpec[]; more: ActionSpec[] } {
+const isGroup = (type: AdminReport['targetType']) => type === 'forum' || type === 'project'
+
+function actionsFor(report: AdminReport): { primary: ActionSpec[]; more: ActionSpec[] } {
+  const name = reportSubject(report)
   const dismiss: ActionSpec = {
-    action: 'dismiss',
+    key: 'dismiss',
     label: 'Dismiss Report',
     className: 'bg-warning-tint text-brand-orange dark:bg-warning/10',
+    body: { action: 'dismiss' },
+    done: 'Report dismissed',
   }
-  if (report.content.kind === 'forum' || report.content.kind === 'project') {
-    const noun = report.content.kind === 'forum' ? 'Forum' : 'Project'
+
+  if (isGroup(report.targetType)) {
+    const noun = report.targetType === 'forum' ? 'Forum' : 'Project'
     return {
       primary: [
         dismiss,
         {
-          action: 'warn',
+          key: 'warn',
           label: 'Send warning',
           className: 'bg-warning-tint text-warning-strong dark:bg-warning/10 dark:text-warning',
+          body: { action: 'warn' },
+          done: 'Warning sent',
+          confirm: {
+            title: `Warn ${name}?`,
+            message: `The ${noun.toLowerCase()} owner is told why. Repeated warnings can lead to suspension.`,
+            label: 'Send warning',
+          },
         },
       ],
       more: [
         {
-          action: 'suspend-group',
+          key: 'suspend',
           label: `Suspend ${noun}`,
           className: 'bg-brand-orange text-white',
+          body: { action: 'suspend' },
+          done: `${noun} suspended`,
           confirm: {
-            title: `Suspend ${noun.toLowerCase()}?`,
-            message: `Members won’t be able to post in “${report.subject}” until it’s reinstated.`,
+            title: `Suspend ${name}?`,
+            message: `Members won’t be able to use this ${noun.toLowerCase()} until an admin reinstates it.`,
+            label: `Suspend ${noun}`,
           },
         },
         {
-          action: 'delete-group',
+          key: 'delete',
           label: `Delete ${noun}`,
           className: 'bg-error text-white',
+          body: { action: 'remove_content' },
+          done: `${noun} deleted`,
           confirm: {
-            title: `Delete ${noun.toLowerCase()}?`,
-            message: `“${report.subject}” and its content will be permanently removed.`,
+            title: `Delete ${name}?`,
+            message: `Members will no longer see this ${noun.toLowerCase()} or its content.`,
+            label: `Delete ${noun}`,
           },
         },
       ],
     }
   }
+
+  const person = report.targetUser?.fullName ?? 'this user'
   return {
     primary: [
       dismiss,
-      {
-        action: 'remove-content',
-        label: 'Remove Content',
-        className: 'bg-error-tint text-error dark:bg-error/10',
-        confirm: { title: 'Remove content?', message: 'The reported content will be hidden from everyone.' },
-      },
+      // A report about a person has no single piece of content to remove.
+      ...(report.targetType === 'user'
+        ? []
+        : [
+            {
+              key: 'remove',
+              label: 'Remove Content',
+              className: 'bg-error-tint text-error dark:bg-error/10',
+              body: { action: 'remove_content' },
+              done: 'Content removed',
+              confirm: {
+                title: 'Remove this content?',
+                message: 'The reported content will be hidden from everyone.',
+                label: 'Remove Content',
+              },
+            } satisfies ActionSpec,
+          ]),
     ],
     more: [
-      { action: 'warn', label: 'Send warning', className: 'bg-warning text-white' },
       {
-        action: 'suspend-user',
-        label: 'Suspend user',
-        className: 'bg-brand-orange-soft text-white',
-        confirm: { title: 'Suspend user?', message: `${report.subject} won’t be able to sign in while suspended.` },
+        key: 'warn',
+        label: 'Send warning',
+        className: 'bg-warning text-white',
+        body: { action: 'warn' },
+        done: 'Warning sent',
+        confirm: {
+          title: `Warn ${person}?`,
+          message: `${person} is told why. Repeated warnings can lead to suspension.`,
+          label: 'Send warning',
+        },
       },
       {
-        action: 'block-user',
+        key: 'suspend',
+        label: 'Suspend user',
+        className: 'bg-brand-orange-soft text-white',
+        body: { action: 'suspend' },
+        done: 'User suspended',
+        confirm: {
+          title: `Suspend ${person}?`,
+          message: `${person} won’t be able to sign in until an admin reinstates them.`,
+          label: 'Suspend User',
+        },
+      },
+      {
+        key: 'block',
         label: 'Block user',
         className: 'bg-error text-white',
-        confirm: { title: 'Block user?', message: `${report.subject} will be blocked from CommUniti.` },
+        body: { action: 'block' },
+        done: 'User blocked',
+        confirm: {
+          title: `Block ${person}?`,
+          message:
+            'Are you sure you want to block this user? Blocking this account will restrict the user from accessing Communiti',
+          label: 'Block User',
+        },
       },
     ],
   }
 }
 
-const DONE: Record<ModerationAction, string> = {
-  dismiss: 'Report dismissed',
-  'remove-content': 'Content removed',
-  warn: 'Warning sent',
-  'suspend-user': 'User suspended',
-  'block-user': 'User blocked',
-  'suspend-group': 'Suspended',
-  'delete-group': 'Deleted',
-}
-
-/**
- * "Review Report" panel (Figma "Sidebars"). Inline beside the queue on wide screens,
- * a slide-over sheet below xl.
- */
-export function ReviewPanel({ report, onClose }: { report: Report; onClose: () => void }) {
-  const moderate = useModerate()
+/** "Review Report" panel (Figma "moderation view side bar"). */
+export function ReviewPanel({ report, onClose }: { report: AdminReport; onClose: () => void }) {
+  const detail = useReport(report.id)
+  const resolve = useResolveReport()
   const toast = useToast()
   const [confirming, setConfirming] = useState<ActionSpec | null>(null)
   const { primary, more } = actionsFor(report)
+  // Only pending reports can be acted on.
+  const open = report.status === 'pending'
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && !confirming && onClose()
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose, confirming])
-
-  const run = (spec: ActionSpec) =>
-    moderate.mutate(
-      { reportId: report.id, action: spec.action },
+  const run = (spec: ActionSpec, reason = '') =>
+    resolve.mutate(
+      { id: report.id, data: { ...spec.body, ...(reason && { note: reason }) } },
       {
         onSuccess: () => {
-          toast(DONE[spec.action])
+          toast(spec.done)
           setConfirming(null)
           onClose()
         },
@@ -124,9 +169,9 @@ export function ReviewPanel({ report, onClose }: { report: Report; onClose: () =
 
   const button = (spec: ActionSpec) => (
     <button
-      key={spec.action}
+      key={spec.key}
       type="button"
-      disabled={moderate.isPending}
+      disabled={resolve.isPending}
       onClick={() => (spec.confirm ? setConfirming(spec) : run(spec))}
       className={cn(
         'flex h-[38px] w-full items-center justify-center rounded-control px-5 text-body-m font-semibold transition hover:brightness-95 disabled:opacity-60',
@@ -138,165 +183,164 @@ export function ReviewPanel({ report, onClose }: { report: Report; onClose: () =
   )
 
   return (
-    <>
-      <div onClick={onClose} className="fixed inset-0 z-30 bg-black/40 xl:hidden" aria-hidden />
-      <aside
-        aria-label={`Review report #${report.number}`}
-        className={cn(
-          'fixed inset-y-0 right-0 z-40 flex w-[min(396px,100vw)] flex-col gap-gap-sm overflow-y-auto bg-surface-raised px-5 py-[22px] shadow-popover',
-          'xl:sticky xl:top-0 xl:z-auto xl:h-dvh xl:shrink-0 xl:rounded-l-modal xl:shadow-none',
+    <SidePanel
+      title="Review Report"
+      label={`Review report #${report.number}`}
+      onClose={onClose}
+      lockEscape={confirming !== null}
+    >
+      <div className="flex flex-col gap-gap-md">
+        <div className="flex flex-col gap-gap-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-body-m font-semibold text-fg">Report #{report.number}</p>
+            <ReportStatusPill status={reportPill(report)} size="md" />
+          </div>
+
+          {detail.isPending ? (
+            <PanelLoading />
+          ) : detail.isError ? (
+            <ErrorState message={getErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
+          ) : (
+            <ReportBody report={detail.data} />
+          )}
+          <hr className="border-hairline" />
+        </div>
+
+        {open ? (
+          <>
+            <div className="flex flex-col gap-gap-sm">{primary.map(button)}</div>
+            <div className="flex flex-col gap-gap-sm">
+              <p className="text-body-m font-semibold text-fg">More Actions:</p>
+              <div className="flex flex-col gap-3">{more.map(button)}</div>
+            </div>
+          </>
+        ) : (
+          <p className="text-body-s text-fg-muted">
+            {report.resolution ?? `This report was ${report.status === 'dismissed' ? 'dismissed' : 'reviewed'}.`}
+          </p>
         )}
-      >
-        <div className="flex items-start justify-between">
-          <h2 className="text-body-l font-semibold text-fg">Review Report</h2>
-          <IconButton label="Close review" onClick={onClose} className="size-[22px] text-fg">
-            <X className="size-[22px]" />
-          </IconButton>
-        </div>
-
-        <div className="flex flex-col gap-gap-md">
-          <div className="flex flex-col gap-gap-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-body-m font-semibold text-fg">Report #{report.number}</p>
-              <ReportStatusPill status={report.status} size="md" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-body-m font-semibold text-fg">Reported content</p>
-              <ReportedContentCard report={report} />
-            </div>
-
-            <DetailSection title="Report Details" divider="bottom">
-              <DetailRow label="Reason" value={report.reason} valueClassName="text-error" />
-              <DetailRow label="Reports count" value={report.reportsCount} />
-            </DetailSection>
-            <DetailSection title="Report History" divider="top">
-              <DetailRow label="Previous reports" value={report.previousReports} />
-              <DetailRow label="Previous warnings" value={report.previousWarnings} />
-              <DetailRow
-                label="Account status"
-                value={report.accountStatus}
-                valueClassName={report.accountStatus === 'Active' ? 'text-success' : 'text-error'}
-              />
-            </DetailSection>
-            <hr className="border-hairline" />
-          </div>
-
-          <div className="flex flex-col gap-gap-sm">{primary.map(button)}</div>
-          <div className="flex flex-col gap-gap-sm">
-            <p className="text-body-m font-semibold text-fg">More Actions:</p>
-            <div className="flex flex-col gap-3">{more.map(button)}</div>
-          </div>
-        </div>
-      </aside>
+      </div>
 
       <ConfirmDialog
         open={confirming !== null}
+        withReason
         title={confirming?.confirm?.title ?? ''}
         message={confirming?.confirm?.message ?? ''}
-        confirmLabel={confirming?.label ?? ''}
-        loading={moderate.isPending}
+        confirmLabel={confirming?.confirm?.label ?? ''}
+        loading={resolve.isPending}
         onClose={() => setConfirming(null)}
-        onConfirm={() => confirming && run(confirming)}
+        onConfirm={(reason) => confirming && run(confirming, reason)}
       />
+    </SidePanel>
+  )
+}
+
+function ReportBody({ report }: { report: AdminReportDetail }) {
+  const status = report.history.accountStatus
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <p className="text-body-m font-semibold text-fg">Reported content</p>
+        <ReportedContentCard content={report.content} />
+      </div>
+      <DetailSection title="Report Details" divider="bottom">
+        <DetailRow label="Reason" value={reasonLabel(report.reason)} valueClassName="text-error" />
+        <DetailRow label="Reports count" value={report.reportsCount} />
+      </DetailSection>
+      <DetailSection title="Report History" divider="top">
+        <DetailRow label="Previous reports" value={report.history.previousReports} />
+        <DetailRow label="Previous warnings" value={report.history.previousWarnings} />
+        <DetailRow
+          label={isGroup(report.targetType) ? 'Status' : 'Account status'}
+          value={titleCase(status)}
+          valueClassName={status === 'active' ? 'text-success' : 'text-error'}
+        />
+      </DetailSection>
     </>
   )
 }
 
-function DetailSection({
-  title,
-  divider,
-  children,
-}: {
-  title: string
-  divider: 'top' | 'bottom'
-  children: ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      <p
-        className={cn(
-          'border-hairline text-body-m font-semibold text-brand-orange-glow',
-          divider === 'bottom' ? 'border-b pb-1.5' : 'border-t pt-1.5',
-        )}
-      >
-        {title}
-      </p>
-      <dl className="flex flex-col gap-gap-sm text-body-m">{children}</dl>
-    </div>
-  )
-}
+const FOCUS_TONES: TagTone[] = ['success', 'info', 'warning']
 
-function DetailRow({ label, value, valueClassName }: { label: string; value: ReactNode; valueClassName?: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="text-fg">{label}</dt>
-      <dd className={cn('text-fg-muted', valueClassName)}>{value}</dd>
-    </div>
-  )
-}
-
-function ReportedContentCard({ report }: { report: Report }) {
-  const { content } = report
+function ReportedContentCard({ content }: { content: ReportedContent }) {
   const card = 'flex flex-col gap-gap-sm rounded-control border border-hairline px-3 py-2.5'
 
-  if (isGroupContent(content)) {
+  if (content.type === 'forum' || content.type === 'project') {
     return (
       <article className={card}>
         <div className="flex flex-col gap-1">
           <p className="text-body-m font-semibold text-fg">{content.title}</p>
-          {content.owner && <p className="text-caption text-fg-subtle">By {content.owner}</p>}
+          {content.type === 'project' && content.author && (
+            <p className="text-caption text-fg-subtle">By {content.author.fullName}</p>
+          )}
           <div className="flex items-center gap-1.5">
-            <AvatarStack people={content.members} size={24} />
-            <span className="text-caption text-fg-subtle">{content.membersCount} members</span>
+            <AvatarStack
+              people={content.members.map((member) => ({
+                id: member.id,
+                name: member.fullName,
+                avatarUrl: member.avatarUrl ?? undefined,
+              }))}
+              size={24}
+            />
+            <span className="text-caption text-fg-subtle">{content.memberCount ?? 0} members</span>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <p className="text-body-m font-semibold text-fg">Focus:</p>
-          <div className="flex flex-wrap gap-2.5">
-            {content.focus.map((item) => (
-              <Tag key={item.label} tone={item.tone} className="text-xs">
-                {item.label}
-              </Tag>
-            ))}
+        {content.topics.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-body-m font-semibold text-fg">Focus:</p>
+            <div className="flex flex-wrap gap-2.5">
+              {content.topics.map((topic, index) => (
+                <Tag key={topic.id} tone={FOCUS_TONES[index % FOCUS_TONES.length]} className="text-xs">
+                  {topic.name}
+                </Tag>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-2.5 text-fg-muted">
-          <p className="text-body-m font-semibold">About:</p>
-          <p className="text-caption">{content.about}</p>
-        </div>
+        )}
+        {content.body && (
+          <div className="flex flex-col gap-2.5 text-fg-muted">
+            <p className="text-body-m font-semibold">About:</p>
+            <p className="text-caption">{content.body}</p>
+          </div>
+        )}
       </article>
     )
   }
 
+  const author = content.author
   return (
     <article className={card}>
-      <div className="flex items-start justify-between gap-2">
+      {author && (
         <div className="flex items-end gap-[13px]">
-          <Avatar src={content.author.avatarUrl} name={content.author.name} size={39} />
+          <Avatar src={author.avatarUrl ?? undefined} name={author.fullName} size={39} />
           <div className="flex flex-col gap-1">
             <p className="flex items-center gap-1.5">
-              <span className="text-body-s text-fg">{content.author.name}</span>
-              <span className="text-caption text-fg-muted">{timeAgo(content.postedAt)}</span>
+              <span className="text-body-s text-fg">{author.fullName}</span>
+              {content.createdAt && <span className="text-caption text-fg-muted">{timeAgo(content.createdAt)}</span>}
             </p>
-            <span className="text-caption font-medium text-brand-orange">{content.author.role}</span>
+            {author.memberRole && (
+              <span className="text-caption font-medium text-brand-orange">{titleCase(author.memberRole)}</span>
+            )}
           </div>
         </div>
-        <DotsThree aria-hidden weight="bold" className="size-[18px] text-fg" />
-      </div>
-      <p className="line-clamp-5 text-body-s text-fg">{content.text}</p>
-      <div className="flex items-center gap-[11px] text-caption text-fg">
-        <span className="flex items-center gap-1.5">
-          <ThumbsUp aria-hidden className="size-[18px]" />
-          {content.likes}
-          <span className="sr-only">likes</span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <ChatCenteredText aria-hidden className="size-[18px]" />
-          {content.comments}
-          <span className="sr-only">comments</span>
-        </span>
-        <ShareNetwork aria-hidden className="size-[18px]" />
-      </div>
+      )}
+      {content.body && <p className="line-clamp-5 text-body-s text-fg">{content.body}</p>}
+      {content.removed && <p className="text-caption text-error">Already removed</p>}
+      {content.likeCount !== null && (
+        <div className="flex items-center gap-[11px] text-caption text-fg">
+          <span className="flex items-center gap-1.5">
+            <ThumbsUp aria-hidden className="size-[18px]" />
+            {content.likeCount}
+            <span className="sr-only">likes</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <ChatCenteredText aria-hidden className="size-[18px]" />
+            {content.commentCount ?? 0}
+            <span className="sr-only">comments</span>
+          </span>
+          <ShareNetwork aria-hidden className="size-[18px]" />
+        </div>
+      )}
     </article>
   )
 }

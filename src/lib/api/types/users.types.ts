@@ -14,7 +14,9 @@ export interface ListSuggestedUsersResponse {
     username: string | null
     avatarUrl: string | null
     headline: string | null
-    memberRole: 'innovator' | 'researcher' | 'expert' | 'investor' | 'student' | null
+    memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
+    /** Role verified by an admin (show the verified badge) */
+    verified: boolean
     followerCount: number
   }[]
 }
@@ -35,7 +37,9 @@ export interface ListUserFollowersResponse {
     username: string | null
     avatarUrl: string | null
     headline: string | null
-    memberRole: 'innovator' | 'researcher' | 'expert' | 'investor' | 'student' | null
+    memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
+    /** Role verified by an admin (show the verified badge) */
+    verified: boolean
     followedAt: string
   }[]
   nextCursor: string | null
@@ -57,7 +61,9 @@ export interface ListUserFollowingResponse {
     username: string | null
     avatarUrl: string | null
     headline: string | null
-    memberRole: 'innovator' | 'researcher' | 'expert' | 'investor' | 'student' | null
+    memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
+    /** Role verified by an admin (show the verified badge) */
+    verified: boolean
     followedAt: string
   }[]
   nextCursor: string | null
