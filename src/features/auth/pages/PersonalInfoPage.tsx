@@ -6,7 +6,7 @@ import { paths } from '@/app/paths'
 import { LogoLockup } from '@/components/brand/Logo'
 import { Button, DateField, SelectField } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { meApi, type CompleteOnboardingBody } from '@/lib/api'
 import { AuthHeading } from '../components/AuthHeading'
 import { AuthLayout } from '../components/AuthLayout'
 import { FormAlert } from '../components/FormAlert'
@@ -27,14 +27,26 @@ export function PersonalInfoPage() {
   } = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      role: user?.role,
+      memberRole: user?.role,
       dateOfBirth: user?.dateOfBirth ?? '',
       country: user?.country ?? '',
     },
   })
 
-  const submit = useAsyncAction(async (values: ProfileValues) => {
-    updateUser(await authApi.updateProfile(values))
+  const submit = useAsyncAction(async (values: CompleteOnboardingBody) => {
+    const profileData: Parameters<typeof meApi.completeOnboarding>[0] = {
+      memberRole: values.memberRole,
+      topicIds: [],
+      dateOfBirth: values.dateOfBirth,
+      country: values.country,
+    }
+
+    const userData = await meApi.completeOnboarding(profileData)
+    updateUser({
+      ...userData,
+      avatarUrl: userData.avatarUrl ?? undefined,
+    })
+
     navigate(paths.onboardingInterests)
   })
 

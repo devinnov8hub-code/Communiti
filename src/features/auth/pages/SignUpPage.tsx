@@ -6,7 +6,7 @@ import { paths } from '@/app/paths'
 import { BrandWelcome } from '@/components/brand/Logo'
 import { Button, Checkbox, Divider, PasswordField, TextField } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { authApi, type RegisterBody } from '../../../lib/api'
 import { AuthLayout } from '../components/AuthLayout'
 import { AuthSwitchPrompt } from '../components/AuthSwitchPrompt'
 import { FormAlert } from '../components/FormAlert'
@@ -37,9 +37,17 @@ export function SignUpPage() {
     },
   })
 
-  const submit = useAsyncAction(async ({ fullName, email, location, password }: SignUpValues) => {
-    await authApi.register({ fullName, email, location, password })
-    startVerification({ email, flow: 'signup' })
+  const submit = useAsyncAction(async (data: SignUpValues) => {
+    const registerBody: RegisterBody = {
+      fullName: data.fullName,
+      email: data.email,
+      location: data.location,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      acceptTerms: true,
+    }
+    await authApi.register(registerBody)
+    startVerification({ email: data.email, flow: 'signup' })
     navigate(paths.verify)
   })
 

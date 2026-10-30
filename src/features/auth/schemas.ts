@@ -44,7 +44,10 @@ export type VerificationValues = z.infer<typeof verificationSchema>
 const MIN_AGE = 13
 
 export const profileSchema = z.object({
-  role: z.enum(['artisan', 'expert', 'researcher'], { error: 'Select your role' }),
+  memberRole: z.enum(
+    ['researcher', 'innovator', 'professional', 'learner', 'expert', 'investor', 'student'],
+    { message: 'Select your role' },
+  ),
   dateOfBirth: z
     .string()
     .min(1, 'Select your date of birth')

@@ -72,7 +72,7 @@ export function AdminLoginPage() {
     <Screen>
       <div className="flex flex-col gap-3">
         <p className="flex items-center gap-2">
-          <img src={logoMark} alt="" width={35} height={42} className="h-[42px] w-auto" />
+          <img src={logoMark} alt="" width={35} height={42} className="h-10.5 w-auto" />
           <span className="text-[28px] font-semibold text-brand-orange sm:text-[32px]">CommUniti</span>
           <span className="self-end pb-1.5 text-body-l font-semibold text-fg-muted sm:text-h4">Admin</span>
         </p>

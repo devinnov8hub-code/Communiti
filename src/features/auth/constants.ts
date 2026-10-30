@@ -4,10 +4,15 @@ import type { UserRole } from './types'
 export const OTP_LENGTH = 6
 
 export const ROLE_OPTIONS: readonly (SelectOption & { value: UserRole })[] = [
-  { value: 'artisan', label: 'Artisan' },
-  { value: 'expert', label: 'Expert' },
   { value: 'researcher', label: 'Researcher' },
+  { value: 'innovator', label: 'Innovator' },
+  { value: 'professional', label: 'Professional' },
+  { value: 'expert', label: 'Expert' },
+  { value: 'learner', label: 'Learner' },
+  { value: 'investor', label: 'Investor' },
+  { value: 'student', label: 'Student' }
 ]
+
 
 export const INTEREST_TOPICS = [
   'Artificial Intelligence & Machine Learning',
