@@ -155,8 +155,8 @@ function AdminSidebar({ className }: { className?: string }) {
         message="You’ll need your admin email and password to sign back in."
         confirmLabel="Log out"
         onClose={() => setConfirmSignOut(false)}
-        onConfirm={() => {
-          signOut()
+        onConfirm={async () => {
+          await signOut()
           navigate(adminPaths.login, { replace: true })
         }}
       />

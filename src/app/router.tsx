@@ -7,6 +7,10 @@ import { paths } from './paths'
 // Screens are code-split per route so each page only loads what it needs.
 export const router = createBrowserRouter([
   {
+    path: paths.authCallback,
+    lazy: async () => ({ Component: (await import('@/features/auth/pages/AuthCallbackPage')).AuthCallbackPage }),
+  },
+  {
     element: <GuestOnly />,
     children: [
       {
@@ -37,10 +41,12 @@ export const router = createBrowserRouter([
     element: <OnboardingOnly />,
     children: [
       {
-        path: paths.onboardingProfile,
-        lazy: async () => ({
-          Component: (await import('@/features/auth/pages/PersonalInfoPage')).PersonalInfoPage,
-        }),
+        path: paths.onboardingRole,
+        lazy: async () => ({ Component: (await import('@/features/auth/pages/SelectRolePage')).SelectRolePage }),
+      },
+      {
+        path: paths.onboardingRoleForm(),
+        lazy: async () => ({ Component: (await import('@/features/auth/pages/RoleFormPage')).RoleFormPage }),
       },
       {
         path: paths.onboardingInterests,
@@ -53,6 +59,14 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      {
+        path: paths.changeRole,
+        lazy: async () => ({ Component: (await import('@/features/auth/pages/SelectRolePage')).ChangeRolePage }),
+      },
+      {
+        path: paths.changeRoleForm(),
+        lazy: async () => ({ Component: (await import('@/features/auth/pages/RoleFormPage')).ChangeRoleFormPage }),
+      },
       {
         element: <AppShell />,
         children: [

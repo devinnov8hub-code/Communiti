@@ -12,7 +12,7 @@ export interface AdminSessionValue {
   admin: AdminUser | null
   signIn: (session: AdminSession) => void
   updateAdmin: (admin: AdminUser) => void
-  signOut: () => void
+  signOut: () => Promise<void>
   reset: ResetFlow | null
   setReset: (reset: ResetFlow | null) => void
 }

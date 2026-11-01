@@ -41,7 +41,11 @@ export const api = axios.create({
 /** `api.get<T>(...).then(unwrap)` — services return the response body, not the axios response. */
 export const unwrap = <T>(response: AxiosResponse<T>) => response.data
 
+/** Tells the backend which app is calling; it decides how the refresh token comes back. */
+const clientName = (scope: AuthScope = 'member') => (scope === 'admin' ? 'admin' : 'web')
+
 api.interceptors.request.use((config) => {
+  config.headers.set('X-Client', clientName(config.scope))
   const token = config.skipAuth ? null : tokens.get(config.scope ?? 'member')
   if (token) config.headers.set('Authorization', `Bearer ${token}`)
   return config
@@ -52,7 +56,11 @@ const refreshing: Partial<Record<AuthScope, Promise<boolean>>> = {}
 
 function refreshAccessToken(scope: AuthScope) {
   refreshing[scope] ??= axios
-    .post<{ accessToken?: string }>(`${API_ORIGIN}/api/v1/auth/refresh`, {}, { withCredentials: true })
+    .post<{ accessToken?: string }>(
+      `${API_ORIGIN}/api/v1/auth/refresh`,
+      {},
+      { withCredentials: true, headers: { 'X-Client': clientName(scope) } },
+    )
     .then(({ data }) => {
       if (!data.accessToken) return false
       tokens.set(scope, data.accessToken)

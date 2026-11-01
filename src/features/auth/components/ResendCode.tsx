@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { authApi } from '@/lib/api'
 import type { PendingVerification } from '../types'
 
 const COOLDOWN_SECONDS = 60
@@ -27,7 +27,7 @@ export function ResendCode({ pending, onResent }: ResendCodeProps) {
 
   const resend = useAsyncAction(async () => {
     const request = pending.flow === 'reset' ? authApi.forgotPassword : authApi.resendVerificationEmail
-    await request(pending.email)
+    await request({ email: pending.email })
     setSent(true)
     setDeadline(Date.now() + COOLDOWN_SECONDS * 1000)
     onResent?.()

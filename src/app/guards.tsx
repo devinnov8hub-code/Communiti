@@ -5,7 +5,7 @@ import { paths } from './paths'
 /** Only for signed-out visitors (login, sign-up, verification). */
 export function GuestOnly() {
   const { user } = useAuth()
-  if (user) return <Navigate to={user.onboardingComplete ? paths.home : paths.onboardingProfile} replace />
+  if (user) return <Navigate to={user.onboardingComplete ? paths.home : paths.onboardingRole} replace />
   return <Outlet />
 }
 
@@ -21,6 +21,6 @@ export function OnboardingOnly() {
 export function RequireAuth() {
   const { user } = useAuth()
   if (!user) return <Navigate to={paths.login} replace />
-  if (!user.onboardingComplete) return <Navigate to={paths.onboardingProfile} replace />
+  if (!user.onboardingComplete) return <Navigate to={paths.onboardingRole} replace />
   return <Outlet />
 }

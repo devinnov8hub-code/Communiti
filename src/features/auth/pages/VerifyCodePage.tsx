@@ -6,7 +6,7 @@ import { paths } from '@/app/paths'
 import { LogoLockup } from '@/components/brand/Logo'
 import { Button, FieldError } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { authApi } from '@/lib/api'
 import { AuthHeading } from '../components/AuthHeading'
 import { AuthLayout } from '../components/AuthLayout'
 import { FormAlert } from '../components/FormAlert'
@@ -16,6 +16,7 @@ import { VerifyIllustration } from '../components/VerifyIllustration'
 import { OTP_LENGTH } from '../constants'
 import { useAuth } from '../hooks/useAuth'
 import { verificationSchema, type VerificationValues } from '../schemas'
+import { toSession } from '../user'
 
 export function VerifyCodePage() {
   const navigate = useNavigate()
@@ -31,14 +32,14 @@ export function VerifyCodePage() {
   const submit = useAsyncAction(async ({ code }: VerificationValues) => {
     if (!pending) return
     if (pending.flow === 'reset') {
-      const { resetToken } = await authApi.verifyResetCode({ email: pending.email, code })
+      const { resetToken } = await authApi.verifyPasswordResetCode({ email: pending.email, code })
       startVerification({ ...pending, resetToken })
       navigate(paths.newPassword, { replace: true })
       return
     }
-    const session = await authApi.verifyEmail({ email: pending.email, code })
+    const session = toSession(await authApi.verifyEmail({ email: pending.email, code }))
     signIn(session)
-    navigate(session.user.onboardingComplete ? paths.home : paths.onboardingProfile, { replace: true })
+    navigate(session.user.onboardingComplete ? paths.home : paths.onboardingRole, { replace: true })
   })
 
   // Nothing to verify (e.g. page refreshed in a new tab) — start over.

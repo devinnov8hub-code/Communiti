@@ -87,30 +87,34 @@ regenerates; `npm run api:generate` regenerates only. Function names come from
 The backend only allows browser calls from the production site, so in development the client calls
 `/api/...` on the dev server and Vite proxies it (`vite.config.ts`).
 
-**The screens are not connected yet.** Each feature still has its own `api/` folder (a placeholder
-service plus sample data) and screen-shaped `types.ts` from before the backend existed. As a feature
-is connected, those are deleted and it uses `@/lib/api` services and types directly.
+**Most screens are not connected yet.** Auth, Account Preferences and the admin console use `@/lib/api`. Every other feature
+still has its own `api/` folder (a placeholder service plus sample data) and screen-shaped `types.ts`
+from before the backend existed. As a feature is connected, those are deleted and it uses `@/lib/api`
+services and types directly.
+
+### Auth
+
+Sign-up, verification, login, password reset, onboarding and Google sign-in always use the real
+backend, so signing in needs a real account, even while the other features show sample data.
+`features/auth/user.ts` maps the backend's user to the app's `User` (`toUser`, `toSession`);
+`AuthProvider` loads the full record from `GET /me`, ends the session on logout or when the token can't
+be refreshed. Onboarding follows the backend's flow: Select Role, the role's form (`PUT /me/role`), then
+topics (`PUT /me/interests`). Settings → Account Preferences reuses those role screens at `/change-role`
+and signs the member out afterwards.
+
+Verification is automatic (backend `FRONTEND_INTEGRATION.md` §6): `PUT /me/role` checks the answers in
+1–6 seconds and returns `verified`, or `422 VERIFICATION_FAILED` with one message per `details.<field>`,
+which the forms show under the inputs. `VerifyTick` stays grey until the server says `verified`. A
+`pending` answer (the OpenAPI spec still describes admin review) moves on without a tick.
 
 ## Backend integration
 
-Copy `.env.example` to `.env` and set `VITE_API_BASE_URL`. While it is empty every feature uses
-its in-browser mock (seeded with the Figma content; any 4-digit sign-in code works). Each
-`*.service.ts` exports the API interface, the real HTTP implementation and picks one at startup,
+Copy `.env.example` to `.env` and set `VITE_API_BASE_URL`. While it is empty every feature that isn't
+connected yet uses its in-browser mock (seeded with the Figma content). Each `*.service.ts` exports the API interface, the real HTTP implementation and picks one at startup,
 so pointing at the backend needs no component changes.
 
 Requests send `Authorization: Bearer <token>`; errors should return `{ message }`. Endpoints that
 upload files accept `multipart/form-data`. Response shapes are the types in each feature's `types.ts`.
-
-### Auth — `features/auth/api/auth.service.ts`
-
-| Method | Path                  | Body                             | Returns           |
-| ------ | --------------------- | -------------------------------- | ----------------- |
-| POST   | `/auth/signup`        | `{ email }`                      | — (emails a code) |
-| POST   | `/auth/login`         | `{ email }`                      | — (emails a code) |
-| POST   | `/auth/verify`        | `{ email, code, flow }`          | `{ token, user }` |
-| PATCH  | `/users/me/profile`   | `{ role, dateOfBirth, country }` | `User`            |
-| PUT    | `/users/me/interests` | `{ topics: string[] }`           | `User`            |
-| GET    | `/auth/google`        | — (browser redirect, OAuth)      | —                 |
 
 ### Feed & posts — `features/feed/api/feed.service.ts`
 
@@ -219,7 +223,6 @@ management and task creation. While a join request is pending the workspace re-f
 
 | Method      | Path                   | Body                                  | Returns              |
 | ----------- | ---------------------- | ------------------------------------- | -------------------- |
-| GET / PATCH | `/users/me/account`    | `AccountSettings` (without email)     | `AccountSettings`    |
 | GET / PUT   | `/users/me/visibility` | `{ messages, collaborationRequests }` | `VisibilitySettings` |
 | GET / PUT   | `/users/me/language`   | `{ language }`                        | `{ language }`       |
 | POST        | `/support/reports`     | `{ message }`                         | —                    |

@@ -6,20 +6,18 @@ import { paths } from '@/app/paths'
 import { BrandWelcome } from '@/components/brand/Logo'
 import { Button, Checkbox, Divider, PasswordField, TextField } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi, type RegisterBody } from '../../../lib/api'
+import { authApi, type RegisterBody } from '@/lib/api'
 import { AuthLayout } from '../components/AuthLayout'
 import { AuthSwitchPrompt } from '../components/AuthSwitchPrompt'
 import { FormAlert } from '../components/FormAlert'
 import { GoogleButton } from '../components/GoogleButton'
 import { useAuth } from '../hooks/useAuth'
-import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import { signUpSchema, type SignUpValues } from '../schemas'
 
 /** "Create account" (name, email, location, password). Emails a code to verify the address. */
 export function SignUpPage() {
   const navigate = useNavigate()
   const { startVerification } = useAuth()
-  const google = useGoogleSignIn()
 
   const {
     register,
@@ -118,7 +116,7 @@ export function SignUpPage() {
               />
             </div>
 
-            <FormAlert message={submit.error ?? google.error} />
+            <FormAlert message={submit.error} />
 
             <Button type="submit" loading={submit.pending}>
               Create account
@@ -127,7 +125,7 @@ export function SignUpPage() {
 
           <div className="flex flex-col items-center gap-gap-sm">
             <Divider label="Or" />
-            <GoogleButton onClick={() => google.run()} loading={google.pending} />
+            <GoogleButton />
             <AuthSwitchPrompt prompt="Already have an account?" linkLabel="Login" to={paths.login} />
           </div>
         </div>

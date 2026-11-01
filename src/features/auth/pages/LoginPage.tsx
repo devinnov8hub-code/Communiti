@@ -6,21 +6,20 @@ import { paths } from '@/app/paths'
 import { BrandWelcome } from '@/components/brand/Logo'
 import { Button, Divider, PasswordField, TextField } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { ApiError, authApi } from '@/lib/api'
 import { AuthHeading } from '../components/AuthHeading'
 import { AuthLayout } from '../components/AuthLayout'
 import { AuthSwitchPrompt } from '../components/AuthSwitchPrompt'
 import { FormAlert } from '../components/FormAlert'
 import { GoogleButton } from '../components/GoogleButton'
 import { useAuth } from '../hooks/useAuth'
-import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import { loginSchema, type LoginValues } from '../schemas'
+import { toSession } from '../user'
 
 /** "Welcome back": email and password. */
 export function LoginPage() {
   const navigate = useNavigate()
-  const { signIn, lastUserName } = useAuth()
-  const google = useGoogleSignIn()
+  const { signIn, startVerification, lastUserName } = useAuth()
 
   const {
     register,
@@ -29,9 +28,16 @@ export function LoginPage() {
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
 
   const submit = useAsyncAction(async (values: LoginValues) => {
-    const session = await authApi.login(values)
-    signIn(session)
-    navigate(session.user.onboardingComplete ? paths.home : paths.onboardingProfile, { replace: true })
+    try {
+      const session = toSession(await authApi.login(values))
+      signIn(session)
+      navigate(session.user.onboardingComplete ? paths.home : paths.onboardingRole, { replace: true })
+    } catch (error) {
+      if (!(error instanceof ApiError && error.code === 'EMAIL_NOT_VERIFIED')) throw error
+      // The backend has just emailed a new code.
+      startVerification({ email: values.email, flow: 'signup' })
+      navigate(paths.verify)
+    }
   })
 
   return (
@@ -73,7 +79,7 @@ export function LoginPage() {
               </div>
             </div>
 
-            <FormAlert message={submit.error ?? google.error} />
+            <FormAlert message={submit.error} />
 
             <Button type="submit" loading={submit.pending}>
               Login
@@ -82,7 +88,7 @@ export function LoginPage() {
 
           <div className="flex flex-col items-center gap-gap-sm">
             <Divider label="Or Continue with" />
-            <GoogleButton onClick={() => google.run()} loading={google.pending} />
+            <GoogleButton />
             <AuthSwitchPrompt prompt="Don’t have an account?" linkLabel="Sign Up" to={paths.signUp} />
           </div>
         </div>

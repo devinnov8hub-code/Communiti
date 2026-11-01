@@ -1,23 +1,23 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
 import { Controller, useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { LogoLockup } from '@/components/brand/Logo'
-import { Button, FieldError, Pill } from '@/components/ui'
+import { Button, FieldError, Pill, Spinner } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { getErrorMessage, meApi, topicsApi } from '@/lib/api'
 import { AuthHeading } from '../components/AuthHeading'
 import { AuthLayout } from '../components/AuthLayout'
 import { FormAlert } from '../components/FormAlert'
-import { INTEREST_TOPICS } from '../constants'
 import { useAuth } from '../hooks/useAuth'
 import { interestsSchema, type InterestsValues } from '../schemas'
-
-type Topic = InterestsValues['topics'][number]
+import { toUser } from '../user'
 
 export function FeedCustomizationPage() {
   const navigate = useNavigate()
   const { user, updateUser } = useAuth()
+  const topics = useQuery({ queryKey: ['topics'], queryFn: () => topicsApi.listTopics(), staleTime: Infinity })
 
   const {
     control,
@@ -25,17 +25,18 @@ export function FeedCustomizationPage() {
     formState: { errors },
   } = useForm<InterestsValues>({
     resolver: zodResolver(interestsSchema),
-    defaultValues: {
-      topics: (user?.interests ?? []).filter((topic): topic is Topic =>
-        (INTEREST_TOPICS as readonly string[]).includes(topic),
-      ),
-    },
+    defaultValues: { topics: user?.interests ?? [] },
   })
 
-  const submit = useAsyncAction(async ({ topics }: InterestsValues) => {
-    updateUser(await authApi.updateInterests(topics))
+  const submit = useAsyncAction(async ({ topics: topicIds }: InterestsValues) => {
+    // This finishes onboarding, but only answers with the topics, so fetch the updated member.
+    await meApi.setInterests({ topicIds })
+    updateUser(toUser(await meApi.getMe()))
     navigate(paths.home, { replace: true })
   })
+
+  // The role comes from the previous screen.
+  if (!user?.role) return <Navigate to={paths.onboardingRole} replace />
 
   return (
     <AuthLayout hero="team">
@@ -58,14 +59,15 @@ export function FeedCustomizationPage() {
                   <legend className="sr-only">Topics</legend>
                   {/* Design lets the pill cloud run a little wider than the form column. */}
                   <div className="flex flex-wrap gap-gap-sm xl:-mr-24">
-                    {INTEREST_TOPICS.map((topic) => (
+                    {topics.isPending && <Spinner className="text-brand-green" />}
+                    {topics.data?.data.map((topic) => (
                       <Pill
-                        key={topic}
-                        label={topic}
-                        selected={field.value.includes(topic)}
+                        key={topic.id}
+                        label={topic.name}
+                        selected={field.value.includes(topic.id)}
                         onSelectedChange={(selected) =>
                           field.onChange(
-                            selected ? [...field.value, topic] : field.value.filter((value) => value !== topic),
+                            selected ? [...field.value, topic.id] : field.value.filter((value) => value !== topic.id),
                           )
                         }
                       />
@@ -76,7 +78,7 @@ export function FeedCustomizationPage() {
               )}
             />
 
-            <FormAlert message={submit.error} />
+            <FormAlert message={submit.error ?? (topics.isError ? getErrorMessage(topics.error) : null)} />
 
             <Button type="submit" loading={submit.pending}>
               Go to Communiti

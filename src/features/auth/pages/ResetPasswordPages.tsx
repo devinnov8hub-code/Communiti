@@ -7,7 +7,7 @@ import { paths } from '@/app/paths'
 import { LogoLockup } from '@/components/brand/Logo'
 import { Button, PasswordField, TextField, useToast } from '@/components/ui'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { authApi } from '../api/auth.service'
+import { authApi, type ForgotPasswordBody } from '@/lib/api'
 import { AuthHeading } from '../components/AuthHeading'
 import { AuthLayout } from '../components/AuthLayout'
 import { FormAlert } from '../components/FormAlert'
@@ -28,8 +28,8 @@ export function ForgotPasswordPage() {
     defaultValues: { email: pending?.flow === 'reset' ? pending.email : '' },
   })
 
-  const submit = useAsyncAction(async ({ email }: ResetEmailValues) => {
-    await authApi.forgotPassword(email)
+  const submit = useAsyncAction(async ({ email }: ForgotPasswordBody) => {
+    await authApi.forgotPassword({ email })
     startVerification({ email, flow: 'reset' })
     navigate(paths.verify)
   })

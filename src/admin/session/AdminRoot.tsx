@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { adminPaths } from '../paths'
-import { api, SESSION_EXPIRED_EVENT, tokens } from '@/lib/api'
+import { authApi, SESSION_EXPIRED_EVENT, tokens } from '@/lib/api'
 import { local, session as tabStorage } from '@/lib/storage'
 import type { AdminSession, AdminUser } from '../types'
 import { AdminSessionContext, useAdminSession, type ResetFlow } from './adminSessionContext'
@@ -40,11 +40,10 @@ export function AdminRoot() {
     queryClient.removeQueries({ queryKey: ['admin'] })
   }, [queryClient])
 
-  const signOut = useCallback(() => {
-    // Tell the backend to end this device's session; sign out locally either way.
-    if (tokens.get('admin')) {
-      api.post('/api/v1/auth/logout', undefined, { scope: 'admin', skipRefresh: true }).catch(() => undefined)
-    }
+  const signOut = useCallback(async () => {
+    // Tell the backend to end this device's session; sign out locally either way. Awaited
+    // because the client reads the token after this tick, and clearing it first would drop it.
+    if (tokens.get('admin')) await authApi.logout({ scope: 'admin' }).catch(() => undefined)
     clearSession()
   }, [clearSession])
 

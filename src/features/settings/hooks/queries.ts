@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/features/auth/hooks/useAuth'
 import { feedApi } from '@/features/feed/api/feed.service'
 import { feedKeys } from '@/features/feed/hooks/queries'
-import { profileKeys } from '@/features/profile/hooks/queries'
+import { meApi } from '@/lib/api'
 import { settingsApi } from '../api/settings.service'
-import type { AccountSettings, DeleteReason, LanguageCode, VisibilitySettings } from '../types'
+import type { DeleteReason, LanguageCode, VisibilitySettings } from '../types'
 
 export const settingsKeys = {
   account: ['settings', 'account'] as const,
@@ -13,22 +12,7 @@ export const settingsKeys = {
   blocked: ['settings', 'blocked'] as const,
 }
 
-export const useAccountSettings = () => useQuery({ queryKey: settingsKeys.account, queryFn: settingsApi.getAccount })
-
-export function useUpdateAccountSettings() {
-  const client = useQueryClient()
-  const { user, updateUser } = useAuth()
-  return useMutation({
-    mutationFn: (input: Omit<AccountSettings, 'email'>) => settingsApi.updateAccount(input),
-    onSuccess: (account) => {
-      client.setQueryData(settingsKeys.account, account)
-      client.invalidateQueries({ queryKey: profileKeys.me })
-      if (user) {
-        updateUser({ ...user, dateOfBirth: account.dateOfBirth, country: account.country, role: account.role })
-      }
-    },
-  })
-}
+export const useAccount = () => useQuery({ queryKey: settingsKeys.account, queryFn: () => meApi.getMe() })
 
 export const useVisibilitySettings = () =>
   useQuery({ queryKey: settingsKeys.visibility, queryFn: settingsApi.getVisibility })

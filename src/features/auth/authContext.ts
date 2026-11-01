@@ -14,7 +14,7 @@ export interface AuthContextValue {
   clearVerification: () => void
   signIn: (session: Session) => void
   updateUser: (user: User) => void
-  signOut: () => void
+  signOut: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

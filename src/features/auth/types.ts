@@ -1,4 +1,4 @@
-export type UserRole = 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' 
+export type UserRole = 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student'
 
 export interface User {
   id: string
@@ -11,6 +11,7 @@ export interface User {
   dateOfBirth?: string
   /** ISO 3166-1 alpha-2 country code */
   country?: string
+  /** Topic ids */
   interests: string[]
   onboardingComplete: boolean
 }
@@ -28,17 +29,4 @@ export interface PendingVerification {
   flow: VerificationFlow
   /** Password reset: set once the emailed code is confirmed. */
   resetToken?: string
-}
-
-export interface SignUpDetails {
-  fullName: string
-  email: string
-  location: string
-  password: string
-}
-
-export interface ProfileDetails {
-  role: UserRole
-  dateOfBirth: string
-  country: string
 }

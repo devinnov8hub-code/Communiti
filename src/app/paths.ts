@@ -3,10 +3,16 @@ export const paths = {
   login: '/login',
   signUp: '/signup',
   verify: '/verify',
+  /** Where the backend sends the browser back after Google sign-in. */
+  authCallback: '/auth/callback',
   forgotPassword: '/forgot-password',
   newPassword: '/forgot-password/new',
-  onboardingProfile: '/onboarding/profile',
+  onboardingRole: '/onboarding/role',
+  onboardingRoleForm: (role = ':role') => `/onboarding/role/${role}`,
   onboardingInterests: '/onboarding/interests',
+  /** The same role screens, reached from Settings once onboarding is done. */
+  changeRole: '/change-role',
+  changeRoleForm: (role = ':role') => `/change-role/${role}`,
   terms: '/terms',
 
   post: (id = ':postId') => `/posts/${id}`,

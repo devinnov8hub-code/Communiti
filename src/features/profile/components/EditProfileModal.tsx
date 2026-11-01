@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button, Modal, SelectField, TextField, useToast } from '@/components/ui'
-import { ROLE_OPTIONS } from '@/features/auth/constants'
+import { ROLE_OPTIONS, USER_ROLES } from '@/features/auth/constants'
 import { getErrorMessage } from '@/lib/api/errors'
 import { useUpdateProfile } from '../hooks/queries'
 import type { Profile } from '../types'
@@ -12,7 +12,7 @@ import { AvatarUpload } from './AvatarUpload'
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter your name').max(60),
-  role: z.enum(['artisan', 'expert', 'researcher'], { error: 'Select your role' }),
+  role: z.enum(USER_ROLES, { error: 'Select your role' }),
   profession: z.string().trim().min(2, 'Enter your profession').max(60),
 })
 type Values = z.infer<typeof schema>

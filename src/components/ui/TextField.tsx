@@ -6,11 +6,13 @@ import { FieldShell } from './FieldShell'
 export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
   icon?: ReactNode
+  /** Shown at the end of the box (the green "valid" tick). */
+  trailing?: ReactNode
   error?: string
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { label, icon, error, id, className, ...props },
+  { label, icon, trailing, error, id, className, ...props },
   ref,
 ) {
   const generatedId = useId()
@@ -28,6 +30,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
           className={controlInputClass}
           {...props}
         />
+        {trailing}
       </div>
     </FieldShell>
   )
