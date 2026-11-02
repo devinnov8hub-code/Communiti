@@ -4,7 +4,7 @@ import { PageColumns } from '@/components/layout/AppShell'
 import { EmptyState, SearchField, Tabs, type TabItem } from '@/components/ui'
 import { PostList } from '../components/PostList'
 import { RightRail } from '../components/RightRail'
-import { useSearchPosts, useSearchTopics } from '../hooks/queries'
+import { MIN_SEARCH_LENGTH, useSearchPosts, useSearchTopics } from '../hooks/queries'
 import { searchUrl } from '../searchUrl'
 import type { SearchScope } from '../types'
 
@@ -63,8 +63,15 @@ export function SearchPage() {
       </header>
 
       <div className="sm:p-2.5">
-        {!query && !topicId ? (
-          <EmptyState title="Search CommUniti" description="Find posts, people, events and topics." />
+        {query.length < MIN_SEARCH_LENGTH ? (
+          <EmptyState
+            title="Search CommUniti"
+            description={
+              query || topic
+                ? `Type at least ${MIN_SEARCH_LENGTH} characters to search${topic ? ` in ${topic.name}` : ''}.`
+                : 'Find posts, people, events and topics.'
+            }
+          />
         ) : scope === 'posts' || scope === 'topic' ? (
           <PostList
             variant="detail"

@@ -1,6 +1,6 @@
 import { DotsThreeOutline, Prohibit, ShareNetwork, SmileySad, Trash, Warning } from '@phosphor-icons/react'
 import { IconButton, Menu, MenuItem } from '@/components/ui'
-import type { Post } from '../types'
+import type { Post } from '@/lib/api'
 
 export interface PostMenuActions {
   onShare: () => void
@@ -43,7 +43,7 @@ export function PostMenu({ post, ...actions }: { post: Post } & PostMenuActions)
               Not interested
             </MenuItem>
             <MenuItem icon={<Prohibit />} tone="warning" onSelect={run(actions.onBlock)}>
-              Block {post.author.name}
+              Block {post.author.fullName}
             </MenuItem>
             <MenuItem icon={<Warning />} tone="danger" onSelect={run(actions.onReport)}>
               Report post

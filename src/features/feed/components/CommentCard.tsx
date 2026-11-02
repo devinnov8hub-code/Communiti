@@ -1,12 +1,12 @@
 import { DotsThreeOutline, Trash, Warning } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
+import type { Comment } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
 import { useDeleteComment, useReportComment, useToggleCommentLike } from '../hooks/queries'
 import { useSharePost } from '../hooks/useShare'
-import type { Comment } from '../types'
 import { EngagementBar } from './EngagementBar'
-import { AuthorLine } from './PostCard'
+import { AuthorLine, MediaFiles, MediaImages } from './PostCard'
 
 /** A comment on the post page (Figma "post expanded", property "comment"). */
 export function CommentCard({ comment }: { comment: Comment }) {
@@ -58,18 +58,17 @@ export function CommentCard({ comment }: { comment: Comment }) {
       </header>
 
       <div className="flex flex-col gap-3">
-        {comment.content && (
-          <p className="text-body-m break-words whitespace-pre-line text-fg sm:text-body-l">{comment.content}</p>
+        {comment.body && (
+          <p className="text-body-m break-words whitespace-pre-line text-fg sm:text-body-l">{comment.body}</p>
         )}
-        {comment.imageUrl && (
-          <img src={comment.imageUrl} alt="" loading="lazy" className="h-[239px] w-full object-cover" />
-        )}
+        <MediaImages media={comment.media} />
+        <MediaFiles media={comment.media} />
         <EngagementBar
           liked={comment.likedByMe}
-          likes={comment.likes}
-          comments={comment.repliesCount}
+          likes={comment.likeCount}
+          comments={comment.replyCount}
           onLike={() => like.mutate({ comment, liked: !comment.likedByMe }, { onError })}
-          onShare={() => share(comment.postId, comment.content)}
+          onShare={() => share(comment.postId, comment.body)}
         />
       </div>
 

@@ -2,6 +2,7 @@ import { GlobeHemisphereWest, LinkSimple, Sparkle } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { PageColumns } from '@/components/layout/AppShell'
 import { EmptyState, useToast } from '@/components/ui'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getRoleLabel } from '@/features/auth/user'
 import { PostList } from '@/features/feed/components/PostList'
 import { RightRail } from '@/features/feed/components/RightRail'
@@ -178,7 +179,8 @@ export function ProfilePage() {
 }
 
 function MyPosts() {
-  const posts = useUserPosts('me')
+  const { user } = useAuth()
+  const posts = useUserPosts(user?.id ?? '')
   return (
     <PostList
       posts={posts.data}

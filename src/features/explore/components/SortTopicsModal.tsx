@@ -1,15 +1,9 @@
 import { Check } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Modal } from '@/components/ui'
+import { TopicIcon } from '@/features/feed/components/TopicIcon'
 import { useSearchTopics } from '@/features/feed/hooks/queries'
-import type { SearchTopicTone } from '@/features/feed/types'
 import { cn } from '@/lib/cn'
-
-const TONES: Record<SearchTopicTone, string> = {
-  green: 'bg-brand-green-tint',
-  blue: 'bg-info-tint',
-  orange: 'bg-brand-orange-tint',
-}
 
 interface SortTopicsModalProps {
   open: boolean
@@ -29,22 +23,18 @@ export function SortTopicsModal({ open, selected, onApply, onClose }: SortTopics
   return (
     <Modal open={open} onClose={onClose} title="Sort based on topics" gap="md" className="[&_h2]:text-body-l">
       <ul className="-mt-2 flex flex-col gap-2">
-        {topics.data?.map((topic) => {
-          const checked = draft.includes(topic.id)
+        {topics.data?.map((topic, index) => {
+          const checked = draft.includes(topic.slug)
           return (
             <li key={topic.id}>
               <button
                 type="button"
                 role="checkbox"
                 aria-checked={checked}
-                onClick={() => toggle(topic.id)}
+                onClick={() => toggle(topic.slug)}
                 className="flex w-full items-center gap-[7px] border-b border-surface py-2.5 text-left last:border-b-0"
               >
-                <span
-                  className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', TONES[topic.tone])}
-                >
-                  <img src={topic.iconUrl} alt="" className="size-[22px]" />
-                </span>
+                <TopicIcon slug={topic.slug} index={index} />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-body-s font-semibold text-fg">{topic.name}</span>
                   <span className="text-caption text-fg-muted">{topic.description}</span>

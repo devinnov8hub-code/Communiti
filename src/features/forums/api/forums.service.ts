@@ -4,8 +4,7 @@ import member1 from '@/assets/mock/member-1.webp'
 import member2 from '@/assets/mock/member-2.webp'
 import member3 from '@/assets/mock/member-3.webp'
 import member4 from '@/assets/mock/member-4.webp'
-import { feedApi } from '@/features/feed/api/feed.service'
-import type { Post } from '@/features/feed/types'
+import { postsApi, type Post } from '@/lib/api'
 import { ApiError } from '@/lib/api/errors'
 import { apiRequest, USE_MOCK_API } from '@/lib/api/legacy'
 import type { Forum, ForumPostSort, ForumsTab, NewForum } from '../types'
@@ -153,8 +152,9 @@ const mockForumsApi: ForumsApi = {
     return update(id, { muted })
   },
   async getForumPosts(_id, sort) {
-    const posts = await feedApi.getFeed('for-you')
-    if (sort === 'popular') return [...posts].sort((a, b) => b.likes - a.likes)
+    // These sample forums don't exist on the backend, so they show the home feed.
+    const { data: posts } = await postsApi.getFeed({ tab: 'for-you' })
+    if (sort === 'popular') return [...posts].sort((a, b) => b.likeCount - a.likeCount)
     if (sort === 'my-posts') return posts.filter((post) => post.isMine)
     if (sort === 'my-replies') return []
     return posts

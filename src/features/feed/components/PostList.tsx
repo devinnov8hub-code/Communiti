@@ -1,6 +1,6 @@
 import { Button, EmptyState } from '@/components/ui'
+import type { Post } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
-import type { Post } from '../types'
 import { PostCard } from './PostCard'
 
 interface PostListProps {

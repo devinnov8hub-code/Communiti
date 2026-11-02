@@ -2,16 +2,9 @@ import { CaretRight } from '@phosphor-icons/react'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, SearchField } from '@/components/ui'
-import { cn } from '@/lib/cn'
 import { useSearchTopics } from '../hooks/queries'
-import type { SearchTopicTone } from '../types'
 import { searchUrl } from '../searchUrl'
-
-const TONES: Record<SearchTopicTone, string> = {
-  green: 'bg-brand-green-tint',
-  blue: 'bg-info-tint',
-  orange: 'bg-brand-orange-tint',
-}
+import { TopicIcon } from './TopicIcon'
 
 /** "Search" dialog — keyword search plus browse-by-topic (Figma "search modal"). */
 export function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -49,7 +42,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
           </button>
         </header>
         <ul className="flex flex-col gap-2">
-          {topics.data?.map((topic) => (
+          {topics.data?.map((topic, index) => (
             <li key={topic.id}>
               <button
                 type="button"
@@ -57,14 +50,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                 className="flex w-full items-center justify-between gap-3 border-b border-surface py-2.5 text-left hover:opacity-80"
               >
                 <span className="flex min-w-0 items-center gap-[7px]">
-                  <span
-                    className={cn(
-                      'flex size-8 shrink-0 items-center justify-center rounded-full p-[3px]',
-                      TONES[topic.tone],
-                    )}
-                  >
-                    <img src={topic.iconUrl} alt="" width={22} height={22} className="size-[22px]" />
-                  </span>
+                  <TopicIcon slug={topic.slug} index={index} />
                   <span className="flex min-w-0 flex-col">
                     <span className="text-body-s font-semibold text-fg">{topic.name}</span>
                     <span className="text-caption text-fg-muted">{topic.description}</span>

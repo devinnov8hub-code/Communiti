@@ -128,8 +128,8 @@ function BlockedAccountsModal({ onClose }: { onClose: () => void }) {
               className="flex items-center justify-between gap-3 border-b border-hairline py-2.5 last:border-b-0"
             >
               <span className="flex items-center gap-2.5">
-                <Avatar src={author.avatarUrl} name={author.name} size={40} />
-                <span className="text-body-m text-fg">{author.name}</span>
+                <Avatar src={author.avatarUrl ?? undefined} name={author.fullName} size={40} />
+                <span className="text-body-m text-fg">{author.fullName}</span>
               </span>
               <Button
                 variant="outline"
@@ -138,7 +138,7 @@ function BlockedAccountsModal({ onClose }: { onClose: () => void }) {
                 disabled={unblock.isPending}
                 onClick={() =>
                   unblock.mutate(author.id, {
-                    onSuccess: () => toast(`${author.name} unblocked`),
+                    onSuccess: () => toast(`${author.fullName} unblocked`),
                     onError: (error) => toast(getErrorMessage(error)),
                   })
                 }

@@ -1,4 +1,4 @@
-import { Camera, CaretDown, Image as ImageIcon, Paperclip } from '@phosphor-icons/react'
+import { CameraIcon, CaretDownIcon, Image as ImageIcon, PaperclipIcon } from '@phosphor-icons/react'
 import { useRef, useState, type FormEvent } from 'react'
 import { Avatar, IconButton, Menu, MenuRadioItem, Spinner, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -69,7 +69,7 @@ export function CreatePost() {
                 className="flex items-center gap-2 rounded-full border border-grey-40/60 px-3 py-2 text-caption font-semibold text-brand-orange"
               >
                 {audienceLabel}
-                <CaretDown aria-hidden className="size-3.5" />
+                <CaretDownIcon aria-hidden className="size-3.5" />
               </button>
             }
           >
@@ -106,14 +106,14 @@ export function CreatePost() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6 text-brand-orange">
-          <IconButton label="Add photo" onClick={() => imageInput.current?.click()} className="size-[34px]">
-            <ImageIcon className="size-[34px]" />
+          <IconButton label="Add photo" onClick={() => imageInput.current?.click()} className="w-8 h-6">
+            <ImageIcon className="w-8 h-6" />
           </IconButton>
-          <IconButton label="Attach file" onClick={() => fileInput.current?.click()} className="size-[34px]">
-            <Paperclip className="size-[34px]" />
+          <IconButton label="Attach file" onClick={() => fileInput.current?.click()} className="w-8 h-6">
+            <PaperclipIcon className="w-8 h-6" />
           </IconButton>
-          <IconButton label="Take a photo" onClick={() => cameraInput.current?.click()} className="size-[34px]">
-            <Camera className="size-[34px]" />
+          <IconButton label="Take a photo" onClick={() => cameraInput.current?.click()} className="w-8 h-6">
+            <CameraIcon className="w-8 h-6" />
           </IconButton>
         </div>
         <button

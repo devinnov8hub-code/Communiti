@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { feedApi } from '@/features/feed/api/feed.service'
 import { feedKeys } from '@/features/feed/hooks/queries'
-import { meApi } from '@/lib/api'
+import { meApi, usersApi } from '@/lib/api'
 import { settingsApi } from '../api/settings.service'
 import type { DeleteReason, LanguageCode, VisibilitySettings } from '../types'
 
@@ -35,12 +34,13 @@ export function useUpdateLanguage() {
   })
 }
 
-export const useBlockedUsers = () => useQuery({ queryKey: settingsKeys.blocked, queryFn: feedApi.getBlockedUsers })
+export const useBlockedUsers = () =>
+  useQuery({ queryKey: settingsKeys.blocked, queryFn: () => meApi.listBlockedUsers().then((page) => page.data) })
 
 export function useUnblockUser() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (userId: string) => feedApi.unblockUser(userId),
+    mutationFn: (userId: string) => usersApi.deleteUserBlock(userId),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: settingsKeys.blocked })
       client.invalidateQueries({ queryKey: feedKeys.all })

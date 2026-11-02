@@ -1,13 +1,15 @@
+import { Paperclip } from '@phosphor-icons/react'
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { Avatar, ConfirmDialog, useToast } from '@/components/ui'
+import { getRoleLabel } from '@/features/auth/user'
+import type { Media, Post, UserSummary } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { formatCount, formatPostTimestamp, timeAgo } from '@/lib/format'
 import { useBlockUser, useDeletePost, useHidePost, useToggleFollow, useTogglePostLike } from '../hooks/queries'
 import { useSharePost } from '../hooks/useShare'
-import type { Author, Post } from '../types'
 import { CommentComposer } from './CommentComposer'
 import { EngagementBar } from './EngagementBar'
 import { PostMenu } from './PostMenu'
@@ -62,7 +64,7 @@ export function PostCard({ post, variant = 'feed', children, onRemoved }: PostCa
           )}
           <PostMenu
             post={post}
-            onShare={() => share(post.id, post.content)}
+            onShare={() => share(post.id, post.body)}
             onNotInterested={() =>
               hide.mutate(post.id, {
                 onSuccess: () => {
@@ -75,7 +77,7 @@ export function PostCard({ post, variant = 'feed', children, onRemoved }: PostCa
             onBlock={() =>
               block.mutate(post.author.id, {
                 onSuccess: () => {
-                  toast(`You blocked ${post.author.name}`)
+                  toast(`You blocked ${post.author.fullName}`)
                   onRemoved?.()
                 },
                 onError,
@@ -95,21 +97,22 @@ export function PostCard({ post, variant = 'feed', children, onRemoved }: PostCa
             <PostBody post={post} />
           </Link>
         )}
+        <MediaFiles media={post.media} />
 
         {isDetail && (
           <p className="border-b border-hairline px-[5px] py-2.5 text-body-m whitespace-pre text-fg-muted sm:text-body-l">
             {formatPostTimestamp(post.createdAt)}{' '}
-            <span className="font-semibold text-fg">{formatCount(post.views)}</span> Views
+            <span className="font-semibold text-fg">{formatCount(post.viewCount)}</span> Views
           </p>
         )}
 
         <EngagementBar
           liked={post.likedByMe}
-          likes={post.likes}
-          comments={post.commentsCount}
+          likes={post.likeCount}
+          comments={post.commentCount}
           commentsHref={isDetail ? undefined : postUrl}
           onLike={() => like.mutate({ id: post.id, liked: !post.likedByMe }, { onError })}
-          onShare={() => share(post.id, post.content)}
+          onShare={() => share(post.id, post.body)}
         />
       </div>
 
@@ -142,30 +145,62 @@ export function PostCard({ post, variant = 'feed', children, onRemoved }: PostCa
   )
 }
 
-export function AuthorLine({ author, createdAt }: { author: Author; createdAt: string }) {
+export function AuthorLine({ author, createdAt }: { author: UserSummary; createdAt: string }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <Avatar src={author.avatarUrl} name={author.name} size={58} className="size-12 sm:size-[58px]" />
+      <Avatar src={author.avatarUrl ?? undefined} name={author.fullName} size={58} className="size-12 sm:size-[58px]" />
       <div className="flex min-w-0 flex-col gap-2">
         <p className="flex flex-wrap items-baseline gap-x-[26px] gap-y-1 text-body-m sm:text-body-l">
-          <span className="truncate text-fg">{author.name}</span>
+          <span className="truncate text-fg">{author.fullName}</span>
           <time dateTime={createdAt} className="text-fg-muted">
             {timeAgo(createdAt)}
           </time>
         </p>
-        <p className="text-body-s text-brand-orange sm:text-body-m">{author.role}</p>
+        <p className="text-body-s text-brand-orange sm:text-body-m">
+          {getRoleLabel({ role: author.memberRole ?? undefined })}
+        </p>
       </div>
     </div>
   )
 }
 
-function PostBody({ post }: { post: Pick<Post, 'content' | 'imageUrl'> }) {
+function PostBody({ post }: { post: Pick<Post, 'body' | 'media'> }) {
   return (
     <>
-      {post.content && (
-        <p className="text-body-m break-words whitespace-pre-line text-fg sm:text-body-l">{post.content}</p>
-      )}
-      {post.imageUrl && <img src={post.imageUrl} alt="" loading="lazy" className="h-[239px] w-full object-cover" />}
+      {post.body && <p className="text-body-m break-words whitespace-pre-line text-fg sm:text-body-l">{post.body}</p>}
+      <MediaImages media={post.media} />
     </>
+  )
+}
+
+export function MediaImages({ media }: { media: Media[] }) {
+  return media.map(
+    (item) =>
+      item.kind === 'image' &&
+      item.url && <img key={item.id} src={item.url} alt="" loading="lazy" className="h-[239px] w-full object-cover" />,
+  )
+}
+
+/** Documents and other non-image attachments, as links. */
+export function MediaFiles({ media }: { media: Media[] }) {
+  const files = media.filter((item) => item.kind !== 'image' && item.url)
+  if (files.length === 0) return null
+
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {files.map((file) => (
+        <li key={file.id}>
+          <a
+            href={file.url ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 rounded-full bg-brand-orange-tint px-3 py-1 text-caption text-brand-orange hover:underline"
+          >
+            <Paperclip aria-hidden className="size-3.5" />
+            <span className="max-w-[180px] truncate">{file.originalName ?? 'Attachment'}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
   )
 }
