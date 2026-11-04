@@ -8,6 +8,7 @@ import {
   uploadFile,
   usersApi,
   type Comment,
+  type CreateReportBody,
   type Post,
   type PresignUploadBody,
 } from '@/lib/api'
@@ -117,7 +118,7 @@ function removeCachedPosts(client: QueryClient, predicate: (post: Post) => boole
 }
 
 /** Files are uploaded first; posts and comments only carry the resulting ids. */
-const uploadAttachments = async (files: File[], purpose: PresignUploadBody['purpose']) => {
+export const uploadAttachments = async (files: File[], purpose: PresignUploadBody['purpose']) => {
   const uploaded = await Promise.all(files.map((file) => uploadFile(file, purpose)))
   return uploaded.map((file) => file.mediaId)
 }
@@ -125,8 +126,13 @@ const uploadAttachments = async (files: File[], purpose: PresignUploadBody['purp
 export function useCreatePost() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ content, audience, attachments }: NewPost) =>
-      postsApi.createPost({ body: content, audience, mediaIds: await uploadAttachments(attachments, 'post') }),
+    mutationFn: async ({ content, audience, attachments, forumId }: NewPost) =>
+      postsApi.createPost({
+        body: content,
+        audience: forumId ? 'forum' : audience,
+        forumId,
+        mediaIds: await uploadAttachments(attachments, 'post'),
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: feedKeys.posts() }),
   })
 }
@@ -191,12 +197,13 @@ export function useBlockUser() {
   })
 }
 
-export const useReportPost = () =>
+/** Report a post, user, project… */
+export const useReport = (targetType: CreateReportBody['targetType']) =>
   useMutation({
     // The dialog allows several reasons but a report carries one; the rest go in `details`.
     mutationFn: ({ id, reasons: [reason, ...others] }: { id: string; reasons: ReportReason[] }) =>
       reportsApi.createReport({
-        targetType: 'post',
+        targetType,
         targetId: id,
         reason: REPORT_REASON_VALUES[reason],
         details: others.length > 0 ? `Also reported as: ${others.join(', ')}` : undefined,

@@ -10,7 +10,7 @@ import { getDisplayName, getRoleLabel } from '@/features/auth/user'
 import { SignOutDialog } from '@/features/settings/components/SignOutDialog'
 import { cn } from '@/lib/cn'
 import { NAV_ITEMS } from './navigation'
-import { NotificationBadge } from './NotificationBadge'
+import { NavBadge } from './NotificationBadge'
 
 interface SidebarProps {
   /** Icon-only rail (tablet). The toggle expands the full drawer. */
@@ -68,7 +68,10 @@ export function Sidebar({ collapsed = false, onToggle, className }: SidebarProps
                   <Icon aria-hidden className="size-7 shrink-0" />
                   {!collapsed && label}
                   {badgeKey && (
-                    <NotificationBadge className={cn(collapsed && 'absolute top-0 right-0 size-4 text-[10px]')} />
+                    <NavBadge
+                      kind={badgeKey}
+                      className={cn(collapsed && 'absolute top-0 right-0 size-4 text-[10px]')}
+                    />
                   )}
                 </NavLink>
               </li>

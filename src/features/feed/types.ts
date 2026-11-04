@@ -10,6 +10,8 @@ export interface NewPost {
   content: string
   audience: Audience
   attachments: File[]
+  /** Posting inside a forum: only its members see it. */
+  forumId?: string
 }
 
 export interface NewComment {

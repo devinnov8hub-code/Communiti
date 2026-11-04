@@ -1,40 +1,13 @@
-export type ConversationKind = 'direct' | 'project'
+import type { ListConversationsQuery } from '@/lib/api'
 
-export interface Conversation {
-  id: string
-  kind: ConversationKind
-  title: string
-  avatarUrl?: string
-  /** Last message preview. */
-  preview: string
-  updatedAt: string
-  unread: number
-  /** "Online" for people, "12 members" for projects. */
-  status: string
-  /** Profile summary shown at the top of the conversation. */
-  followers: number
-  collaborations: number
-  /** Profile or project page for "View Profile". */
-  profileHref: string
-}
-
-export interface ChatMessage {
-  id: string
-  conversationId: string
-  senderName: string
-  fromMe: boolean
-  text: string
-  attachments?: { name: string; url: string; isImage: boolean }[]
-  sentAt: string
-}
-
-export interface CollaborationRequest {
-  id: string
-  fromName: string
-  avatarUrl?: string
-  message: string
-  projectTitle: string
-  createdAt: string
-}
+/** "Messages" shows every chat (people and projects); "Projects" only project chats. */
+export type ChatsTab = Extract<NonNullable<ListConversationsQuery['filter']>, 'all' | 'project'>
 
 export type ChatListView = 'messages' | 'requests'
+
+export interface NewMessage {
+  text: string
+  attachments: File[]
+  /** A recorded voice note, sent on its own. */
+  voice?: { file: File; durationSeconds: number }
+}

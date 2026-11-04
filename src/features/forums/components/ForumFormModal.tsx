@@ -6,29 +6,34 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { paths } from '@/app/paths'
 import { Button, FieldError, Modal, SelectField, TextField, useToast } from '@/components/ui'
-import { INTEREST_TOPICS } from '@/features/auth/constants'
+import { useSearchTopics } from '@/features/feed/hooks/queries'
 import { getErrorMessage } from '@/lib/api/errors'
 import { controlBoxClass } from '@/components/ui/controlStyles'
 import { cn } from '@/lib/cn'
-import { useCreateForum } from '../hooks/queries'
+import type { Forum } from '@/lib/api'
+import { useCreateForum, useUpdateForum } from '../hooks/queries'
 
 const MAX_TOPICS = 5
-const TOPIC_OPTIONS = INTEREST_TOPICS.map((topic) => ({ value: topic, label: topic }))
 
 const schema = z.object({
-  name: z.string().trim().min(3, 'Give your forum a name').max(60),
-  topics: z.array(z.string()).min(1, 'Pick at least one topic').max(MAX_TOPICS),
+  name: z.string().trim().min(3, 'Give your forum a name').max(80),
+  topicIds: z.array(z.string()).min(1, 'Pick at least one topic').max(MAX_TOPICS),
   about: z.string().trim().min(20, 'Tell people what this forum is about (20+ characters)').max(1000),
 })
 type Values = z.infer<typeof schema>
 
-/** "Create new Forum" sheet. */
-export function CreateForumModal({ onClose }: { onClose: () => void }) {
+/** "Create new Forum" sheet; with `forum` it edits that forum instead (owner, moderator). */
+export function ForumFormModal({ forum, onClose }: { forum?: Forum; onClose: () => void }) {
   const navigate = useNavigate()
   const toast = useToast()
   const create = useCreateForum()
+  const update = useUpdateForum()
+  const saving = create.isPending || update.isPending
+  const topics = useSearchTopics()
+  const topicName = (id: string) => topics.data?.find((topic) => topic.id === id)?.name ?? ''
   const [header, setHeader] = useState<File>()
   const [preview, setPreview] = useState<string>()
+  const shownHeader = preview ?? forum?.coverUrl ?? undefined
   const fileInput = useRef<HTMLInputElement>(null)
   useEffect(() => () => (preview ? URL.revokeObjectURL(preview) : undefined), [preview])
 
@@ -37,36 +42,53 @@ export function CreateForumModal({ onClose }: { onClose: () => void }) {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { name: '', topics: [], about: '' } })
+  } = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: forum
+      ? { name: forum.name, topicIds: forum.topics.map((topic) => topic.id), about: forum.about }
+      : { name: '', topicIds: [], about: '' },
+  })
 
+  const onError = (error: unknown) => toast(getErrorMessage(error))
   const submit = handleSubmit((values) =>
-    create.mutate(
-      { ...values, header },
-      {
-        onSuccess: (forum) => {
-          toast('Forum created')
-          onClose()
-          navigate(paths.forum(forum.id))
-        },
-        onError: (error) => toast(getErrorMessage(error)),
-      },
-    ),
+    forum
+      ? update.mutate(
+          { id: forum.id, ...values, header },
+          {
+            onSuccess: () => {
+              toast('Forum updated')
+              onClose()
+            },
+            onError,
+          },
+        )
+      : create.mutate(
+          { ...values, header },
+          {
+            onSuccess: (created) => {
+              toast('Forum created')
+              onClose()
+              navigate(paths.forum(created.id))
+            },
+            onError,
+          },
+        ),
   )
 
   return (
     <Modal
       open
       onClose={onClose}
-      title="Create new Forum"
+      title={forum ? 'Edit Forum' : 'Create new Forum'}
       divided
       footer={
         <Button
           type="submit"
           form="create-forum"
-          loading={create.isPending}
+          loading={saving}
           className="h-[54px] rounded-full bg-brand-orange font-normal"
         >
-          Create Forum
+          {forum ? 'Save Changes' : 'Create Forum'}
         </Button>
       }
     >
@@ -76,8 +98,8 @@ export function CreateForumModal({ onClose }: { onClose: () => void }) {
           onClick={() => fileInput.current?.click()}
           className="relative flex h-[144px] w-full items-center justify-center overflow-hidden rounded-control border border-dashed border-brand-orange bg-brand-orange-tint"
         >
-          {preview ? (
-            <img src={preview} alt="Forum header preview" className="absolute inset-0 size-full object-cover" />
+          {shownHeader ? (
+            <img src={shownHeader} alt="Forum header preview" className="absolute inset-0 size-full object-cover" />
           ) : (
             <span className="flex flex-col items-center gap-[7px] text-body-m text-brand-orange">
               <CloudArrowUp aria-hidden className="size-8" />
@@ -108,22 +130,22 @@ export function CreateForumModal({ onClose }: { onClose: () => void }) {
 
         <Controller
           control={control}
-          name="topics"
+          name="topicIds"
           render={({ field }) => (
             <div className="flex flex-col gap-2">
               <p className="text-body-m font-semibold text-fg">Focus Topics (Select up to {MAX_TOPICS})</p>
               {field.value.length > 0 && (
                 <ul className="flex flex-wrap gap-3 px-5 py-2.5">
-                  {field.value.map((topic) => (
-                    <li key={topic}>
+                  {field.value.map((id) => (
+                    <li key={id}>
                       <button
                         type="button"
-                        aria-label={`Remove ${topic}`}
-                        onClick={() => field.onChange(field.value.filter((item) => item !== topic))}
+                        aria-label={`Remove ${topicName(id)}`}
+                        onClick={() => field.onChange(field.value.filter((item) => item !== id))}
                         className="flex items-center gap-1.5 rounded-full bg-brand-orange p-2 text-body-m text-white"
                       >
                         <X aria-hidden className="size-3.5" />
-                        {topic}
+                        {topicName(id)}
                       </button>
                     </li>
                   ))}
@@ -133,14 +155,16 @@ export function CreateForumModal({ onClose }: { onClose: () => void }) {
                 label="Add a focus topic"
                 className="[&>label]:sr-only"
                 placeholder="e.g Sustainability"
-                options={TOPIC_OPTIONS.filter((option) => !field.value.includes(option.value))}
+                options={(topics.data ?? [])
+                  .filter((topic) => !field.value.includes(topic.id))
+                  .map((topic) => ({ value: topic.id, label: topic.name }))}
                 value=""
                 disabled={field.value.length >= MAX_TOPICS}
                 onChange={(event) => {
                   if (event.target.value) field.onChange([...field.value, event.target.value])
                 }}
               />
-              {errors.topics?.message && <FieldError>{errors.topics.message}</FieldError>}
+              {errors.topicIds?.message && <FieldError>{errors.topicIds.message}</FieldError>}
             </div>
           )}
         />

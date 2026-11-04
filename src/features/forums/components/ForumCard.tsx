@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { Tag } from '@/components/ui'
-import { createdLabel } from '../format'
-import type { Forum } from '../types'
+import type { Forum } from '@/lib/api'
+import { createdLabel, topicTone } from '../format'
 
 /** Forum summary card (Figma "Forum card web"). */
 export function ForumCard({ forum }: { forum: Forum }) {
@@ -24,15 +24,15 @@ export function ForumCard({ forum }: { forum: Forum }) {
           <p className="text-body-s text-fg-muted">{createdLabel(forum.createdAt)}</p>
         </div>
         <ul className="flex flex-wrap gap-x-[17px] gap-y-2">
-          {forum.topics.map((topic) => (
-            <li key={topic.label}>
-              <Tag tone={topic.tone} className="text-caption">
-                {topic.label}
+          {forum.topics.map((topic, index) => (
+            <li key={topic.id}>
+              <Tag tone={topicTone(index)} className="text-caption">
+                {topic.name}
               </Tag>
             </li>
           ))}
         </ul>
-        <p className="text-body-m text-fg">{forum.description}</p>
+        <p className="text-body-m text-fg">{forum.about}</p>
       </div>
     </Link>
   )

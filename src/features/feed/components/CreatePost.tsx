@@ -4,6 +4,7 @@ import { Avatar, IconButton, Menu, MenuRadioItem, Spinner, useToast } from '@/co
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getDisplayName } from '@/features/auth/user'
 import { getErrorMessage } from '@/lib/api/errors'
+import { cn } from '@/lib/cn'
 import { useCreatePost } from '../hooks/queries'
 import type { Audience } from '../types'
 import { AttachmentList } from './CommentComposer'
@@ -16,8 +17,14 @@ const AUDIENCES: { value: Audience; label: string }[] = [
 
 const MAX_LENGTH = 3000
 
+interface CreatePostProps {
+  /** Post inside this forum (Figma "create a post" sheet): no audience choice, sized for a modal. */
+  forumId?: string
+  onPosted?: () => void
+}
+
 /** "Write Something..." composer at the top of the feed (Figma "create post"). */
-export function CreatePost() {
+export function CreatePost({ forumId, onPosted }: CreatePostProps = {}) {
   const { user } = useAuth()
   const toast = useToast()
   const createPost = useCreatePost()
@@ -34,12 +41,13 @@ export function CreatePost() {
     event.preventDefault()
     if (!canPost) return
     createPost.mutate(
-      { content: content.trim(), audience, attachments: files },
+      { content: content.trim(), audience, attachments: files, forumId },
       {
         onSuccess: () => {
           setContent('')
           setFiles([])
           toast('Your post is live')
+          onPosted?.()
         },
         onError: (error) => toast(getErrorMessage(error)),
       },
@@ -53,41 +61,46 @@ export function CreatePost() {
     <form
       onSubmit={submit}
       aria-label="Create a post"
-      className="flex flex-col gap-gap-md border-b border-hairline bg-background px-4 py-2.5 sm:px-5"
+      className={cn(
+        'flex flex-col gap-gap-md',
+        !forumId && 'border-b border-hairline bg-background px-4 py-2.5 sm:px-5',
+      )}
     >
       <div className="flex items-start gap-4 sm:gap-5">
         {user && (
           <Avatar src={user.avatarUrl} name={getDisplayName(user)} size={58} className="size-12 sm:size-[58px]" />
         )}
         <div className="flex min-w-0 flex-1 flex-col items-start gap-3">
-          <Menu
-            align="start"
-            trigger={
-              <button
-                type="button"
-                aria-label={`Audience: ${audienceLabel}`}
-                className="flex items-center gap-2 rounded-full border border-grey-40/60 px-3 py-2 text-caption font-semibold text-brand-orange"
-              >
-                {audienceLabel}
-                <CaretDownIcon aria-hidden className="size-3.5" />
-              </button>
-            }
-          >
-            {(close) =>
-              AUDIENCES.map((item) => (
-                <MenuRadioItem
-                  key={item.value}
-                  checked={item.value === audience}
-                  onSelect={() => {
-                    setAudience(item.value)
-                    close()
-                  }}
+          {!forumId && (
+            <Menu
+              align="start"
+              trigger={
+                <button
+                  type="button"
+                  aria-label={`Audience: ${audienceLabel}`}
+                  className="flex items-center gap-2 rounded-full border border-grey-40/60 px-3 py-2 text-caption font-semibold text-brand-orange"
                 >
-                  {item.label}
-                </MenuRadioItem>
-              ))
-            }
-          </Menu>
+                  {audienceLabel}
+                  <CaretDownIcon aria-hidden className="size-3.5" />
+                </button>
+              }
+            >
+              {(close) =>
+                AUDIENCES.map((item) => (
+                  <MenuRadioItem
+                    key={item.value}
+                    checked={item.value === audience}
+                    onSelect={() => {
+                      setAudience(item.value)
+                      close()
+                    }}
+                  >
+                    {item.label}
+                  </MenuRadioItem>
+                ))
+              }
+            </Menu>
+          )}
           <textarea
             value={content}
             onChange={(event) => setContent(event.target.value)}
@@ -95,7 +108,12 @@ export function CreatePost() {
             aria-label="Write something"
             maxLength={MAX_LENGTH}
             rows={1}
-            className="field-sizing-content max-h-72 min-h-[26px] w-full resize-none bg-transparent text-body-m text-fg outline-none placeholder:text-fg-muted sm:text-body-l"
+            autoFocus={Boolean(forumId)}
+            className={cn(
+              'field-sizing-content max-h-72 w-full resize-none',
+              forumId ? 'mt-[17px] min-h-[200px]' : 'min-h-[26px]',
+              'bg-transparent text-body-m text-fg outline-none placeholder:text-fg-muted sm:text-body-l',
+            )}
           />
         </div>
       </div>
@@ -106,14 +124,14 @@ export function CreatePost() {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6 text-brand-orange">
-          <IconButton label="Add photo" onClick={() => imageInput.current?.click()} className="w-8 h-6">
-            <ImageIcon className="w-8 h-6" />
+          <IconButton label="Add photo" onClick={() => imageInput.current?.click()} className="h-6 w-8">
+            <ImageIcon className="h-6 w-8" />
           </IconButton>
-          <IconButton label="Attach file" onClick={() => fileInput.current?.click()} className="w-8 h-6">
-            <PaperclipIcon className="w-8 h-6" />
+          <IconButton label="Attach file" onClick={() => fileInput.current?.click()} className="h-6 w-8">
+            <PaperclipIcon className="h-6 w-8" />
           </IconButton>
-          <IconButton label="Take a photo" onClick={() => cameraInput.current?.click()} className="w-8 h-6">
-            <CameraIcon className="w-8 h-6" />
+          <IconButton label="Take a photo" onClick={() => cameraInput.current?.click()} className="h-6 w-8">
+            <CameraIcon className="h-6 w-8" />
           </IconButton>
         </div>
         <button

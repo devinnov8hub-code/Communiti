@@ -26,6 +26,8 @@ export const paths = {
   prototype: (id = ':projectId', prototypeId = ':prototypeId') => `/projects/${id}/prototype/${prototypeId}`,
   chats: '/chats',
   chat: (id = ':conversationId') => `/chats/${id}`,
+  /** A collaboration request opened in the chats right panel. */
+  chatRequest: (id = ':requestId') => `/chats/requests/${id}`,
   forums: '/forums',
   forum: (id = ':forumId') => `/forums/${id}`,
   explore: '/explore',
@@ -34,6 +36,8 @@ export const paths = {
   events: '/events',
   event: (id = ':eventId') => `/events/${id}`,
   profile: '/profile',
+  /** Someone else's profile. */
+  person: (id = ':userId') => `/people/${id}`,
   notifications: '/notifications',
   settings: '/settings',
   settingsSection: (section = ':section') => `/settings/${section}`,

@@ -1,34 +1,57 @@
-import { FadersHorizontal, GearSix, SignOut } from '@phosphor-icons/react'
+import { Plus, TrendDown } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
 import { BackHeader } from '@/components/layout/BackHeader'
-import { AvatarStack, EmptyState, IconButton, Menu, MenuRadioItem, Spinner, Tag, useToast } from '@/components/ui'
+import {
+  AvatarStack,
+  ConfirmDialog,
+  EmptyState,
+  Menu,
+  MenuRadioItem,
+  Modal,
+  Spinner,
+  Tag,
+  useToast,
+} from '@/components/ui'
+import { CreatePost } from '@/features/feed/components/CreatePost'
 import { PostList } from '@/features/feed/components/PostList'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { getErrorMessage } from '@/lib/api/errors'
 import { formatPostTimestamp } from '@/lib/format'
-import { useForum, useForumMembership, useForumPosts, useMuteForum } from '../hooks/queries'
+import { ForumFormModal } from '../components/ForumFormModal'
+import { ForumMembersModal } from '../components/ForumMembersModal'
+import { ForumSettingsMenu } from '../components/ForumSettingsMenu'
+import { topicTone } from '../format'
+import { useDeleteForum, useForum, useForumPosts, useJoinForum } from '../hooks/queries'
 import type { ForumPostSort } from '../types'
 
 const SORTS: { value: ForumPostSort; label: string }[] = [
   { value: 'latest', label: 'Latest' },
   { value: 'popular', label: 'Popular' },
-  { value: 'my-posts', label: 'My posts' },
-  { value: 'my-replies', label: 'My replies' },
+  { value: 'mine', label: 'My posts' },
+  { value: 'my_replies', label: 'My replies' },
 ]
 
-/** Single forum (Figma "Forumns view"). */
+type Sheet = 'post' | 'edit' | 'members' | 'delete' | null
+
+const fabClass =
+  'pointer-events-auto flex items-center justify-center rounded-full bg-brand-orange text-white shadow-popover transition hover:brightness-95 disabled:opacity-70'
+
+/** Single forum (Figma "Forumns view" / "Forumn view after joining"). */
 export function ForumPage() {
   const { forumId = '' } = useParams()
+  const navigate = useNavigate()
   const forum = useForum(forumId)
-  const membership = useForumMembership()
-  const mute = useMuteForum()
+  const join = useJoinForum()
+  const remove = useDeleteForum()
   const [sort, setSort] = useState<ForumPostSort>('latest')
-  const posts = useForumPosts(forumId, sort, Boolean(forum.data?.joined))
+  const [sheet, setSheet] = useState<Sheet>(null)
+  const posts = useForumPosts(forumId, sort, Boolean(forum.data?.isMember))
   const toast = useToast()
   const onError = (error: unknown) => toast(getErrorMessage(error))
+  const close = () => setSheet(null)
 
   const created = forum.data ? formatPostTimestamp(forum.data.createdAt).split('  ')[0] : ''
 
@@ -38,55 +61,8 @@ export function ForumPage() {
         title="Forum"
         fallback={paths.forums}
         actions={
-          forum.data?.joined && (
-            <Menu
-              className="w-[min(350px,calc(100vw-32px))] rounded-search"
-              trigger={
-                <IconButton label="Forum settings" className="size-10 bg-fg/5 p-2 hover:bg-fg/10">
-                  <GearSix className="size-6 text-fg" />
-                </IconButton>
-              }
-            >
-              {(close) => (
-                <>
-                  <MenuRadioItem
-                    checked={forum.data.muted}
-                    onSelect={() =>
-                      mute.mutate(
-                        { id: forumId, muted: !forum.data.muted },
-                        {
-                          onSuccess: (updated) =>
-                            toast(updated.muted ? 'Notifications muted' : 'Notifications unmuted'),
-                          onError,
-                        },
-                      )
-                    }
-                  >
-                    <span className="text-body-s font-semibold text-fg-muted">Mute notifications &amp; messages</span>
-                  </MenuRadioItem>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      close()
-                      membership.mutate(
-                        { id: forumId, joined: false },
-                        { onSuccess: () => toast('You left the forum'), onError },
-                      )
-                    }}
-                    className="mt-4 flex w-full items-center justify-between gap-3 bg-surface px-1 py-2.5 text-left hover:opacity-80"
-                  >
-                    <span className="flex flex-col">
-                      <span className="text-body-s font-semibold text-error">Leave Forum</span>
-                      <span className="text-caption text-fg-muted">
-                        leave this forum, all your messages would remain
-                      </span>
-                    </span>
-                    <SignOut aria-hidden className="size-[18px] shrink-0 text-error" />
-                  </button>
-                </>
-              )}
-            </Menu>
+          forum.data?.isMember && (
+            <ForumSettingsMenu forum={forum.data} onEdit={() => setSheet('edit')} onDelete={() => setSheet('delete')} />
           )
         }
       />
@@ -99,71 +75,81 @@ export function ForumPage() {
         <div className="flex flex-1 flex-col items-center gap-gap-md pb-28">
           <section className="flex w-full flex-col border-b border-hairline">
             <div className="h-[137px] w-full bg-grey-30">
-              {(forum.data.headerUrl ?? forum.data.coverUrl) && (
-                <img src={forum.data.headerUrl ?? forum.data.coverUrl} alt="" className="size-full object-cover" />
-              )}
+              {forum.data.coverUrl && <img src={forum.data.coverUrl} alt="" className="size-full object-cover" />}
             </div>
             <div className="flex flex-col gap-2.5 px-5 py-2.5">
               <h1 className="text-h4 font-semibold text-fg">{forum.data.name}</h1>
-              <div className="flex items-center gap-1.5">
-                <AvatarStack people={forum.data.members} />
-                <span className="text-body-s text-fg-subtle">{forum.data.membersCount} members</span>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSheet('members')}
+                  className="flex items-center gap-1.5 hover:opacity-80"
+                >
+                  <AvatarStack
+                    people={forum.data.memberAvatars.map((member) => ({
+                      id: member.id,
+                      name: member.fullName,
+                      avatarUrl: member.avatarUrl ?? undefined,
+                    }))}
+                  />
+                  <span className="text-body-s text-fg-subtle">{forum.data.memberCount} members</span>
+                </button>
+                {forum.data.isMember && (
+                  <Menu
+                    title="Sort posts by"
+                    className="rounded-search [&>p]:text-fg"
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 rounded-full bg-background p-2 text-caption text-fg hover:bg-fg/5"
+                      >
+                        <TrendDown aria-hidden className="size-3.5" />
+                        {SORTS.find((item) => item.value === sort)?.label}
+                      </button>
+                    }
+                  >
+                    {(closeMenu) =>
+                      SORTS.map((item) => (
+                        <MenuRadioItem
+                          key={item.value}
+                          checked={item.value === sort}
+                          onSelect={() => {
+                            setSort(item.value)
+                            closeMenu()
+                          }}
+                        >
+                          {item.label}
+                        </MenuRadioItem>
+                      ))
+                    }
+                  </Menu>
+                )}
               </div>
               <div className="flex flex-col gap-2">
                 <p className="text-body-m font-semibold text-fg">Focus:</p>
                 <ul className="flex flex-wrap gap-2.5">
-                  {forum.data.topics.map((topic) => (
-                    <li key={topic.label}>
-                      <Tag tone={topic.tone} className="text-body-s">
-                        {topic.label}
+                  {forum.data.topics.map((topic, index) => (
+                    <li key={topic.id}>
+                      <Tag tone={topicTone(index)} className="text-body-s">
+                        {topic.name}
                       </Tag>
                     </li>
                   ))}
                 </ul>
               </div>
               <p className="text-body-m font-semibold text-fg">About:</p>
-              <p className="text-body-m text-fg">{forum.data.description}</p>
+              <p className="text-body-m text-fg">{forum.data.about}</p>
             </div>
           </section>
 
-          {forum.data.joined ? (
-            <section className="flex w-full flex-col gap-2" aria-label="Forum posts">
-              <div className="flex justify-end px-5">
-                <Menu
-                  title="Sort posts by"
-                  className="rounded-search [&>p]:text-fg"
-                  trigger={
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 rounded-[4px] border border-border-default bg-popover px-2.5 py-1.5 text-body-s font-semibold text-fg-muted hover:text-fg"
-                    >
-                      {SORTS.find((item) => item.value === sort)?.label}
-                      <FadersHorizontal aria-hidden className="size-4" />
-                    </button>
-                  }
-                >
-                  {(close) =>
-                    SORTS.map((item) => (
-                      <MenuRadioItem
-                        key={item.value}
-                        checked={item.value === sort}
-                        onSelect={() => {
-                          setSort(item.value)
-                          close()
-                        }}
-                      >
-                        {item.label}
-                      </MenuRadioItem>
-                    ))
-                  }
-                </Menu>
-              </div>
+          {forum.data.isMember ? (
+            <section className="w-full" aria-label="Forum posts">
               <PostList
                 posts={posts.data}
                 isPending={posts.isPending}
                 error={posts.error}
                 onRetry={() => posts.refetch()}
-                empty={{ title: 'Nothing here yet', description: 'Posts in this forum will show up here.' }}
+                empty={{ title: 'Nothing here yet', description: 'Use the + button to start the conversation.' }}
               />
             </section>
           ) : (
@@ -172,22 +158,57 @@ export function ForumPage() {
         </div>
       )}
 
-      {forum.data && !forum.data.joined && (
+      {forum.data && (
         <div className="pointer-events-none sticky bottom-6 flex justify-end px-6">
-          <button
-            type="button"
-            disabled={membership.isPending}
-            onClick={() =>
-              membership.mutate(
-                { id: forumId, joined: true },
-                { onSuccess: () => toast(`Welcome to ${forum.data.name}!`), onError },
-              )
-            }
-            className="pointer-events-auto flex h-20 w-[234px] items-center justify-center rounded-full bg-brand-orange px-[13px] text-h3 font-semibold text-white shadow-popover transition hover:brightness-95 disabled:opacity-70"
-          >
-            {membership.isPending ? <Spinner /> : 'Join Forum'}
-          </button>
+          {forum.data.isMember ? (
+            <button
+              type="button"
+              aria-label="Create a post in this forum"
+              onClick={() => setSheet('post')}
+              className={`${fabClass} size-20`}
+            >
+              <Plus className="size-[34px]" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={join.isPending}
+              onClick={() =>
+                join.mutate(forumId, { onSuccess: () => toast(`Welcome to ${forum.data.name}!`), onError })
+              }
+              className={`${fabClass} h-20 w-[234px] px-[13px] text-h3 font-semibold`}
+            >
+              {join.isPending ? <Spinner /> : 'Join Forum'}
+            </button>
+          )}
         </div>
+      )}
+
+      {forum.data && (
+        <>
+          <Modal open={sheet === 'post'} onClose={close} title="Create Post" gap="sm">
+            {sheet === 'post' && <CreatePost forumId={forumId} onPosted={close} />}
+          </Modal>
+          {sheet === 'edit' && <ForumFormModal forum={forum.data} onClose={close} />}
+          {sheet === 'members' && <ForumMembersModal forum={forum.data} onClose={close} />}
+          <ConfirmDialog
+            open={sheet === 'delete'}
+            title="Delete forum?"
+            message={`${forum.data.name} and all its posts will be permanently removed for everyone.`}
+            confirmLabel="Delete"
+            loading={remove.isPending}
+            onClose={close}
+            onConfirm={() =>
+              remove.mutate(forumId, {
+                onSuccess: () => {
+                  toast('Forum deleted')
+                  navigate(paths.forums, { replace: true })
+                },
+                onError,
+              })
+            }
+          />
+        </>
       )}
     </PageColumns>
   )

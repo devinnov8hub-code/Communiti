@@ -15,13 +15,13 @@ export interface NavItem {
   label: string
   to: string
   icon: Icon
-  badgeKey?: 'notifications'
+  badgeKey?: 'notifications' | 'chats'
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Home', to: paths.home, icon: House },
   { label: 'Projects', to: paths.projects, icon: ProjectorScreenChart },
-  { label: 'Chats', to: paths.chats, icon: ChatsCircle },
+  { label: 'Chats', to: paths.chats, icon: ChatsCircle, badgeKey: 'chats' },
   { label: 'Forums', to: paths.forums, icon: GlobeHemisphereWest },
   { label: 'Explore', to: paths.explore, icon: Compass },
   { label: 'Profile', to: paths.profile, icon: UserCircleDashed },

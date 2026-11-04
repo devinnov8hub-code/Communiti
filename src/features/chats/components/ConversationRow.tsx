@@ -1,18 +1,9 @@
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { Avatar } from '@/components/ui'
+import type { Conversation } from '@/lib/api'
 import { cn } from '@/lib/cn'
-import type { Conversation } from '../types'
-
-/** Short relative time: "20 hrs", "5 mins", "3 days". */
-function shortAgo(iso: string) {
-  const minutes = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
-  if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'}`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'}`
-  const days = Math.round(hours / 24)
-  return `${days} day${days === 1 ? '' : 's'}`
-}
+import { shortAgo } from '../format'
 
 /** One row in the chats list (Figma "message"). */
 export function ConversationRow({ conversation, active }: { conversation: Conversation; active: boolean }) {
@@ -27,24 +18,26 @@ export function ConversationRow({ conversation, active }: { conversation: Conver
         )}
       >
         <span className="flex min-w-0 flex-1 items-center gap-1">
-          <Avatar src={conversation.avatarUrl} name={conversation.title} size={45} />
+          <Avatar src={conversation.avatarUrl ?? undefined} name={conversation.title} size={45} />
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
             <span className="truncate text-body-m text-fg sm:text-body-l">{conversation.title}</span>
             <span className="line-clamp-2 text-body-s text-fg-muted sm:text-body-m">
-              {conversation.preview || 'No messages yet'}
+              {conversation.lastMessagePreview || 'No messages yet'}
             </span>
           </span>
         </span>
         <span className="flex w-[45px] shrink-0 flex-col items-center justify-center gap-[11px]">
-          <time dateTime={conversation.updatedAt} className="text-center text-caption text-fg">
-            {shortAgo(conversation.updatedAt)}
-          </time>
-          {conversation.unread > 0 && (
+          {conversation.lastMessageAt && (
+            <time dateTime={conversation.lastMessageAt} className="text-center text-caption text-fg">
+              {shortAgo(conversation.lastMessageAt)}
+            </time>
+          )}
+          {conversation.unreadCount > 0 && (
             <span
-              aria-label={`${conversation.unread} unread`}
+              aria-label={`${conversation.unreadCount} unread`}
               className="flex size-6 items-center justify-center rounded-full bg-brand-orange text-caption text-white"
             >
-              {conversation.unread}
+              {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
             </span>
           )}
         </span>

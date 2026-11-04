@@ -1,19 +1,21 @@
 import { ArrowDown, ChatsCircle } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
-import { EmptyState, Menu, MenuRadioItem, Tabs } from '@/components/ui'
+import { Button, EmptyState, Menu, MenuRadioItem, Tabs } from '@/components/ui'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { getErrorMessage } from '@/lib/api/errors'
 import { ChatPanel } from '../components/ChatPanel'
 import { ConversationRow } from '../components/ConversationRow'
+import { RequestPanel } from '../components/RequestPanel'
 import { RequestRow } from '../components/RequestRow'
 import { useCollaborationRequests, useConversations } from '../hooks/queries'
-import type { ChatListView, ConversationKind } from '../types'
+import type { ChatListView, ChatsTab } from '../types'
 
 const TABS = [
-  { value: 'direct', label: 'Messages' },
+  { value: 'all', label: 'Messages' },
   { value: 'project', label: 'Projects' },
 ] as const
 
@@ -24,31 +26,42 @@ const VIEW_LABELS: Record<ChatListView, string> = {
 
 /** Chats and project messaging (Figma "Messaging" / "projects chat"). */
 export function ChatsPage() {
-  const { conversationId } = useParams()
+  const { conversationId, requestId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const wide = useMediaQuery('(min-width: 1280px)')
-  const [tab, setTab] = useState<ConversationKind>('direct')
-  const [view, setView] = useState<ChatListView>('messages')
+  const [tab, setTab] = useState<ChatsTab>('all')
+  // Opening (or coming back from) a request keeps the requests list showing.
+  const [view, setView] = useState<ChatListView>(
+    requestId || (location.state as { view?: ChatListView } | null)?.view === 'requests' ? 'requests' : 'messages',
+  )
 
-  const panel = conversationId ? <ChatPanel key={conversationId} conversationId={conversationId} /> : <NoChatSelected />
+  const panel = (onBack?: () => void) =>
+    conversationId ? (
+      <ChatPanel key={conversationId} conversationId={conversationId} onBack={onBack} />
+    ) : requestId ? (
+      <RequestPanel key={requestId} requestId={requestId} onBack={onBack} />
+    ) : (
+      <NoChatSelected />
+    )
 
-  // Below xl there's no right rail: an open conversation takes over the page.
-  if (!wide && conversationId) {
+  // Below xl there's no right rail: an open conversation or request takes over the page.
+  if (!wide && (conversationId || requestId)) {
     return (
-      <main className="h-[calc(100dvh-56px)] md:h-dvh">
-        <ChatPanel key={conversationId} conversationId={conversationId} onBack={() => navigate(paths.chats)} />
+      <main className="h-[calc(100dvh-56px)] overflow-y-auto md:h-dvh">
+        {panel(() => navigate(paths.chats, { state: requestId ? { view: 'requests' } : undefined }))}
       </main>
     )
   }
 
   return (
-    <PageColumns aside={panel} asideClassName="p-0 min-[1440px]:p-0">
+    <PageColumns aside={panel()} asideClassName="p-0 min-[1440px]:p-0">
       <SearchHeader>
         <Tabs label="Chats" items={TABS} value={tab} onChange={setTab} />
       </SearchHeader>
 
       <div className="flex flex-col gap-gap-md px-4 pt-5 pb-2.5 sm:px-5">
-        {tab === 'direct' && (
+        {tab === 'all' && (
           <Menu
             align="start"
             title="Sort by"
@@ -81,26 +94,29 @@ export function ChatsPage() {
           </Menu>
         )}
 
-        {tab === 'direct' && view === 'requests' ? (
-          <RequestList />
+        {tab === 'all' && view === 'requests' ? (
+          <RequestList activeId={requestId} />
         ) : (
-          <ConversationList kind={tab} activeId={conversationId} />
+          <ConversationList tab={tab} activeId={conversationId} />
         )}
       </div>
     </PageColumns>
   )
 }
 
-function ConversationList({ kind, activeId }: { kind: ConversationKind; activeId?: string }) {
-  const conversations = useConversations(kind)
+function ConversationList({ tab, activeId }: { tab: ChatsTab; activeId?: string }) {
+  const conversations = useConversations(tab)
 
   if (conversations.isPending) return <ListSkeleton />
-  if (!conversations.data?.length) {
+  if (conversations.isError) return <LoadError error={conversations.error} onRetry={() => conversations.refetch()} />
+  if (!conversations.data.length) {
     return (
       <EmptyState
-        title={kind === 'project' ? 'No project chats yet' : 'No messages yet'}
+        title={tab === 'project' ? 'No project chats yet' : 'No messages yet'}
         description={
-          kind === 'project' ? 'Join a project to chat with its team.' : 'Start a conversation from someone’s profile.'
+          tab === 'project'
+            ? 'Join a project to chat with its team.'
+            : 'Chats open when you accept a collaboration request or join a project.'
         }
       />
     )
@@ -115,18 +131,38 @@ function ConversationList({ kind, activeId }: { kind: ConversationKind; activeId
   )
 }
 
-function RequestList() {
+function RequestList({ activeId }: { activeId?: string }) {
   const requests = useCollaborationRequests()
   if (requests.isPending) return <ListSkeleton />
-  if (!requests.data?.length) {
-    return <EmptyState title="No collaboration requests" description="Requests to join your projects show up here." />
+  if (requests.isError) return <LoadError error={requests.error} onRetry={() => requests.refetch()} />
+  if (!requests.data.length) {
+    return (
+      <EmptyState
+        title="No collaboration requests"
+        description="When someone asks to collaborate with you, it shows up here."
+      />
+    )
   }
   return (
     <ul className="flex flex-col gap-1">
       {requests.data.map((request) => (
-        <RequestRow key={request.id} request={request} />
+        <RequestRow key={request.id} request={request} active={request.id === activeId} />
       ))}
     </ul>
+  )
+}
+
+function LoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <EmptyState
+      title="Couldn’t load your chats"
+      description={getErrorMessage(error)}
+      action={
+        <Button variant="outline" fullWidth={false} className="h-10 rounded-full text-body-m" onClick={onRetry}>
+          Try again
+        </Button>
+      }
+    />
   )
 }
 

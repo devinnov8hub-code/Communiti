@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { Avatar, ConfirmDialog, useToast } from '@/components/ui'
 import { getRoleLabel } from '@/features/auth/user'
+import { useProfilePath } from '@/features/profile/profilePath'
 import type { Media, Post, UserSummary } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
@@ -13,7 +14,7 @@ import { useSharePost } from '../hooks/useShare'
 import { CommentComposer } from './CommentComposer'
 import { EngagementBar } from './EngagementBar'
 import { PostMenu } from './PostMenu'
-import { ReportPostModal } from './ReportPostModal'
+import { ReportModal } from './ReportModal'
 
 interface PostCardProps {
   post: Post
@@ -119,7 +120,7 @@ export function PostCard({ post, variant = 'feed', children, onRemoved }: PostCa
       {children}
       <CommentComposer postId={post.id} />
 
-      {reporting && <ReportPostModal postId={post.id} onClose={() => setReporting(false)} />}
+      {reporting && <ReportModal target="post" targetId={post.id} onClose={() => setReporting(false)} />}
       {confirmDelete && (
         <ConfirmDialog
           open
@@ -146,12 +147,22 @@ export function PostCard({ post, variant = 'feed', children, onRemoved }: PostCa
 }
 
 export function AuthorLine({ author, createdAt }: { author: UserSummary; createdAt: string }) {
+  const profilePath = useProfilePath()(author.id)
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <Avatar src={author.avatarUrl ?? undefined} name={author.fullName} size={58} className="size-12 sm:size-[58px]" />
+      <Link to={profilePath} tabIndex={-1} aria-hidden className="shrink-0">
+        <Avatar
+          src={author.avatarUrl ?? undefined}
+          name={author.fullName}
+          size={58}
+          className="size-12 sm:size-[58px]"
+        />
+      </Link>
       <div className="flex min-w-0 flex-col gap-2">
         <p className="flex flex-wrap items-baseline gap-x-[26px] gap-y-1 text-body-m sm:text-body-l">
-          <span className="truncate text-fg">{author.fullName}</span>
+          <Link to={profilePath} className="truncate text-fg hover:underline">
+            {author.fullName}
+          </Link>
           <time dateTime={createdAt} className="text-fg-muted">
             {timeAgo(createdAt)}
           </time>

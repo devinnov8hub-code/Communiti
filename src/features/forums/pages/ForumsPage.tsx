@@ -4,7 +4,7 @@ import { PageColumns } from '@/components/layout/AppShell'
 import { EmptyState, Tabs } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
-import { CreateForumModal } from '../components/CreateForumModal'
+import { ForumFormModal } from '../components/ForumFormModal'
 import { ForumCard } from '../components/ForumCard'
 import { useForums } from '../hooks/queries'
 import type { ForumsTab } from '../types'
@@ -55,7 +55,7 @@ export function ForumsPage() {
         </button>
       </div>
 
-      {creating && <CreateForumModal onClose={() => setCreating(false)} />}
+      {creating && <ForumFormModal onClose={() => setCreating(false)} />}
     </PageColumns>
   )
 }

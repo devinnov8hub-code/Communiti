@@ -88,7 +88,7 @@ export const router = createBrowserRouter([
               Component: (await import('@/features/projects/pages/ProjectsPage')).ProjectsPage,
             }),
           },
-          ...[paths.chats, paths.chat()].map((path) => ({
+          ...[paths.chats, paths.chat(), paths.chatRequest()].map((path) => ({
             path,
             lazy: async () => ({ Component: (await import('@/features/chats/pages/ChatsPage')).ChatsPage }),
           })),
@@ -117,6 +117,10 @@ export const router = createBrowserRouter([
           {
             path: paths.profile,
             lazy: async () => ({ Component: (await import('@/features/profile/pages/ProfilePage')).ProfilePage }),
+          },
+          {
+            path: paths.person(),
+            lazy: async () => ({ Component: (await import('@/features/profile/pages/PersonPage')).PersonPage }),
           },
           {
             path: paths.forums,
