@@ -1,0 +1,9 @@
+version: 0.0
+os: linux
+
+# No `files` section: scripts/deploy.sh copies dist/ into place itself.
+hooks:
+  AfterInstall:
+    - location: scripts/deploy.sh
+      timeout: 300
+      runas: root
