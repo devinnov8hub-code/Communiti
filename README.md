@@ -1,4 +1,4 @@
-# CommUniti — Web
+# CommUniti By Innov8— Web
 
 React 19 + TypeScript + Tailwind CSS v4 (Vite), built from the **Innov8** Figma file (WEB page).
 
