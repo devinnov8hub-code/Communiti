@@ -26,7 +26,7 @@ function eventStats(stats: AdminGetEventStatsResponse): StatCardData[] {
   ]
 }
 
-/** Events dashboard (Figma "EVENTS PAGE"). */
+/** Events dashboard ("EVENTS PAGE"). */
 export function EventsPage() {
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
