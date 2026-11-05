@@ -137,7 +137,7 @@ function EventRow({ title, events }: { title: string; events: CommunityEvent[] }
   )
 }
 
-/** Event detail with the upcoming list beside it (Figma "Event view"). */
+/** Event detail with the upcoming list beside it ("Event view"). */
 export function EventDetailPage() {
   const { eventId = '' } = useParams()
   const event = useAdminEvent(eventId)
