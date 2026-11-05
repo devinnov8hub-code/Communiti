@@ -6,7 +6,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import logoMark from '@/assets/brand/logo-mark.svg'
 import { adminPaths } from '../paths'
-import { Button, TextField, useToast } from '@/components/ui'
+import { Button, PasswordField, TextField, useToast } from '@/components/ui'
 import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { FormAlert } from '@/features/auth/components/FormAlert'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
@@ -87,9 +87,8 @@ export function AdminLoginPage() {
           error={errors.email?.message}
           {...register('email')}
         />
-        <TextField
+        <PasswordField
           label="Password"
-          type="password"
           autoComplete="current-password"
           placeholder="Enter password"
           error={errors.password?.message}
@@ -248,17 +247,15 @@ export function AdminNewPasswordPage() {
     <Screen>
       <Heading accent="Change" rest="Password" description="Choose a new password for this admin account." />
       <form noValidate onSubmit={handleSubmit(submit.run)} className="flex flex-col gap-3">
-        <TextField
+        <PasswordField
           label="New Password"
-          type="password"
           autoComplete="new-password"
           placeholder="Enter new password"
           error={errors.password?.message}
           {...register('password')}
         />
-        <TextField
+        <PasswordField
           label="Confirm Password"
-          type="password"
           autoComplete="new-password"
           placeholder="Enter password again"
           error={errors.confirm?.message}

@@ -139,6 +139,17 @@
       stroke-dashoffset: 0;
     }
   }
+  /* Auth hero slideshow: each photo slowly zooms in, lasting through the crossfade (6s shown + 1s fade). */
+  --animate-hero-zoom: hero-zoom 7s ease-out both;
+
+  @keyframes hero-zoom {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.12);
+    }
+  }
   @keyframes tick-ring {
     from {
       transform: scale(0.9);
