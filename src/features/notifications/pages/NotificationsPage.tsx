@@ -1,5 +1,5 @@
-import { ChatsCircle, GearSix, Handshake, Ranking } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { Bell, ChatsCircle, GearSix, Handshake, Ranking, UsersThree } from '@phosphor-icons/react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageColumns } from '@/components/layout/AppShell'
 import { Avatar, EmptyState, IconButton, Tabs } from '@/components/ui'
@@ -20,7 +20,8 @@ const CATEGORY_ICON: Record<NotificationCategory, typeof Ranking> = {
   posts: Ranking,
   messages: ChatsCircle,
   collaborations: Handshake,
-  forums: Ranking,
+  forums: UsersThree,
+  general: Bell,
 }
 
 /** "23 m", "2 h", "3 d" */
@@ -58,19 +59,50 @@ export function NotificationsPage() {
 
       {notifications.isPending ? (
         <div className="h-96 animate-pulse bg-surface" />
+      ) : notifications.isError ? (
+        <EmptyState title="Couldn’t load notifications" description="Check your connection and try again." />
       ) : visible.length ? (
         <ul className="flex flex-col gap-3.5">
           {visible.map((notification) => (
             <NotificationRow key={notification.id} notification={notification} />
           ))}
         </ul>
-      ) : (
+      ) : notifications.hasNextPage ? null : (
         <EmptyState title="You’re all caught up" description="New activity will show up here." />
+      )}
+      {notifications.hasNextPage && (
+        // Re-keyed per page so it fires again if it is still in view after a page loads.
+        <LoadMore
+          key={notifications.data?.length}
+          onVisible={() => !notifications.isFetchingNextPage && void notifications.fetchNextPage()}
+        />
       )}
 
       {settingsOpen && <NotificationSettingsModal onClose={() => setSettingsOpen(false)} />}
     </PageColumns>
   )
+}
+
+/** Loads the next page when it scrolls into view (tabs filter client-side, so a tab can start empty). */
+function LoadMore({ onVisible }: { onVisible: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const callback = useRef(onVisible)
+
+  useEffect(() => {
+    callback.current = onVisible
+  })
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && callback.current(), {
+      rootMargin: '200px',
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  return <div ref={ref} aria-hidden className="h-16 animate-pulse bg-surface/50" />
 }
 
 function NotificationRow({ notification }: { notification: AppNotification }) {

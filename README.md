@@ -221,21 +221,24 @@ management and task creation. While a join request is pending the workspace re-f
 
 ### Settings — `features/settings/api/settings.service.ts`
 
-| Method      | Path                   | Body                                  | Returns              |
-| ----------- | ---------------------- | ------------------------------------- | -------------------- |
-| GET / PUT   | `/users/me/visibility` | `{ messages, collaborationRequests }` | `VisibilitySettings` |
-| GET / PUT   | `/users/me/language`   | `{ language }`                        | `{ language }`       |
-| POST        | `/support/reports`     | `{ message }`                         | —                    |
-| DELETE      | `/users/me`            | `{ reasons: string[] }`               | —                    |
+| Method    | Path                   | Body                                  | Returns              |
+| --------- | ---------------------- | ------------------------------------- | -------------------- |
+| GET / PUT | `/users/me/visibility` | `{ messages, collaborationRequests }` | `VisibilitySettings` |
+| GET / PUT | `/users/me/language`   | `{ language }`                        | `{ language }`       |
+| POST      | `/support/reports`     | `{ message }`                         | —                    |
+| DELETE    | `/users/me`            | `{ reasons: string[] }`               | —                    |
 
-### Notifications — `features/notifications/api/notifications.service.ts`
+### Notifications — connected (`notificationsApi`, `meApi`)
 
-| Method    | Path                         | Body                                | Returns                   |
-| --------- | ---------------------------- | ----------------------------------- | ------------------------- |
-| GET       | `/notifications`             |                                     | `AppNotification[]`       |
-| POST      | `/notifications/:id/read`    |                                     | —                         |
-| POST      | `/notifications/read-all`    |                                     | —                         |
-| GET / PUT | `/notifications/preferences` | `{ muted: NotificationCategory[] }` | `NotificationPreferences` |
+| Method      | Path                          | Used for                                                         |
+| ----------- | ----------------------------- | ---------------------------------------------------------------- |
+| GET         | `/notifications?cursor=`      | The list, a page at a time (loads more on scroll)                |
+| GET         | `/notifications/unread-count` | Nav badge                                                        |
+| POST        | `/notifications/read`         | `{ ids: [id] }` on tap, `{ all: true }` for "Mark all as read"   |
+| GET / PATCH | `/me/settings`                | "Mute notifications from" → `notificationPrefs[type].inApp/push` |
+
+`features/notifications/mappers.ts` groups the backend `type`s into the Messages / Collaborations /
+Posts / Forums tabs and builds each row's link from `targetType` + `targetId`.
 
 Server state is managed with TanStack Query (`features/*/hooks/queries.ts`); likes and read
 states are optimistic, other mutations update or invalidate the cache.

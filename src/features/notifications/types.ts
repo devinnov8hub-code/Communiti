@@ -1,4 +1,5 @@
-export type NotificationCategory = 'messages' | 'collaborations' | 'posts' | 'forums'
+/** `general` covers system notices (events, moderation, broadcasts, verification) — shown under "All" only. */
+export type NotificationCategory = 'messages' | 'collaborations' | 'posts' | 'forums' | 'general'
 export type NotificationsTab = 'all' | 'messages' | 'collaborations' | 'posts'
 
 export interface AppNotification {
