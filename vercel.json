@@ -1,4 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/admin",
+      "has": [{ "type": "host", "value": "app.mycommuniti.org" }],
+      "destination": "https://admin.mycommuniti.org/",
+      "permanent": false
+    },
+    {
+      "source": "/admin/:path*",
+      "has": [{ "type": "host", "value": "app.mycommuniti.org" }],
+      "destination": "https://admin.mycommuniti.org/:path*",
+      "permanent": false
+    }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

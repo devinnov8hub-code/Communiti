@@ -1,23 +1,28 @@
+import { isAdminHost } from '@/app/host'
+
+/** URL prefix of the admin console: the domain root on the admin subdomain, else /admin. */
+const base = isAdminHost ? '' : '/admin'
+
 /** Admin console routes — kept apart from the member app's `paths`. */
 export const adminPaths = {
-  login: '/admin/login',
-  resetPassword: '/admin/reset-password',
-  verifyOtp: '/admin/verify',
-  newPassword: '/admin/new-password',
-  overview: '/admin',
-  users: '/admin/users',
+  login: `${base}/login`,
+  resetPassword: `${base}/reset-password`,
+  verifyOtp: `${base}/verify`,
+  newPassword: `${base}/new-password`,
+  overview: base || '/',
+  users: `${base}/users`,
   /** One member's account logs ("user logs"). */
-  userLogs: (id = ':userId') => `/admin/users/${id}/logs`,
-  forums: '/admin/forums',
-  projects: '/admin/projects',
+  userLogs: (id = ':userId') => `${base}/users/${id}/logs`,
+  forums: `${base}/forums`,
+  projects: `${base}/projects`,
   /** Moderation queue for a section: overview (all content), users, forums, projects. */
-  moderation: (section = ':section') => `/admin/moderation/${section}`,
-  events: '/admin/events',
-  event: (id = ':eventId') => `/admin/events/${id}`,
-  highlights: '/admin/highlights',
-  highlight: (id = ':highlightId') => `/admin/highlights/${id}`,
-  notifications: '/admin/notifications',
-  logs: '/admin/logs',
-  settings: '/admin/settings',
-  profile: '/admin/profile',
+  moderation: (section = ':section') => `${base}/moderation/${section}`,
+  events: `${base}/events`,
+  event: (id = ':eventId') => `${base}/events/${id}`,
+  highlights: `${base}/highlights`,
+  highlight: (id = ':highlightId') => `${base}/highlights/${id}`,
+  notifications: `${base}/notifications`,
+  logs: `${base}/logs`,
+  settings: `${base}/settings`,
+  profile: `${base}/profile`,
 } as const

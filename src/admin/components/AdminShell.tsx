@@ -21,14 +21,14 @@ import { cn } from '@/lib/cn'
 import { useAdminSession } from '../session/adminSessionContext'
 
 const NAV = [
-  { label: 'Overview', to: adminPaths.overview, icon: House, match: ['/admin/moderation/overview'] },
-  { label: 'Users', to: adminPaths.users, icon: User, match: ['/admin/moderation/users'] },
-  { label: 'Forums', to: adminPaths.forums, icon: GlobeHemisphereWest, match: ['/admin/moderation/forums'] },
+  { label: 'Overview', to: adminPaths.overview, icon: House, match: [adminPaths.moderation('overview')] },
+  { label: 'Users', to: adminPaths.users, icon: User, match: [adminPaths.moderation('users')] },
+  { label: 'Forums', to: adminPaths.forums, icon: GlobeHemisphereWest, match: [adminPaths.moderation('forums')] },
   {
     label: 'Projects',
     to: adminPaths.projects,
     icon: ProjectorScreenChart,
-    match: ['/admin/moderation/projects'],
+    match: [adminPaths.moderation('projects')],
   },
   { label: 'Events', to: adminPaths.events, icon: CalendarDots, match: [] },
   { label: 'Community Highlights', to: adminPaths.highlights, icon: Sparkle, match: [] },

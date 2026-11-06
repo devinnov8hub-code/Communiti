@@ -7,11 +7,11 @@ const events = () => import('./pages/EventsPages')
 const highlights = () => import('./pages/HighlightsPages')
 
 /**
- * Admin console, mounted at /admin by the app router. Everything here — even the
+ * Admin console, mounted at /admin by the app router (or at the root on the admin subdomain). Everything here — even the
  * session provider and guards — is lazy, so members never download admin code.
  */
 export const adminRoutes: RouteObject = {
-  path: '/admin',
+  path: adminPaths.overview,
   lazy: async () => ({ Component: (await session()).AdminRoot }),
   children: [
     {
