@@ -9,7 +9,7 @@ import { RightRail } from '@/features/feed/components/RightRail'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
 import { useUserPosts } from '@/features/feed/hooks/queries'
 import { ProjectCard } from '@/features/projects/components/ProjectCard'
-import { useProjects } from '@/features/projects/hooks/queries'
+import { useUserProjects } from '@/features/projects/hooks/queries'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { formatCount } from '@/lib/format'
@@ -193,7 +193,8 @@ function MyPosts() {
 }
 
 function MyProjects() {
-  const projects = useProjects('mine')
+  const { user } = useAuth()
+  const projects = useUserProjects(user?.id ?? '')
   if (projects.isPending) return <div className="h-[300px] animate-pulse bg-surface" />
   if (!projects.data?.length) return <EmptyState title="No projects yet" />
   return (

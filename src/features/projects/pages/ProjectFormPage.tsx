@@ -1,74 +1,65 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Info } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { paths } from '@/app/paths'
-import {
-  Button,
-  Checkbox,
-  FieldError,
-  FilePicker,
-  SelectField,
-  Spinner,
-  TextAreaField,
-  TextField,
-  useToast,
-} from '@/components/ui'
+import { Button, FilePicker, SelectField, Spinner, TextAreaField, TextField, useToast } from '@/components/ui'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
-import { useWorkspace } from '@/features/workspace/hooks/queries'
-import type { ProjectWorkspace } from '@/features/workspace/types'
-import { getErrorMessage } from '@/lib/api/errors'
-import { useCreateProject, useUpdateProject } from '../hooks/queries'
-import { PROJECT_ROLES, type NewProject, type ProjectRole, type ProjectStatus } from '../types'
+import { getErrorMessage, type Project } from '@/lib/api'
+import { useCreateProject, useProject, useUpdateProject } from '../hooks/queries'
+import type { NewProject, ProjectStatus } from '../types'
 
 const MAX_WORDS = 150
 const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length
-const essay = (message: string) =>
+const essay = (message: string, maxLength: number) =>
   z
     .string()
     .trim()
     .min(20, message)
+    .max(maxLength, `Keep it under ${maxLength} characters`)
     .refine((text) => wordCount(text) <= MAX_WORDS, `Keep it to ${MAX_WORDS} words`)
 
+// Length limits are the backend's.
 const schema = z.object({
-  title: z.string().trim().min(3, 'Give your project a title').max(80),
-  pitch: essay('Pitch your project (20+ characters)'),
-  problem: essay('Describe the problem (20+ characters)'),
-  solution: essay('Describe your solution (20+ characters)'),
-  impact: essay('Describe the impact (20+ characters)'),
-  rolesNeeded: z.array(z.enum(['artisan', 'academic', 'expert'])).min(1, 'Pick at least one role'),
-  status: z.enum(['open', 'in-progress', 'closed']),
+  title: z.string().trim().min(3, 'Give your project a title').max(120, 'Keep the title under 120 characters'),
+  pitch: essay('Pitch your project (20+ characters)', 500),
+  problem: essay('Describe the problem (20+ characters)', 5000),
+  solution: essay('Describe your solution (20+ characters)', 5000),
+  status: z.enum(['open', 'ongoing', 'completed', 'archived']),
 })
 type Values = z.infer<typeof schema>
 
 const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: 'open', label: 'Open' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'closed', label: 'Closed' },
+  { value: 'ongoing', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
 ]
+/** Archiving is only offered for an existing project. */
+const EDIT_STATUS_OPTIONS = [...STATUS_OPTIONS, { value: 'archived' as const, label: 'Archived' }]
 
 /** "Create a project" (Figma WORKSPACE › Creating a project); also edits an existing project. */
 export function ProjectFormPage() {
   const { projectId } = useParams()
-  const workspace = useWorkspace(projectId ?? '')
+  const project = useProject(projectId ?? '')
 
   if (!projectId) return <ProjectForm />
 
-  if (workspace.isPending)
+  if (project.isPending)
     return (
       <div className="flex justify-center py-24 text-brand-orange">
         <Spinner />
       </div>
     )
-  if (workspace.isError) return <p className="p-10 text-center text-fg-muted">{getErrorMessage(workspace.error)}</p>
-  // Only project admins can edit the details.
-  if (workspace.data.membership !== 'admin') return <Navigate to={paths.project(projectId)} replace />
-  return <ProjectForm project={workspace.data} />
+  if (project.isError) return <p className="p-10 text-center text-fg-muted">{getErrorMessage(project.error)}</p>
+  // Only the owner and project admins can edit the details.
+  if (project.data.myRole !== 'owner' && project.data.myRole !== 'admin')
+    return <Navigate to={paths.project(projectId)} replace />
+  return <ProjectForm project={project.data} />
 }
 
-function ProjectForm({ project }: { project?: ProjectWorkspace }) {
+function ProjectForm({ project }: { project?: Project }) {
   const navigate = useNavigate()
   const toast = useToast()
   const create = useCreateProject()
@@ -79,7 +70,6 @@ function ProjectForm({ project }: { project?: ProjectWorkspace }) {
 
   const {
     register,
-    control,
     handleSubmit,
     formState: { errors },
   } = useForm<Values>({
@@ -89,8 +79,6 @@ function ProjectForm({ project }: { project?: ProjectWorkspace }) {
       pitch: project?.pitch ?? '',
       problem: project?.problem ?? '',
       solution: project?.solution ?? '',
-      impact: project?.impact ?? '',
-      rolesNeeded: project?.rolesNeeded ?? [],
       status: project?.status ?? 'open',
     },
   })
@@ -165,49 +153,7 @@ function ProjectForm({ project }: { project?: ProjectWorkspace }) {
             error={errors.solution?.message}
             {...register('solution')}
           />
-          <TextAreaField
-            label="Project impact"
-            placeholder={`How would your project impact society, explain in ${MAX_WORDS} words`}
-            inputClassName="min-h-[148px]"
-            error={errors.impact?.message}
-            {...register('impact')}
-          />
         </section>
-
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-3 text-body-m font-semibold text-fg">Roles Needed</legend>
-          <Controller
-            control={control}
-            name="rolesNeeded"
-            render={({ field }) => (
-              <>
-                {PROJECT_ROLES.map((role) => {
-                  const checked = field.value.includes(role.value)
-                  const toggle = () =>
-                    field.onChange(
-                      checked
-                        ? field.value.filter((value: ProjectRole) => value !== role.value)
-                        : [...field.value, role.value],
-                    )
-                  return (
-                    <Checkbox
-                      key={role.value}
-                      checked={checked}
-                      onChange={toggle}
-                      label={
-                        <span className="flex flex-col gap-0.5">
-                          <span className="text-body-m text-fg">{role.label}</span>
-                          <span className="text-body-s text-fg-subtle">{role.description}</span>
-                        </span>
-                      }
-                    />
-                  )
-                })}
-              </>
-            )}
-          />
-          {errors.rolesNeeded && <FieldError>{errors.rolesNeeded.message}</FieldError>}
-        </fieldset>
 
         <section aria-labelledby="contract-heading" className="flex flex-col gap-3">
           <h2 id="contract-heading" className="text-body-m font-semibold text-fg">
@@ -229,7 +175,7 @@ function ProjectForm({ project }: { project?: ProjectWorkspace }) {
           <SelectField
             label="Project stage"
             placeholder="Select a stage"
-            options={STATUS_OPTIONS}
+            options={project ? EDIT_STATUS_OPTIONS : STATUS_OPTIONS}
             error={errors.status?.message}
             {...register('status')}
           />

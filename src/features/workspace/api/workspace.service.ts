@@ -4,40 +4,15 @@ import type {
   EvaluationScores,
   EvaluationSummary,
   EvaluationTarget,
-  JoinRequest,
   LedgerEntry,
   NewTask,
-  ProjectNotificationPrefs,
   ProjectTask,
-  ProjectWorkspace,
   Prototype,
   PrototypeVersion,
-  ResearchDoc,
-  WorkspaceMember,
 } from '../types'
 
-/** Project workspace API contract. See README for the endpoint list. */
+/** TEMPORARY — the workspace tabs not connected yet. See README for the endpoint list. */
 export interface WorkspaceApi {
-  getWorkspace(projectId: string): Promise<ProjectWorkspace>
-  /** Accepts the project terms and asks to join. */
-  requestToJoin(projectId: string): Promise<ProjectWorkspace>
-  leaveProject(projectId: string): Promise<void>
-  reportProject(projectId: string, reasons: string[]): Promise<void>
-
-  getNotificationPrefs(projectId: string): Promise<ProjectNotificationPrefs>
-  updateNotificationPrefs(projectId: string, prefs: ProjectNotificationPrefs): Promise<ProjectNotificationPrefs>
-
-  getMembers(projectId: string): Promise<WorkspaceMember[]>
-  removeMember(projectId: string, memberId: string): Promise<void>
-  getJoinRequests(projectId: string): Promise<JoinRequest[]>
-  respondToJoinRequest(projectId: string, requestId: string, accept: boolean): Promise<void>
-  setAcceptRequests(projectId: string, accept: boolean): Promise<ProjectWorkspace>
-
-  getResearch(projectId: string): Promise<ResearchDoc[]>
-  createResearch(projectId: string, input: { title: string; body: string }): Promise<ResearchDoc>
-  deleteResearch(projectId: string, docId: string): Promise<void>
-  commentOnResearch(projectId: string, docId: string, text: string): Promise<ResearchDoc>
-
   getPrototypes(projectId: string): Promise<Prototype[]>
   createPrototype(projectId: string, input: { name: string; thumbnail?: File }): Promise<Prototype>
   deletePrototype(projectId: string, prototypeId: string): Promise<void>
@@ -68,31 +43,6 @@ const form = (fields: Record<string, string | File | undefined>) => {
 const base = (projectId: string) => `/projects/${projectId}`
 
 const httpWorkspaceApi: WorkspaceApi = {
-  getWorkspace: (id) => apiRequest(base(id)),
-  requestToJoin: (id) => apiRequest(`${base(id)}/join-requests`, { method: 'POST', body: { acceptedTerms: true } }),
-  leaveProject: (id) => apiRequest(`${base(id)}/membership`, { method: 'DELETE' }),
-  reportProject: (id, reasons) => apiRequest(`${base(id)}/reports`, { method: 'POST', body: { reasons } }),
-
-  getNotificationPrefs: (id) => apiRequest(`${base(id)}/notification-preferences`),
-  updateNotificationPrefs: (id, prefs) =>
-    apiRequest(`${base(id)}/notification-preferences`, { method: 'PUT', body: prefs }),
-
-  getMembers: (id) => apiRequest(`${base(id)}/members`),
-  removeMember: (id, memberId) => apiRequest(`${base(id)}/members/${memberId}`, { method: 'DELETE' }),
-  getJoinRequests: (id) => apiRequest(`${base(id)}/join-requests`),
-  respondToJoinRequest: (id, requestId, accept) =>
-    apiRequest(`${base(id)}/join-requests/${requestId}`, {
-      method: 'PATCH',
-      body: { status: accept ? 'accepted' : 'declined' },
-    }),
-  setAcceptRequests: (id, accept) => apiRequest(base(id), { method: 'PATCH', body: { acceptRequests: accept } }),
-
-  getResearch: (id) => apiRequest(`${base(id)}/research`),
-  createResearch: (id, input) => apiRequest(`${base(id)}/research`, { method: 'POST', body: input }),
-  deleteResearch: (id, docId) => apiRequest(`${base(id)}/research/${docId}`, { method: 'DELETE' }),
-  commentOnResearch: (id, docId, text) =>
-    apiRequest(`${base(id)}/research/${docId}/comments`, { method: 'POST', body: { text } }),
-
   getPrototypes: (id) => apiRequest(`${base(id)}/prototypes`),
   createPrototype: (id, input) =>
     apiRequest(`${base(id)}/prototypes`, {

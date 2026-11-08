@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
-import { Button, EmptyState, Tabs } from '@/components/ui'
+import { Button, EmptyState, LoadMore, Tabs } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
 import { getErrorMessage } from '@/lib/api/errors'
@@ -13,7 +13,7 @@ import type { ProjectsTab } from '../types'
 
 const TABS = [
   { value: 'all', label: 'Projects' },
-  { value: 'mine', label: 'My Projects' },
+  { value: 'joined', label: 'My Projects' },
 ] as const
 
 /** Projects list (Figma "Projects view"). */
@@ -50,13 +50,20 @@ export function ProjectsPage() {
           </div>
         ) : projects.data.length === 0 ? (
           <EmptyState
-            title={tab === 'mine' ? 'No projects yet' : 'No projects found'}
+            title={tab === 'joined' ? 'No projects yet' : 'No projects found'}
             description={
-              tab === 'mine' ? 'Projects you create or join will appear here.' : 'Check back soon for new projects.'
+              tab === 'joined' ? 'Projects you create or join will appear here.' : 'Check back soon for new projects.'
             }
           />
         ) : (
           projects.data.map((project) => <ProjectCard key={project.id} project={project} />)
+        )}
+        {projects.hasNextPage && (
+          <LoadMore
+            key={projects.data?.length}
+            className="h-[300px]"
+            onVisible={() => !projects.isFetchingNextPage && void projects.fetchNextPage()}
+          />
         )}
       </div>
 

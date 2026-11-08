@@ -2,13 +2,16 @@ import notificationsIllustration from '@/assets/workspace/notifications-illustra
 import { Modal, Switch, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { useNotificationPrefs, useUpdateNotificationPrefs } from '../hooks/queries'
-import type { ProjectNotificationPrefs } from '../types'
+import type { ProjectNotificationSettings } from '@/lib/api'
 
-const OPTIONS: { key: keyof ProjectNotificationPrefs; label: string }[] = [
-  { key: 'projectUpdates', label: 'Project Updates' },
-  { key: 'teamActivity', label: 'Team Activity' },
-  { key: 'tasksAssigned', label: 'Tasks Assigned' },
-  { key: 'deadlines', label: 'Deadlines & Reminders' },
+// The backend's per-project options (the design's four labels don't map onto them).
+const OPTIONS: { key: keyof ProjectNotificationSettings; label: string }[] = [
+  { key: 'chat', label: 'Project Chat' },
+  { key: 'tasks', label: 'Tasks' },
+  { key: 'research', label: 'Research' },
+  { key: 'prototypes', label: 'Prototypes' },
+  { key: 'evaluations', label: 'Expert Evaluations' },
+  { key: 'members', label: 'Members & Requests' },
 ]
 
 /** Per-project notification toggles (Figma "notificatiosn"). */
@@ -32,7 +35,7 @@ export function ProjectNotificationsModal({ projectId, onClose }: { projectId: s
             <span className="text-body-s text-fg">{option.label}</span>
             <Switch
               label={option.label}
-              checked={prefs.data?.[option.key] ?? false}
+              checked={prefs.data ? prefs.data[option.key] !== false : false}
               disabled={!prefs.data}
               onChange={(checked) =>
                 prefs.data &&

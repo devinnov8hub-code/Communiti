@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { ConfirmDialog, Menu, MenuItem, ReportDialog, useToast } from '@/components/ui'
+import { useReport } from '@/features/feed/hooks/queries'
 import { REPORT_REASONS } from '@/features/feed/types'
 import { getErrorMessage } from '@/lib/api/errors'
-import { useLeaveProject, useReportProject } from '../hooks/queries'
+import { useLeaveProject } from '../hooks/queries'
 import type { ProjectWorkspace } from '../types'
 import { ProjectMembersModal } from './ProjectMembersModal'
 import { ProjectNotificationsModal } from './ProjectNotificationsModal'
@@ -18,7 +19,7 @@ export function ProjectSettingsMenu({ workspace }: { workspace: ProjectWorkspace
   const navigate = useNavigate()
   const toast = useToast()
   const leave = useLeaveProject(workspace.id)
-  const report = useReportProject(workspace.id)
+  const report = useReport('project')
   const isAdmin = workspace.membership === 'admin'
   const close = () => setDialog(null)
 
@@ -67,9 +68,12 @@ export function ProjectSettingsMenu({ workspace }: { workspace: ProjectWorkspace
               <MenuItem iconAfter size="sm" tone="warning" icon={<Warning />} onSelect={open('report')}>
                 Report this project
               </MenuItem>
-              <MenuItem iconAfter size="sm" tone="danger" icon={<SignOut />} onSelect={open('leave')}>
-                Leave Project
-              </MenuItem>
+              {/* The owner has to hand the project over before leaving. */}
+              {!workspace.isOwner && (
+                <MenuItem iconAfter size="sm" tone="danger" icon={<SignOut />} onSelect={open('leave')}>
+                  Leave Project
+                </MenuItem>
+              )}
             </>
           )
         }}
@@ -91,12 +95,15 @@ export function ProjectSettingsMenu({ workspace }: { workspace: ProjectWorkspace
         loading={report.isPending}
         error={report.isError ? getErrorMessage(report.error) : undefined}
         onSubmit={(reasons) =>
-          report.mutate(reasons, {
-            onSuccess: () => {
-              toast('Thanks — our moderators will review this project')
-              close()
+          report.mutate(
+            { id: workspace.id, reasons },
+            {
+              onSuccess: () => {
+                toast('Thanks — our moderators will review this project')
+                close()
+              },
             },
-          })
+          )
         }
       />
 

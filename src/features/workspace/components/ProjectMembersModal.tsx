@@ -1,26 +1,9 @@
 import { Check, DotsThree, UserMinus, X } from '@phosphor-icons/react'
 import { useDeferredValue, useState, type ReactNode } from 'react'
 import membersIllustration from '@/assets/workspace/members-illustration.webp'
-import {
-  Avatar,
-  IconButton,
-  Menu,
-  MenuItem,
-  Modal,
-  SearchField,
-  Spinner,
-  Switch,
-  Tabs,
-  useToast,
-} from '@/components/ui'
+import { Avatar, IconButton, Menu, MenuItem, Modal, SearchField, Spinner, Tabs, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
-import {
-  useJoinRequests,
-  useMembers,
-  useRemoveMember,
-  useRespondToJoinRequest,
-  useSetAcceptRequests,
-} from '../hooks/queries'
+import { useJoinRequests, useMembers, useRemoveMember, useRespondToJoinRequest } from '../hooks/queries'
 import type { ProjectWorkspace, WorkspaceMember } from '../types'
 
 type View = 'members' | 'requests'
@@ -33,9 +16,6 @@ export function ProjectMembersModal({ workspace, onClose }: { workspace: Project
   const search = useDeferredValue(query.trim().toLowerCase())
   const members = useMembers(workspace.id)
   const requests = useJoinRequests(workspace.id, isAdmin)
-  const acceptRequests = useSetAcceptRequests(workspace.id)
-  const toast = useToast()
-  const onError = (error: unknown) => toast(getErrorMessage(error))
 
   const matches = (member: WorkspaceMember) => !search || member.name.toLowerCase().includes(search)
   const requestCount = requests.data?.length ?? 0
@@ -59,27 +39,17 @@ export function ProjectMembersModal({ workspace, onClose }: { workspace: Project
       <SearchField size="sm" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} />
 
       {isAdmin ? (
-        <>
-          <div className="flex items-center justify-between gap-4 py-1">
-            <span className="text-body-s text-fg">Accept Requests</span>
-            <Switch
-              label="Accept requests to join"
-              checked={workspace.acceptRequests}
-              disabled={acceptRequests.isPending}
-              onChange={(checked) => acceptRequests.mutate(checked, { onError })}
-            />
-          </div>
-          <Tabs
-            label="Members and requests"
-            value={view}
-            onChange={setView}
-            items={[
-              { value: 'members', label: 'Members' },
-              { value: 'requests', label: requestCount ? `Requests (${requestCount})` : 'Requests' },
-            ]}
-            className="[&_button]:text-body-s [&_button[aria-selected=false]]:text-grey-40"
-          />
-        </>
+        // The design's "Accept Requests" switch is left out: the backend can't pause join requests.
+        <Tabs
+          label="Members and requests"
+          value={view}
+          onChange={setView}
+          items={[
+            { value: 'members', label: 'Members' },
+            { value: 'requests', label: requestCount ? `Requests (${requestCount})` : 'Requests' },
+          ]}
+          className="[&_button]:text-body-s [&_button[aria-selected=false]]:text-grey-40"
+        />
       ) : (
         <h3 className="pt-2 text-body-m text-fg-subtle">Members</h3>
       )}
@@ -96,7 +66,11 @@ export function ProjectMembersModal({ workspace, onClose }: { workspace: Project
                   {member.isYou && <span className="text-grey-40"> • You</span>}
                 </>
               }
-              actions={isAdmin && !member.isYou && <MemberActions projectId={workspace.id} member={member} />}
+              actions={
+                isAdmin &&
+                !member.isYou &&
+                !member.isOwner && <MemberActions projectId={workspace.id} member={member} />
+              }
             />
           ))}
         </MemberList>
@@ -108,7 +82,12 @@ export function ProjectMembersModal({ workspace, onClose }: { workspace: Project
               <MemberRow
                 key={request.id}
                 member={request.user}
-                title={`${request.user.name} is requesting to join your project`}
+                title={
+                  <>
+                    {request.user.name} is requesting to join your project
+                    {request.message && <span className="block text-body-s text-fg-body">“{request.message}”</span>}
+                  </>
+                }
                 actions={<RequestActions projectId={workspace.id} requestId={request.id} name={request.user.name} />}
               />
             ))}

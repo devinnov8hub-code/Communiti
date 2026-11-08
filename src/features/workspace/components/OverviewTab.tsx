@@ -1,5 +1,4 @@
 import {
-  ChartBar,
   ChatCenteredText,
   Lightbulb,
   PaperPlaneTilt,
@@ -16,21 +15,22 @@ import { AvatarStack, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { useRequestToJoin } from '../hooks/queries'
+import type { ProjectStatus } from '@/features/projects/types'
 import type { ProjectWorkspace } from '../types'
 import { AcceptTermsModal } from './AcceptTermsModal'
 
-const STATUS_LABEL = { open: 'Open', 'in-progress': 'Ongoing', closed: 'Closed' } as const
-const STATUS_TONE = {
-  open: 'bg-brand-green',
-  'in-progress': 'bg-warning',
-  closed: 'bg-grey-40',
-} as const
+const STATUS: Record<ProjectStatus, { label: string; tone: string }> = {
+  open: { label: 'Open', tone: 'bg-brand-green' },
+  ongoing: { label: 'Ongoing', tone: 'bg-warning' },
+  completed: { label: 'Completed', tone: 'bg-grey-40' },
+  archived: { label: 'Archived', tone: 'bg-grey-40' },
+}
 
-const SECTIONS: { key: 'pitch' | 'problem' | 'solution' | 'impact'; label: string; icon: Icon }[] = [
+// The design also has "Impact"; the backend doesn't store it.
+const SECTIONS: { key: 'pitch' | 'problem' | 'solution'; label: string; icon: Icon }[] = [
   { key: 'pitch', label: 'Pitch', icon: Lightbulb },
   { key: 'problem', label: 'Problem', icon: Warning },
   { key: 'solution', label: 'Solution', icon: PuzzlePiece },
-  { key: 'impact', label: 'Impact', icon: ChartBar },
 ]
 
 /** Project overview (Figma "overview v1"): summary + pitch, and the join flow for non-members. */
@@ -38,7 +38,6 @@ export function OverviewTab({ workspace }: { workspace: ProjectWorkspace }) {
   const [accepting, setAccepting] = useState(false)
   const join = useRequestToJoin(workspace.id)
   const toast = useToast()
-  const canMessage = workspace.membership !== 'none' && workspace.conversationId
 
   return (
     <div className="flex flex-col gap-gap-md">
@@ -64,22 +63,24 @@ export function OverviewTab({ workspace }: { workspace: ProjectWorkspace }) {
           <div className="flex flex-col gap-[15px]">
             <div className="flex flex-col gap-gap-sm">
               <h1 className="text-h3 font-bold text-fg">{workspace.title}</h1>
-              <p className="text-body-l text-fg-subtle">{workspace.owner.name}</p>
+              <p className="text-body-l text-fg-subtle">{workspace.ownerName}</p>
             </div>
             <div className="flex items-center gap-2">
               <AvatarStack people={workspace.members} />
-              <span className="text-body-m text-fg-subtle">{workspace.membersCount} members</span>
+              <span className="text-body-m text-fg-subtle">
+                {workspace.membersCount} {workspace.membersCount === 1 ? 'member' : 'members'}
+              </span>
             </div>
             <div className="flex flex-wrap items-end gap-x-[31px] gap-y-3">
               <div className="flex items-center gap-2.5">
                 <span className="text-body-m text-fg">Project Status :</span>
                 <span
-                  className={cn('rounded-full px-2.5 py-1.5 text-body-s text-white', STATUS_TONE[workspace.status])}
+                  className={cn('rounded-full px-2.5 py-1.5 text-body-s text-white', STATUS[workspace.status].tone)}
                 >
-                  {STATUS_LABEL[workspace.status]}
+                  {STATUS[workspace.status].label}
                 </span>
               </div>
-              {canMessage && (
+              {workspace.conversationId && (
                 <Link
                   to={paths.chat(workspace.conversationId)}
                   className="flex items-center gap-1.5 rounded-card border border-brand-orange bg-linear-[188deg] from-white from-16% to-brand-orange to-[287%] px-2.5 py-1.5 text-body-m text-brand-orange transition hover:brightness-[0.98]"
@@ -144,16 +145,21 @@ export function OverviewTab({ workspace }: { workspace: ProjectWorkspace }) {
   )
 }
 
-/** Pitch video (Figma "video"): poster with a play button; plays inline when a video exists. */
+/** Pitch video (Figma "video"): cover with a play button; just the cover when there is no video. */
 function ProjectVideo({ workspace }: { workspace: ProjectWorkspace }) {
   const [playing, setPlaying] = useState(false)
-  const toast = useToast()
 
-  if (playing && workspace.videoUrl) {
+  if (!workspace.videoUrl) {
+    return workspace.coverUrl ? (
+      <img src={workspace.coverUrl} alt="" className="aspect-[561/380] w-full bg-grey-30 object-cover" />
+    ) : null
+  }
+
+  if (playing) {
     return (
       <video
         src={workspace.videoUrl}
-        poster={workspace.videoPosterUrl}
+        poster={workspace.coverUrl}
         controls
         autoPlay
         className="aspect-[561/380] w-full bg-black object-cover"
@@ -164,12 +170,12 @@ function ProjectVideo({ workspace }: { workspace: ProjectWorkspace }) {
   return (
     <button
       type="button"
-      onClick={() => (workspace.videoUrl ? setPlaying(true) : toast('The pitch video is still processing'))}
+      onClick={() => setPlaying(true)}
       aria-label={`Play ${workspace.title} pitch video`}
       className="group relative flex aspect-[561/380] w-full items-center justify-center overflow-hidden bg-grey-30"
     >
-      {workspace.videoPosterUrl && (
-        <img src={workspace.videoPosterUrl} alt="" className="absolute inset-0 size-full object-cover" />
+      {workspace.coverUrl && (
+        <img src={workspace.coverUrl} alt="" className="absolute inset-0 size-full object-cover" />
       )}
       <span aria-hidden className="absolute inset-0 bg-black/20" />
       <span className="relative flex h-[81px] w-[90px] items-center justify-center rounded-card bg-white/80 transition group-hover:bg-white/90 sm:h-[81px] sm:w-[90px]">

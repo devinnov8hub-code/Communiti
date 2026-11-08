@@ -1,21 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { projectKeys } from '@/features/projects/hooks/queries'
+import { projectsApi, workspaceApi as api, type ProjectNotificationSettings } from '@/lib/api'
 import { workspaceApi } from '../api/workspace.service'
-import type {
-  EvaluationScores,
-  EvaluationTarget,
-  NewTask,
-  ProjectNotificationPrefs,
-  ProjectTask,
-  ProjectWorkspace,
-} from '../types'
+import { toJoinRequest, toResearchDoc, toWorkspace, toWorkspaceMember } from '../mappers'
+import { textToRichText } from '../richText'
+import type { EvaluationScores, EvaluationTarget, NewTask, ProjectTask } from '../types'
 
 export const workspaceKeys = {
   all: (projectId: string) => ['workspace', projectId] as const,
-  detail: (projectId: string) => [...workspaceKeys.all(projectId), 'detail'] as const,
   prefs: (projectId: string) => [...workspaceKeys.all(projectId), 'prefs'] as const,
   members: (projectId: string) => [...workspaceKeys.all(projectId), 'members'] as const,
   requests: (projectId: string) => [...workspaceKeys.all(projectId), 'requests'] as const,
+  contracts: (projectId: string) => [...workspaceKeys.all(projectId), 'contracts'] as const,
   research: (projectId: string) => [...workspaceKeys.all(projectId), 'research'] as const,
   prototypes: (projectId: string) => [...workspaceKeys.all(projectId), 'prototypes'] as const,
   versions: (projectId: string, prototypeId: string) =>
@@ -27,131 +24,146 @@ export const workspaceKeys = {
 
 /* ------------------------------- Project -------------------------------- */
 
-export const useWorkspace = (projectId: string) =>
-  useQuery({
-    queryKey: workspaceKeys.detail(projectId),
-    queryFn: () => workspaceApi.getWorkspace(projectId),
+/** The project (shared with the edit form's cache), shaped for the workspace. */
+export function useWorkspace(projectId: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: projectKeys.detail(projectId),
+    queryFn: () => projectsApi.getProject(projectId),
+    select: (project) => toWorkspace(project, user?.id),
     enabled: Boolean(projectId),
     // Keep checking while a join request is waiting for an admin.
-    refetchInterval: (query) => (query.state.data?.membership === 'pending' ? 5000 : false),
+    refetchInterval: (query) =>
+      !query.state.data?.myRole && query.state.data?.joinRequestStatus === 'pending' ? 5000 : false,
   })
-
-function useSetWorkspace(projectId: string) {
-  const queryClient = useQueryClient()
-  return (workspace: ProjectWorkspace) => {
-    queryClient.setQueryData(workspaceKeys.detail(projectId), workspace)
-    queryClient.invalidateQueries({ queryKey: projectKeys.all })
-  }
 }
 
+/** Refreshes the project everywhere it is shown (workspace, Projects lists). */
+function useInvalidateProject(projectId: string) {
+  const client = useQueryClient()
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: projectKeys.all }),
+      client.invalidateQueries({ queryKey: workspaceKeys.all(projectId) }),
+    ])
+}
+
+/** Sent after the member agrees to the collaboration terms. */
 export function useRequestToJoin(projectId: string) {
-  const setWorkspace = useSetWorkspace(projectId)
-  return useMutation({ mutationFn: () => workspaceApi.requestToJoin(projectId), onSuccess: setWorkspace })
+  const invalidate = useInvalidateProject(projectId)
+  return useMutation({ mutationFn: () => projectsApi.requestToJoinProject(projectId, {}), onSuccess: invalidate })
 }
 
 export function useLeaveProject(projectId: string) {
-  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const invalidate = useInvalidateProject(projectId)
   return useMutation({
-    mutationFn: () => workspaceApi.leaveProject(projectId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all(projectId) })
-      queryClient.invalidateQueries({ queryKey: projectKeys.all })
-    },
+    mutationFn: () => projectsApi.removeProjectMember(projectId, user?.id ?? ''),
+    onSuccess: invalidate,
   })
 }
 
-export const useReportProject = (projectId: string) =>
-  useMutation({ mutationFn: (reasons: string[]) => workspaceApi.reportProject(projectId, reasons) })
-
 export const useNotificationPrefs = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.prefs(projectId), queryFn: () => workspaceApi.getNotificationPrefs(projectId) })
+  useQuery({ queryKey: workspaceKeys.prefs(projectId), queryFn: () => api.getNotificationSettings(projectId) })
 
 export function useUpdateNotificationPrefs(projectId: string) {
   const queryClient = useQueryClient()
   const key = workspaceKeys.prefs(projectId)
   return useMutation({
-    mutationFn: (prefs: ProjectNotificationPrefs) => workspaceApi.updateNotificationPrefs(projectId, prefs),
+    mutationFn: (prefs: ProjectNotificationSettings) => api.setNotificationSettings(projectId, prefs),
     // Toggles flip immediately; roll back if the save fails.
     onMutate: async (prefs) => {
       await queryClient.cancelQueries({ queryKey: key })
-      const previous = queryClient.getQueryData<ProjectNotificationPrefs>(key)
+      const previous = queryClient.getQueryData<ProjectNotificationSettings>(key)
       queryClient.setQueryData(key, prefs)
       return { previous }
     },
     onError: (_error, _prefs, context) => queryClient.setQueryData(key, context?.previous),
+    onSuccess: (prefs) => queryClient.setQueryData(key, prefs),
   })
 }
 
 /* ------------------------------- Members -------------------------------- */
 
-export const useMembers = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.members(projectId), queryFn: () => workspaceApi.getMembers(projectId) })
+export function useMembers(projectId: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: workspaceKeys.members(projectId),
+    queryFn: () => projectsApi.listProjectMembers(projectId).then((page) => page.data),
+    select: (members) => members.map((member) => toWorkspaceMember(member, user?.id)),
+  })
+}
 
+/** Pending requests (owner and admins only). */
 export const useJoinRequests = (projectId: string, enabled: boolean) =>
   useQuery({
     queryKey: workspaceKeys.requests(projectId),
-    queryFn: () => workspaceApi.getJoinRequests(projectId),
+    queryFn: () => projectsApi.listProjectJoinRequests(projectId).then((page) => page.data.map(toJoinRequest)),
     enabled,
   })
 
-function useInvalidateMembers(projectId: string) {
-  const queryClient = useQueryClient()
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.members(projectId) }),
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.requests(projectId) }),
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.detail(projectId) }),
-    ])
-}
-
 export function useRemoveMember(projectId: string) {
-  const invalidate = useInvalidateMembers(projectId)
+  const invalidate = useInvalidateProject(projectId)
   return useMutation({
-    mutationFn: (memberId: string) => workspaceApi.removeMember(projectId, memberId),
+    mutationFn: (memberId: string) => projectsApi.removeProjectMember(projectId, memberId),
     onSuccess: invalidate,
   })
 }
 
 export function useRespondToJoinRequest(projectId: string) {
-  const invalidate = useInvalidateMembers(projectId)
+  const invalidate = useInvalidateProject(projectId)
   return useMutation({
     mutationFn: ({ requestId, accept }: { requestId: string; accept: boolean }) =>
-      workspaceApi.respondToJoinRequest(projectId, requestId, accept),
+      accept
+        ? projectsApi.acceptJoinRequest(projectId, requestId, {})
+        : projectsApi.declineJoinRequest(projectId, requestId, {}),
     onSuccess: invalidate,
   })
 }
 
-export function useSetAcceptRequests(projectId: string) {
-  const setWorkspace = useSetWorkspace(projectId)
-  return useMutation({
-    mutationFn: (accept: boolean) => workspaceApi.setAcceptRequests(projectId, accept),
-    onSuccess: setWorkspace,
+/* ------------------------------- Contracts ------------------------------ */
+
+/** Contract files uploaded by the project's admins (download links are valid for an hour). */
+export const useContracts = (projectId: string) =>
+  useQuery({
+    queryKey: workspaceKeys.contracts(projectId),
+    queryFn: () => api.listContracts(projectId).then((page) => page.data),
+    staleTime: 30 * 60_000,
   })
-}
 
 /* ------------------------------- Research ------------------------------- */
 
+/** Newest first, a page at a time (also feeds the Expert tab's document picker). */
 export const useResearch = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.research(projectId), queryFn: () => workspaceApi.getResearch(projectId) })
+  useInfiniteQuery({
+    queryKey: workspaceKeys.research(projectId),
+    queryFn: ({ pageParam }) => api.listResearch(projectId, { cursor: pageParam, limit: 50 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    select: (data) => data.pages.flatMap((page) => page.data.map(toResearchDoc)),
+  })
 
 function useInvalidate(key: readonly unknown[]) {
   const queryClient = useQueryClient()
   return () => queryClient.invalidateQueries({ queryKey: key })
 }
 
+/** A document written in the app (saved as rich text). */
 export function useCreateResearch(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.research(projectId))
   const invalidateLedger = useInvalidate(workspaceKeys.ledger(projectId))
   return useMutation({
-    mutationFn: (input: { title: string; body: string }) => workspaceApi.createResearch(projectId, input),
+    mutationFn: ({ title, body }: { title: string; body: string }) =>
+      api.createResearch(projectId, { kind: 'written', title, content: textToRichText(body) }).then(toResearchDoc),
     onSuccess: () => Promise.all([invalidate(), invalidateLedger()]),
   })
 }
 
+/** Author or admin. */
 export function useDeleteResearch(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.research(projectId))
   return useMutation({
-    mutationFn: (docId: string) => workspaceApi.deleteResearch(projectId, docId),
+    mutationFn: (docId: string) => api.deleteResearch(projectId, docId),
     onSuccess: invalidate,
   })
 }
@@ -160,7 +172,7 @@ export function useCommentOnResearch(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.research(projectId))
   return useMutation({
     mutationFn: ({ docId, text }: { docId: string; text: string }) =>
-      workspaceApi.commentOnResearch(projectId, docId, text),
+      api.createWorkspaceComment(projectId, { targetType: 'research_doc', targetId: docId, body: text }),
     onSuccess: invalidate,
   })
 }

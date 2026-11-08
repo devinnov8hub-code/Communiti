@@ -1,27 +1,39 @@
 import avatarTerry from '@/assets/mock/avatar-terry.webp'
 import avatarTobi from '@/assets/mock/avatar-tobi.webp'
-import docThumb from '@/assets/mock/doc-thumb.webp'
 import prototypeBike from '@/assets/mock/prototype-bike.webp'
+import member1 from '@/assets/mock/member-1.webp'
+import member2 from '@/assets/mock/member-2.webp'
+import member3 from '@/assets/mock/member-3.webp'
+import member4 from '@/assets/mock/member-4.webp'
 import prototypeCad from '@/assets/mock/prototype-cad.webp'
 import { ApiError } from '@/lib/api/errors'
-import { findProjectRecord, mockDelay, mockMembers, type ProjectRecord } from '@/features/projects/api/projects.mock'
 import type {
   Evaluation,
   EvaluationSummary,
-  JoinRequest,
   LedgerEntry,
-  ProjectContract,
-  ProjectNotificationPrefs,
   ProjectTask,
-  ProjectWorkspace,
   Prototype,
   PrototypeVersion,
-  ResearchDoc,
   WorkspaceMember,
 } from '../types'
 import type { WorkspaceApi } from './workspace.service'
 
+/**
+ * TEMPORARY — sample data for the workspace tabs that are not connected yet (Prototype, Expert,
+ * Ledger, Tasks). The project, members, join requests, notification settings, contracts and
+ * research use the backend. Deleted once every tab is connected.
+ */
+
 /* ------------------------------ Seed data ------------------------------ */
+
+const mockDelay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const mockMembers: WorkspaceMember[] = [
+  { id: 'm-1', name: 'Maryam Bello', avatarUrl: member1, role: 'Academic' },
+  { id: 'm-2', name: 'Ann James', avatarUrl: member2, role: 'Artisan' },
+  { id: 'm-3', name: 'Joshua Owoicho', avatarUrl: member3, role: 'Expert' },
+  { id: 'm-4', name: 'Annie Okafor', avatarUrl: member4, role: 'Engineer' },
+]
 
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
 const daysFromNow = (days: number) => {
@@ -38,56 +50,6 @@ const atTime = (daysAgo: number, hours = 11, minutes = 34) => {
 
 const you: WorkspaceMember = { id: 'me', name: 'Eunice Micheal', avatarUrl: avatarTerry, role: 'Expert', isYou: true }
 
-const CONTRACT: ProjectContract = {
-  createdAt: '2026-04-13',
-  updatedAt: '2026-04-13',
-  intro:
-    'By joining this project, you agree to collaborate responsibly and respect the contributions of all project members.',
-  terms: [
-    {
-      title: 'Collaboration',
-      body: 'Participate respectfully, communicate professionally, and contribute according to your assigned role.',
-    },
-    {
-      title: 'Confidentiality',
-      body: 'Do not share private project information, documents, research, prototypes, or discussions outside the project without permission.',
-    },
-    {
-      title: 'Intellectual Property',
-      body: 'Ownership of ideas, designs, research, code, and other contributions will follow the agreements established by the project owner and contributors.',
-    },
-    {
-      title: 'Use of Project Materials',
-      body: 'Project files and resources should only be used for activities related to the project unless permission is granted.',
-    },
-    {
-      title: 'Community Conduct',
-      body: 'Harassment, discrimination, misuse of information, or disruptive behaviour may result in removal from the project.',
-    },
-    {
-      title: 'Leaving the Project',
-      body: 'You may leave the project at any time; however, confidentiality and applicable intellectual-property obligations may continue after you leave.',
-    },
-    {
-      title: 'Project Changes',
-      body: 'The project owner may update project roles, requirements, or collaboration arrangements as the project develops.',
-    },
-  ],
-}
-
-const JOURNAL_BODY = `This research presents the development of an AI-powered agricultural drone designed to enhance precision farming through intelligent aerial monitoring and data-driven decision-making. By integrating drone technology with artificial intelligence, computer vision, and remote sensing, the system enables farmers to monitor crop health, detect pests and diseases at an early stage, and assess field conditions with greater accuracy than traditional methods.
-The proposed solution aims to improve agricultural productivity by providing real-time insights that support targeted irrigation, fertilizer application, and pesticide spraying. Through automated data collection and analysis, the drone helps reduce resource wastage, lower operational costs, and minimize the environmental impact associated with conventional farming practices. This research contributes to the advancement of smart agriculture by demonstrating how emerging technologies can be leveraged to increase crop yields, promote sustainability, and support more efficient farm management.`
-
-const RESEARCH_TITLES = [
-  'Journal Article Reviews',
-  'Drone technology guide design',
-  'Crop health imaging methods',
-  'Spray nozzle calibration notes',
-  'Battery endurance field test',
-  'Prescription map data model',
-  'Farmer interview findings',
-]
-
 const PROTOTYPE_NAMES = [
   'Agro CAD Blueprints',
   'Drone Frame CAD',
@@ -100,11 +62,7 @@ const PROTOTYPE_NAMES = [
 const VERSION_NAMES = ['Version 1.0', 'Version 1.1', 'Version 1.2', 'Version 2.0', 'Version 2.1', 'Version 2.8']
 
 interface WorkspaceState {
-  record: ProjectRecord
-  prefs: ProjectNotificationPrefs
-  members: WorkspaceMember[]
-  requests: JoinRequest[]
-  research: ResearchDoc[]
+  record: { id: string; title: string }
   prototypes: Prototype[]
   versions: PrototypeVersion[]
   evaluations: Evaluation[]
@@ -116,7 +74,7 @@ const artisans = mockMembers.slice(0, 3)
 const annJames = mockMembers[1]
 const annie = mockMembers[3]
 
-function seed(record: ProjectRecord): WorkspaceState {
+function seed(record: WorkspaceState['record']): WorkspaceState {
   const prototypes: Prototype[] = PROTOTYPE_NAMES.map((name, index) => ({
     id: `${record.id}-proto-${index + 1}`,
     name,
@@ -127,21 +85,6 @@ function seed(record: ProjectRecord): WorkspaceState {
 
   return {
     record,
-    prefs: { projectUpdates: true, teamActivity: true, tasksAssigned: true, deadlines: true },
-    members: [you, ...mockMembers],
-    requests: [
-      { id: 'jr-1', user: { id: 'u-elvis', name: 'Elvis Presley', avatarUrl: avatarTerry, role: 'Engineer' } },
-      { id: 'jr-2', user: { id: 'u-tobi', name: 'Tobi Adeyemi', avatarUrl: avatarTobi, role: 'Engineer' } },
-    ],
-    research: RESEARCH_TITLES.map((title, index) => ({
-      id: `${record.id}-doc-${index + 1}`,
-      title,
-      body: index === 0 ? JOURNAL_BODY : `${title}.\n\n${JOURNAL_BODY.split('\n')[0]}`,
-      thumbnailUrl: docThumb,
-      updatedBy: 'Maryam',
-      updatedAt: hoursAgo(22 + index),
-      commentsCount: index === 0 ? 13 : 2,
-    })),
     prototypes,
     versions: prototypes.flatMap((prototype) =>
       VERSION_NAMES.map((name, index) => ({
@@ -249,35 +192,11 @@ const states = new Map<string, WorkspaceState>()
 function state(projectId: string) {
   let current = states.get(projectId)
   if (!current) {
-    const record = findProjectRecord(projectId)
-    if (!record) throw new ApiError('This project no longer exists.', 404)
-    current = seed(record)
+    current = seed({ id: projectId, title: 'the project' })
     states.set(projectId, current)
   }
   return current
 }
-
-const toWorkspace = ({ record }: WorkspaceState): ProjectWorkspace => ({
-  id: record.id,
-  title: record.title,
-  owner: record.owner,
-  status: record.status,
-  membersCount: record.membersCount,
-  members: record.members,
-  videoPosterUrl: record.videoPosterUrl,
-  pitch: record.pitch,
-  problem: record.problem,
-  solution: record.solution,
-  impact: record.impact,
-  rolesNeeded: record.rolesNeeded,
-  membership: record.membership,
-  acceptRequests: record.acceptRequests,
-  conversationId:
-    record.membership === 'member' || record.membership === 'admin' || record.membership === 'pending'
-      ? record.conversationId
-      : undefined,
-  contract: CONTRACT,
-})
 
 /** Record an activity in the project ledger. */
 function log(current: WorkspaceState, entry: Omit<LedgerEntry, 'id' | 'at' | 'actor'>) {
@@ -300,105 +219,6 @@ function requireItem<T>(item: T | undefined, message = 'That item no longer exis
 // Reads return copies so in-place edits never leak into the query cache.
 
 export const mockWorkspaceApi: WorkspaceApi = {
-  async getWorkspace(projectId) {
-    await mockDelay()
-    return toWorkspace(state(projectId))
-  },
-  async requestToJoin(projectId) {
-    await mockDelay(600)
-    const current = state(projectId)
-    current.record.membership = 'pending'
-    // Demo only: an admin "approves" the request shortly after, so the member view can be reviewed.
-    setTimeout(() => {
-      if (current.record.membership === 'pending') {
-        current.record.membership = 'member'
-        current.record.membersCount += 1
-      }
-    }, 8000)
-    return toWorkspace(current)
-  },
-  async leaveProject(projectId) {
-    await mockDelay()
-    const current = state(projectId)
-    current.record.membership = 'none'
-    current.record.membersCount = Math.max(0, current.record.membersCount - 1)
-  },
-  async reportProject() {
-    await mockDelay(500)
-  },
-
-  async getNotificationPrefs(projectId) {
-    await mockDelay(200)
-    return { ...state(projectId).prefs }
-  },
-  async updateNotificationPrefs(projectId, prefs) {
-    await mockDelay(200)
-    state(projectId).prefs = prefs
-    return prefs
-  },
-
-  async getMembers(projectId) {
-    await mockDelay()
-    return structuredClone(state(projectId).members)
-  },
-  async removeMember(projectId, memberId) {
-    await mockDelay()
-    const current = state(projectId)
-    current.members = current.members.filter((member) => member.id !== memberId)
-    current.record.membersCount = Math.max(1, current.record.membersCount - 1)
-  },
-  async getJoinRequests(projectId) {
-    await mockDelay()
-    return structuredClone(state(projectId).requests)
-  },
-  async respondToJoinRequest(projectId, requestId, accept) {
-    await mockDelay()
-    const current = state(projectId)
-    const request = requireItem(current.requests.find((item) => item.id === requestId))
-    current.requests = current.requests.filter((item) => item.id !== requestId)
-    if (accept) {
-      current.members = [...current.members, request.user]
-      current.record.membersCount += 1
-    }
-  },
-  async setAcceptRequests(projectId, accept) {
-    await mockDelay(200)
-    const current = state(projectId)
-    current.record.acceptRequests = accept
-    return toWorkspace(current)
-  },
-
-  async getResearch(projectId) {
-    await mockDelay()
-    return structuredClone(state(projectId).research)
-  },
-  async createResearch(projectId, input) {
-    await mockDelay(500)
-    const doc: ResearchDoc = {
-      id: `doc-${Date.now()}`,
-      ...input,
-      thumbnailUrl: docThumb,
-      updatedBy: 'You',
-      updatedAt: new Date().toISOString(),
-      commentsCount: 0,
-    }
-    const current = state(projectId)
-    current.research = [doc, ...current.research]
-    log(current, { kind: 'research', action: 'uploaded a research document', detail: doc.title })
-    return doc
-  },
-  async deleteResearch(projectId, docId) {
-    await mockDelay()
-    const current = state(projectId)
-    current.research = current.research.filter((doc) => doc.id !== docId)
-  },
-  async commentOnResearch(projectId, docId) {
-    await mockDelay(300)
-    const doc = requireItem(state(projectId).research.find((item) => item.id === docId))
-    doc.commentsCount += 1
-    return { ...doc }
-  },
-
   async getPrototypes(projectId) {
     await mockDelay()
     return structuredClone(state(projectId).prototypes)
@@ -492,7 +312,7 @@ export const mockWorkspaceApi: WorkspaceApi = {
   async createTask(projectId, input) {
     await mockDelay(500)
     const current = state(projectId)
-    const assignee = current.members.find((member) => member.id === input.assigneeId)
+    const assignee = [you, ...mockMembers].find((member) => member.id === input.assigneeId)
     const task: ProjectTask = {
       id: `t-${Date.now()}`,
       title: input.title,

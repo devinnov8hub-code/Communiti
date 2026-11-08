@@ -1,50 +1,19 @@
-import type { TagTone } from '@/components/ui/Tag'
+import type { ListProjectsQuery, Project } from '@/lib/api'
 
-export type ProjectStatus = 'open' | 'in-progress' | 'closed'
-export type ProjectsTab = 'all' | 'mine'
+/** Projects → every public project plus yours; My Projects → projects you own or have joined. */
+export type ProjectsTab = Extract<NonNullable<ListProjectsQuery['tab']>, 'all' | 'joined'>
 
-export interface ProjectMember {
-  id: string
-  name: string
-  avatarUrl?: string
-}
+export type ProjectStatus = Project['status']
 
-export interface ProjectTag {
-  label: string
-  tone: TagTone
-}
-
-export interface Project {
-  id: string
-  title: string
-  owner: ProjectMember
-  status: ProjectStatus
-  tags: ProjectTag[]
-  description: string
-  coverUrl?: string
-  membersCount: number
-  /** A few members for the avatar stack. */
-  members: ProjectMember[]
-  /** Current user owns or has joined the project. */
-  isMine: boolean
-}
-
-export const PROJECT_ROLES = [
-  { value: 'artisan', label: 'Artisan', description: 'Creates high quality designs for your project.' },
-  { value: 'academic', label: 'Academic', description: 'Curates research and theoretical knowledge.' },
-  { value: 'expert', label: 'Expert', description: 'A specialist with deep practical knowledge.' },
-] as const
-export type ProjectRole = (typeof PROJECT_ROLES)[number]['value']
-
-/** "Create a project" form payload (sent as multipart/form-data). */
+/** "Create a project" / "Edit project" form values. */
 export interface NewProject {
   title: string
   pitch: string
   problem: string
   solution: string
-  impact: string
-  rolesNeeded: ProjectRole[]
   status: ProjectStatus
+  /** Pitch video or cover image. Images become the cover; videos the pitch video. */
   media?: File
+  /** Uploaded to the project's Contracts. */
   contract?: File
 }

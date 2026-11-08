@@ -1,4 +1,4 @@
-import type { ProjectRole, ProjectStatus } from '@/features/projects/types'
+import type { ProjectStatus } from '@/features/projects/types'
 
 export const WORKSPACE_TABS = [
   { value: 'overview', label: 'Overview' },
@@ -18,64 +18,48 @@ export interface WorkspaceMember {
   id: string
   name: string
   avatarUrl?: string
-  /** "Expert", "Engineer", … */
+  /** Their title in the project, else their CommUniti role: "Expert", "Engineer", … */
   role: string
   isYou?: boolean
+  isOwner?: boolean
 }
 
-export interface ContractTerm {
-  title: string
-  body: string
-}
-
-export interface ProjectContract {
-  createdAt: string
-  updatedAt: string
-  intro: string
-  terms: ContractTerm[]
-}
-
-/** Everything the workspace header and Overview tab need. */
+/** Everything the workspace header and Overview tab need (from `GET /projects/:id`). */
 export interface ProjectWorkspace {
   id: string
   title: string
-  owner: { id: string; name: string }
+  ownerName: string
   status: ProjectStatus
   membersCount: number
   /** A few members for the avatar stack. */
   members: WorkspaceMember[]
+  coverUrl?: string
   videoUrl?: string
-  videoPosterUrl?: string
   pitch: string
   problem: string
   solution: string
-  impact: string
-  rolesNeeded: ProjectRole[]
   membership: Membership
-  /** Admins can pause incoming join requests. */
-  acceptRequests: boolean
-  /** Project group chat, when the user can see it. */
+  /** The owner can't leave (ownership has to be transferred first). */
+  isOwner: boolean
+  /** Project group chat, for members. */
   conversationId?: string
-  contract: ProjectContract
 }
 
 export interface JoinRequest {
   id: string
   user: WorkspaceMember
-}
-
-export interface ProjectNotificationPrefs {
-  projectUpdates: boolean
-  teamActivity: boolean
-  tasksAssigned: boolean
-  deadlines: boolean
+  message?: string
 }
 
 export interface ResearchDoc {
   id: string
   title: string
+  /** Written documents' text (empty for uploads). */
   body: string
+  /** Uploaded documents' file (the link is signed and expires after a while). */
+  file?: { url: string; name: string }
   thumbnailUrl?: string
+  authorId: string
   updatedBy: string
   updatedAt: string
   commentsCount: number

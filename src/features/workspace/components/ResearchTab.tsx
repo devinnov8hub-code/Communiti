@@ -1,6 +1,7 @@
-import { ChatCenteredText, Check, DotsThree, DotsThreeOutlineVertical, Trash } from '@phosphor-icons/react'
+import { ChatCenteredText, Check, DotsThree, DotsThreeOutlineVertical, FileText, Trash } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
-import { Button, IconButton, Menu, MenuItem, Spinner, useToast } from '@/components/ui'
+import { Button, IconButton, LoadMore, Menu, MenuItem, Spinner, useToast } from '@/components/ui'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -9,8 +10,11 @@ import type { ResearchDoc } from '../types'
 import { CommentBar, TabState, WorkspaceAction } from './shared'
 
 /** Research documents: list on the left, reader / editor on the right (Figma "Research"). */
-export function ResearchTab({ projectId }: { projectId: string }) {
+export function ResearchTab({ projectId, isAdmin }: { projectId: string; isAdmin: boolean }) {
   const docs = useResearch(projectId)
+  const { user } = useAuth()
+  // The author or a project admin can delete a document.
+  const canDelete = (doc: ResearchDoc) => isAdmin || doc.authorId === user?.id
   const remove = useDeleteResearch(projectId)
   const toast = useToast()
   const [selectedId, setSelectedId] = useState<string>()
@@ -91,10 +95,18 @@ export function ResearchTab({ projectId }: { projectId: string }) {
                     </IconButton>
                   }
                   onOpen={() => show(doc.id)}
-                  onDelete={() => deleteDoc(doc)}
+                  onDelete={canDelete(doc) ? () => deleteDoc(doc) : undefined}
                 />
               </li>
             ))}
+            {docs.hasNextPage && (
+              <li>
+                <LoadMore
+                  key={docs.data.length}
+                  onVisible={() => !docs.isFetchingNextPage && void docs.fetchNextPage()}
+                />
+              </li>
+            )}
           </ul>
 
           <section
@@ -111,7 +123,11 @@ export function ResearchTab({ projectId }: { projectId: string }) {
                 }}
               />
             ) : selected ? (
-              <ResearchReader projectId={projectId} doc={selected} onDelete={() => deleteDoc(selected)} />
+              <ResearchReader
+                projectId={projectId}
+                doc={selected}
+                onDelete={canDelete(selected) ? () => deleteDoc(selected) : undefined}
+              />
             ) : (
               <p className="m-auto text-body-m text-fg-muted">Select a document to read it.</p>
             )}
@@ -129,7 +145,7 @@ function DocMenu({
 }: {
   trigger: Parameters<typeof Menu>[0]['trigger']
   onOpen?: () => void
-  onDelete: () => void
+  onDelete?: () => void
 }) {
   return (
     <Menu trigger={trigger} className="w-[200px]">
@@ -147,40 +163,44 @@ function DocMenu({
               Open
             </MenuItem>
           )}
-          <MenuItem
-            size="sm"
-            tone="danger"
-            icon={<Trash />}
-            onSelect={() => {
-              close()
-              onDelete()
-            }}
-          >
-            Delete document
-          </MenuItem>
+          {onDelete && (
+            <MenuItem
+              size="sm"
+              tone="danger"
+              icon={<Trash />}
+              onSelect={() => {
+                close()
+                onDelete()
+              }}
+            >
+              Delete document
+            </MenuItem>
+          )}
         </>
       )}
     </Menu>
   )
 }
 
-function ResearchReader({ projectId, doc, onDelete }: { projectId: string; doc: ResearchDoc; onDelete: () => void }) {
+function ResearchReader({ projectId, doc, onDelete }: { projectId: string; doc: ResearchDoc; onDelete?: () => void }) {
   const comment = useCommentOnResearch(projectId)
   const toast = useToast()
 
   return (
     <>
       <div className="flex flex-col gap-gap-md">
-        <div className="flex justify-end">
-          <DocMenu
-            trigger={
-              <IconButton label="Document actions" className="size-10 bg-black/5 text-fg dark:bg-white/10">
-                <DotsThreeOutlineVertical weight="fill" className="size-6" />
-              </IconButton>
-            }
-            onDelete={onDelete}
-          />
-        </div>
+        {onDelete && (
+          <div className="flex justify-end">
+            <DocMenu
+              trigger={
+                <IconButton label="Document actions" className="size-10 bg-black/5 text-fg dark:bg-white/10">
+                  <DotsThreeOutlineVertical weight="fill" className="size-6" />
+                </IconButton>
+              }
+              onDelete={onDelete}
+            />
+          </div>
+        )}
         <div className="flex flex-col gap-[23px]">
           <div className="flex flex-col gap-[11px]">
             <h2 className="text-body-l font-semibold text-fg">{doc.title}</h2>
@@ -192,7 +212,19 @@ function ResearchReader({ projectId, doc, onDelete }: { projectId: string; doc: 
               {doc.commentsCount} {doc.commentsCount === 1 ? 'Comment' : 'Comments'}
             </p>
           </div>
-          <p className="text-body-m whitespace-pre-line text-fg">{doc.body}</p>
+          {doc.file && (
+            <a
+              href={doc.file.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 self-start rounded-control border border-hairline px-3 py-2 text-body-m text-fg transition hover:bg-fg/[0.03]"
+            >
+              <FileText aria-hidden className="size-5 text-brand-orange" />
+              <span className="min-w-0 truncate">{doc.file.name}</span>
+              <span className="text-body-s text-brand-orange">Open file</span>
+            </a>
+          )}
+          {doc.body && <p className="text-body-m whitespace-pre-line text-fg">{doc.body}</p>}
         </div>
       </div>
       <CommentBar
@@ -214,7 +246,8 @@ function ResearchEditor({ projectId, onDone }: { projectId: string; onDone: (doc
   const toast = useToast()
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const canSave = title.trim().length > 0 && body.trim().length > 0
+  // Titles are 2–200 characters.
+  const canSave = title.trim().length >= 2 && body.trim().length > 0
 
   const save = () =>
     create.mutate(
@@ -254,6 +287,7 @@ function ResearchEditor({ projectId, onDone }: { projectId: string; onDone: (doc
         onChange={(event) => setTitle(event.target.value)}
         placeholder="Research title"
         aria-label="Research title"
+        maxLength={200}
         className="bg-transparent text-body-l font-medium text-fg outline-none placeholder:text-grey-40"
       />
       <textarea

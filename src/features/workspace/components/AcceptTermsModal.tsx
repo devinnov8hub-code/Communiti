@@ -32,11 +32,8 @@ export function AcceptTermsModal({ workspace, loading, error, onAgree, onClose }
         </div>
       }
     >
-      <div className="flex flex-col gap-3">
-        <h3 className="text-body-m font-semibold text-fg">{workspace.title}</h3>
-        <p className="text-body-s text-fg-body">Updated: {workspace.contract.updatedAt}</p>
-      </div>
-      <ContractTerms contract={workspace.contract} numbered />
+      <h3 className="text-body-m font-semibold text-fg">{workspace.title}</h3>
+      <ContractTerms numbered />
       {error && (
         <p role="alert" className="text-body-s text-error">
           {error}

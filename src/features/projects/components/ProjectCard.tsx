@@ -2,19 +2,22 @@ import { ArrowRight } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { AvatarStack, Tag, type TagTone } from '@/components/ui'
+import { topicTone } from '@/features/forums/format'
+import type { ProjectCard as ProjectSummary } from '@/lib/api'
 import { cn } from '@/lib/cn'
-import type { Project, ProjectStatus } from '../types'
+import type { ProjectStatus } from '../types'
 
 // "Open" uses System/Green/40 text (topic tags use the darker Green/50).
-const STATUS: Record<ProjectStatus, { label: string; tone: TagTone; className?: string }> = {
+const PROJECT_STATUS: Record<ProjectStatus, { label: string; tone: TagTone; className?: string }> = {
   open: { label: 'Open', tone: 'success', className: 'text-success' },
-  'in-progress': { label: 'Ongoing', tone: 'warning' },
-  closed: { label: 'Closed', tone: 'info' },
+  ongoing: { label: 'Ongoing', tone: 'warning' },
+  completed: { label: 'Completed', tone: 'info' },
+  archived: { label: 'Archived', tone: 'info' },
 }
 
 /** Project summary card (Figma "Project"). */
-export function ProjectCard({ project }: { project: Project }) {
-  const status = STATUS[project.status]
+export function ProjectCard({ project }: { project: ProjectSummary }) {
+  const status = PROJECT_STATUS[project.status]
   const href = paths.project(project.id)
 
   return (
@@ -31,19 +34,19 @@ export function ProjectCard({ project }: { project: Project }) {
                 {project.title}
               </Link>
             </h2>
-            <p className="text-body-m text-fg-muted sm:text-body-l">By {project.owner.name}</p>
+            <p className="text-body-m text-fg-muted sm:text-body-l">By {project.owner.fullName}</p>
           </div>
           <Tag tone={status.tone} className={cn('min-w-[103px] text-body-m', status.className)}>
             {status.label}
           </Tag>
         </div>
 
-        {project.tags.length > 0 && (
+        {project.topics.length > 0 && (
           <ul className="flex flex-wrap gap-x-[17px] gap-y-2">
-            {project.tags.map((tag) => (
-              <li key={tag.label}>
-                <Tag tone={tag.tone} className="text-body-m sm:text-body-l">
-                  {tag.label}
+            {project.topics.map((topic, index) => (
+              <li key={topic.id}>
+                <Tag tone={topicTone(index)} className="text-body-m sm:text-body-l">
+                  {topic.name}
                 </Tag>
               </li>
             ))}
@@ -51,12 +54,20 @@ export function ProjectCard({ project }: { project: Project }) {
         )}
       </div>
 
-      <p className="text-body-m text-fg sm:text-body-l">{project.description}</p>
+      <p className="text-body-m text-fg sm:text-body-l">{project.pitch}</p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <AvatarStack people={project.members} />
-          <span className="text-body-m text-fg-subtle">{project.membersCount} members</span>
+          <AvatarStack
+            people={project.memberAvatars.map((member) => ({
+              id: member.id,
+              name: member.fullName,
+              avatarUrl: member.avatarUrl ?? undefined,
+            }))}
+          />
+          <span className="text-body-m text-fg-subtle">
+            {project.memberCount} {project.memberCount === 1 ? 'member' : 'members'}
+          </span>
         </div>
         <Link
           to={href}

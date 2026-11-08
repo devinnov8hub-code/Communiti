@@ -138,29 +138,51 @@ upload files accept `multipart/form-data`. Response shapes are the types in each
 | GET          | `/topics`                      |                                                    | `SearchTopic[]`         |
 | GET          | `/search/posts?q=&topic=`      |                                                    | `Post[]`                |
 
-### Projects — `features/projects/api/projects.service.ts`
+### Projects — connected (`projectsApi`, `workspaceApi`, `uploadFile`)
 
-| Method | Path                        | Body                                                                                            | Returns     |
-| ------ | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------- |
-| GET    | `/projects?scope=all\|mine` |                                                                                                 | `Project[]` |
-| POST   | `/projects`                 | `title, pitch, problem, solution, impact, rolesNeeded[], status, media?, contract?` (multipart) | `Project`   |
-| PATCH  | `/projects/:id`             | same as POST                                                                                    | `Project`   |
+| Method      | Path                        | Used for                                                             |
+| ----------- | --------------------------- | -------------------------------------------------------------------- |
+| GET         | `/projects?tab=all\|joined` | Projects / My Projects tabs, a page at a time (loads more on scroll) |
+| GET         | `/users/:id/projects`       | Profile → Projects tab                                               |
+| GET / PATCH | `/projects/:id`             | Edit project (owner or admin only)                                   |
+| POST        | `/projects`                 | Create project; a non-`open` stage is set with a follow-up PATCH     |
+| POST        | `/projects/:id/contracts`   | The form's "Upload Contract" file (uploaded with purpose `contract`) |
 
-### Project workspace — `features/workspace/api/workspace.service.ts`
+The form's media is uploaded with purpose `project`: images become `coverUrl`, videos `videoUrl`. The
+backend has no fields for the Figma "Project impact" and "Roles Needed" inputs, so the form doesn't show them.
+
+### Project workspace — partly connected
+
+Connected (`projectsApi`, `workspaceApi`, `reportsApi`; `features/workspace/mappers.ts` shapes them for the screens):
+
+| Method     | Path                                                     | Used for                                                          |
+| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
+| GET        | `/projects/:id`                                          | Header and Overview; `myRole` / `joinRequestStatus` → access      |
+| POST       | `/projects/:id/join-requests`                            | "Join Project" after Accept Terms                                 |
+| DELETE     | `/projects/:id/members/:userId`                          | Leave (yourself; hidden for the owner) and remove a member        |
+| GET        | `/projects/:id/members`                                  | Project members sheet                                             |
+| GET        | `/projects/:id/join-requests`                            | Requests tab (owner and admins)                                   |
+| POST       | `/projects/:id/join-requests/:requestId/accept\|decline` | Accept / Decline                                                  |
+| GET / PUT  | `/projects/:id/notification-settings`                    | Notifications sheet                                               |
+| GET        | `/projects/:id/contracts`                                | Contract tab's documents                                          |
+| POST       | `/reports` (`targetType: project`)                       | Report this project                                               |
+| GET / POST | `/projects/:id/research`                                 | Research tab, a page at a time / "New Document" (`kind: written`) |
+| DELETE     | `/projects/:id/research/:docId`                          | Delete (author or admin)                                          |
+| POST       | `/projects/:id/workspace-comments`                       | Comment on a document (`targetType: research_doc`)                |
+
+The collaboration terms in Accept Terms and the Contract tab are the same for every project
+(`features/workspace/terms.ts`). Not in the backend, so not shown: the design's "Impact" section and the
+"Accept Requests" switch. The notification options are the backend's (chat, tasks, research, prototypes,
+evaluations, members) rather than the design's four.
+
+Research documents are stored as TipTap/ProseMirror JSON. The web editor is plain text, so
+`features/workspace/richText.ts` saves one paragraph per line and reads any document back as text.
+Uploaded documents (`kind: uploaded`) show an "Open file" link.
+
+Not connected yet (`features/workspace/api/`, sample data):
 
 | Method         | Path                                             | Body                                              | Returns                                   |
 | -------------- | ------------------------------------------------ | ------------------------------------------------- | ----------------------------------------- |
-| GET / PATCH    | `/projects/:id`                                  | — / `{ acceptRequests }`                          | `ProjectWorkspace`                        |
-| GET / POST     | `/projects/:id/join-requests`                    | — / `{ acceptedTerms: true }`                     | `JoinRequest[]` / `ProjectWorkspace`      |
-| PATCH          | `/projects/:id/join-requests/:requestId`         | `{ status: accepted\|declined }`                  | —                                         |
-| DELETE         | `/projects/:id/membership`                       | (leave project)                                   | —                                         |
-| POST           | `/projects/:id/reports`                          | `{ reasons: string[] }`                           | —                                         |
-| GET / PUT      | `/projects/:id/notification-preferences`         | `ProjectNotificationPrefs`                        | `ProjectNotificationPrefs`                |
-| GET            | `/projects/:id/members`                          |                                                   | `WorkspaceMember[]`                       |
-| DELETE         | `/projects/:id/members/:memberId`                |                                                   | —                                         |
-| GET / POST     | `/projects/:id/research`                         | — / `{ title, body }`                             | `ResearchDoc[]` / `ResearchDoc`           |
-| DELETE         | `/projects/:id/research/:docId`                  |                                                   | —                                         |
-| POST           | `/projects/:id/research/:docId/comments`         | `{ text }`                                        | `ResearchDoc`                             |
 | GET / POST     | `/projects/:id/prototypes`                       | — / `name, thumbnail?` (multipart)                | `Prototype[]` / `Prototype`               |
 | DELETE         | `/projects/:id/prototypes/:prototypeId`          |                                                   | —                                         |
 | GET / POST     | `/projects/:id/prototypes/:prototypeId/versions` | — / `name, file` (multipart)                      | `PrototypeVersion[]` / `PrototypeVersion` |
@@ -170,8 +192,8 @@ upload files accept `multipart/form-data`. Response shapes are the types in each
 | GET / POST     | `/projects/:id/tasks`                            | — / `{ title, description, assigneeId, dueDate }` | `ProjectTask[]` / `ProjectTask`           |
 | PATCH / DELETE | `/projects/:id/tasks/:taskId`                    | `{ completed }` / —                               | `ProjectTask` / —                         |
 
-Only members see workspace tabs other than Overview; admins also get Edit Project Details, join-request
-management and task creation. While a join request is pending the workspace re-fetches every 5 seconds.
+Only members see workspace tabs other than Overview; owners and admins also get Edit Project Details and
+join-request management. While a join request is pending the workspace re-fetches every 5 seconds.
 
 ### Chats — `features/chats/api/chats.service.ts`
 

@@ -1,8 +1,8 @@
 import { Bell, ChatsCircle, GearSix, Handshake, Ranking, UsersThree } from '@phosphor-icons/react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageColumns } from '@/components/layout/AppShell'
-import { Avatar, EmptyState, IconButton, Tabs } from '@/components/ui'
+import { Avatar, EmptyState, IconButton, LoadMore, Tabs } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { cn } from '@/lib/cn'
 import { NotificationSettingsModal } from '../components/NotificationSettingsModal'
@@ -81,28 +81,6 @@ export function NotificationsPage() {
       {settingsOpen && <NotificationSettingsModal onClose={() => setSettingsOpen(false)} />}
     </PageColumns>
   )
-}
-
-/** Loads the next page when it scrolls into view (tabs filter client-side, so a tab can start empty). */
-function LoadMore({ onVisible }: { onVisible: () => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const callback = useRef(onVisible)
-
-  useEffect(() => {
-    callback.current = onVisible
-  })
-
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && callback.current(), {
-      rootMargin: '200px',
-    })
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [])
-
-  return <div ref={ref} aria-hidden className="h-16 animate-pulse bg-surface/50" />
 }
 
 function NotificationRow({ notification }: { notification: AppNotification }) {
