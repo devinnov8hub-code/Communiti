@@ -1,27 +1,16 @@
 import avatarTerry from '@/assets/mock/avatar-terry.webp'
 import avatarTobi from '@/assets/mock/avatar-tobi.webp'
-import prototypeBike from '@/assets/mock/prototype-bike.webp'
 import member1 from '@/assets/mock/member-1.webp'
 import member2 from '@/assets/mock/member-2.webp'
 import member3 from '@/assets/mock/member-3.webp'
 import member4 from '@/assets/mock/member-4.webp'
-import prototypeCad from '@/assets/mock/prototype-cad.webp'
 import { ApiError } from '@/lib/api/errors'
-import type {
-  Evaluation,
-  EvaluationSummary,
-  LedgerEntry,
-  ProjectTask,
-  Prototype,
-  PrototypeVersion,
-  WorkspaceMember,
-} from '../types'
+import type { Evaluation, EvaluationSummary, LedgerEntry, ProjectTask, WorkspaceMember } from '../types'
 import type { WorkspaceApi } from './workspace.service'
 
 /**
- * TEMPORARY — sample data for the workspace tabs that are not connected yet (Prototype, Expert,
- * Ledger, Tasks). The project, members, join requests, notification settings, contracts and
- * research use the backend. Deleted once every tab is connected.
+ * TEMPORARY — sample data for the workspace tabs that are not connected yet (Expert, Ledger,
+ * Tasks). Everything else uses the backend. Deleted once every tab is connected.
  */
 
 /* ------------------------------ Seed data ------------------------------ */
@@ -59,45 +48,18 @@ const PROTOTYPE_NAMES = [
   'Camera Gimbal Mount',
 ]
 
-const VERSION_NAMES = ['Version 1.0', 'Version 1.1', 'Version 1.2', 'Version 2.0', 'Version 2.1', 'Version 2.8']
-
 interface WorkspaceState {
   record: { id: string; title: string }
-  prototypes: Prototype[]
-  versions: PrototypeVersion[]
   evaluations: Evaluation[]
   ledger: LedgerEntry[]
   tasks: ProjectTask[]
 }
 
-const artisans = mockMembers.slice(0, 3)
-const annJames = mockMembers[1]
-const annie = mockMembers[3]
-
 function seed(record: WorkspaceState['record']): WorkspaceState {
-  const prototypes: Prototype[] = PROTOTYPE_NAMES.map((name, index) => ({
-    id: `${record.id}-proto-${index + 1}`,
-    name,
-    thumbnailUrl: prototypeCad,
-    createdAt: '2025-05-13T09:00:00.000Z',
-    artisans,
-  }))
+  const prototypes = PROTOTYPE_NAMES.map((name, index) => ({ id: `${record.id}-proto-${index + 1}`, name }))
 
   return {
     record,
-    prototypes,
-    versions: prototypes.flatMap((prototype) =>
-      VERSION_NAMES.map((name, index) => ({
-        id: `${prototype.id}-v${index + 1}`,
-        prototypeId: prototype.id,
-        name,
-        thumbnailUrl: prototypeCad,
-        imageUrl: prototypeBike,
-        editedBy: index === 0 ? annie : annJames,
-        updatedAt: hoursAgo(22 + index * 24),
-        commentsCount: 12,
-      })),
-    ),
     evaluations: [
       {
         id: 'ev-1',
@@ -219,62 +181,6 @@ function requireItem<T>(item: T | undefined, message = 'That item no longer exis
 // Reads return copies so in-place edits never leak into the query cache.
 
 export const mockWorkspaceApi: WorkspaceApi = {
-  async getPrototypes(projectId) {
-    await mockDelay()
-    return structuredClone(state(projectId).prototypes)
-  },
-  async createPrototype(projectId, input) {
-    await mockDelay(500)
-    const prototype: Prototype = {
-      id: `proto-${Date.now()}`,
-      name: input.name,
-      thumbnailUrl: input.thumbnail ? URL.createObjectURL(input.thumbnail) : prototypeCad,
-      createdAt: new Date().toISOString(),
-      artisans: [you],
-    }
-    const current = state(projectId)
-    current.prototypes = [prototype, ...current.prototypes]
-    return prototype
-  },
-  async deletePrototype(projectId, prototypeId) {
-    await mockDelay()
-    const current = state(projectId)
-    current.prototypes = current.prototypes.filter((prototype) => prototype.id !== prototypeId)
-  },
-  async getVersions(projectId, prototypeId) {
-    await mockDelay()
-    return structuredClone(state(projectId).versions.filter((version) => version.prototypeId === prototypeId))
-  },
-  async createVersion(projectId, prototypeId, input) {
-    await mockDelay(600)
-    const imageUrl = input.file.type.startsWith('image/') ? URL.createObjectURL(input.file) : prototypeBike
-    const version: PrototypeVersion = {
-      id: `ver-${Date.now()}`,
-      prototypeId,
-      name: input.name,
-      thumbnailUrl: imageUrl,
-      imageUrl,
-      editedBy: you,
-      updatedAt: new Date().toISOString(),
-      commentsCount: 0,
-    }
-    const current = state(projectId)
-    current.versions = [version, ...current.versions]
-    const prototype = current.prototypes.find((item) => item.id === prototypeId)
-    log(current, {
-      kind: 'prototype',
-      action: `uploaded a new version of ${prototype?.name ?? 'a prototype'}`,
-      detail: version.name,
-    })
-    return version
-  },
-  async commentOnVersion(projectId, versionId) {
-    await mockDelay(300)
-    const version = requireItem(state(projectId).versions.find((item) => item.id === versionId))
-    version.commentsCount += 1
-    return { ...version }
-  },
-
   async getEvaluations(projectId) {
     await mockDelay()
     return structuredClone(summarize(state(projectId).evaluations))

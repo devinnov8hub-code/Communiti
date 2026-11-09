@@ -96,7 +96,7 @@ function Workspace({
         (prototypeId ? (
           <PrototypeVersions projectId={workspace.id} prototypeId={prototypeId} />
         ) : (
-          <PrototypeTab projectId={workspace.id} />
+          <PrototypeTab projectId={workspace.id} isAdmin={workspace.membership === 'admin'} />
         ))}
       {tab === 'expert' && <ExpertTab projectId={workspace.id} />}
       {tab === 'ledger' && <LedgerTab projectId={workspace.id} />}

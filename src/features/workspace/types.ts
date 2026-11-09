@@ -70,16 +70,19 @@ export interface Prototype {
   name: string
   thumbnailUrl?: string
   createdAt: string
-  artisans: WorkspaceMember[]
+  createdBy: WorkspaceMember
+  versionCount: number
 }
 
 export interface PrototypeVersion {
   id: string
   prototypeId: string
+  /** The backend's `versionLabel`, e.g. "Version 2.1". */
   name: string
-  /** Grid thumbnail; falls back to the full image. */
-  thumbnailUrl?: string
+  /** Set when the uploaded file is an image (shown in the grid and preview). */
   imageUrl?: string
+  /** The uploaded file (signed link, valid for an hour). */
+  file?: { url: string; name: string }
   editedBy: WorkspaceMember
   updatedAt: string
   commentsCount: number

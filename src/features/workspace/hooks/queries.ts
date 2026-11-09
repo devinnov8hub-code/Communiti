@@ -1,9 +1,16 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { projectKeys } from '@/features/projects/hooks/queries'
-import { projectsApi, workspaceApi as api, type ProjectNotificationSettings } from '@/lib/api'
+import { projectsApi, uploadFile, workspaceApi as api, type ProjectNotificationSettings } from '@/lib/api'
 import { workspaceApi } from '../api/workspace.service'
-import { toJoinRequest, toResearchDoc, toWorkspace, toWorkspaceMember } from '../mappers'
+import {
+  toJoinRequest,
+  toPrototype,
+  toPrototypeVersion,
+  toResearchDoc,
+  toWorkspace,
+  toWorkspaceMember,
+} from '../mappers'
 import { textToRichText } from '../richText'
 import type { EvaluationScores, EvaluationTarget, NewTask, ProjectTask } from '../types'
 
@@ -179,38 +186,67 @@ export function useCommentOnResearch(projectId: string) {
 
 /* ------------------------------ Prototypes ------------------------------ */
 
-export const usePrototypes = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.prototypes(projectId), queryFn: () => workspaceApi.getPrototypes(projectId) })
+export function usePrototypes(projectId: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: workspaceKeys.prototypes(projectId),
+    queryFn: () => api.listPrototypes(projectId).then((page) => page.data),
+    select: (prototypes) => prototypes.map((prototype) => toPrototype(prototype, user?.id)),
+  })
+}
 
+/** The thumbnail has to be public (`coverUrl`), so it goes up with the public `project` purpose. */
 export function useCreatePrototype(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.prototypes(projectId))
   return useMutation({
-    mutationFn: (input: { name: string; thumbnail?: File }) => workspaceApi.createPrototype(projectId, input),
+    mutationFn: async ({ name, thumbnail }: { name: string; thumbnail?: File }) =>
+      api.createPrototype(projectId, {
+        name,
+        coverUrl: thumbnail ? (await uploadFile(thumbnail, 'project')).publicUrl : null,
+      }),
     onSuccess: invalidate,
   })
 }
 
+/** Project admins only. */
 export function useDeletePrototype(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.prototypes(projectId))
   return useMutation({
-    mutationFn: (prototypeId: string) => workspaceApi.deletePrototype(projectId, prototypeId),
+    mutationFn: (prototypeId: string) => api.deletePrototype(projectId, prototypeId),
     onSuccess: invalidate,
   })
 }
 
-export const useVersions = (projectId: string, prototypeId: string | undefined) =>
-  useQuery({
+/** A prototype and its versions, newest first (file links are signed for an hour). */
+export function usePrototype(projectId: string, prototypeId: string | undefined) {
+  const { user } = useAuth()
+  return useQuery({
     queryKey: workspaceKeys.versions(projectId, prototypeId ?? ''),
-    queryFn: () => workspaceApi.getVersions(projectId, prototypeId!),
+    queryFn: () => api.getPrototype(projectId, prototypeId!),
+    select: ({ versions, ...prototype }) => ({
+      prototype: toPrototype(prototype, user?.id),
+      versions: versions.map((version) => toPrototypeVersion(version, prototype.id, user?.id)),
+    }),
     enabled: Boolean(prototypeId),
+    staleTime: 30 * 60_000,
   })
+}
 
 export function useCreateVersion(projectId: string, prototypeId: string) {
+  const { user } = useAuth()
   const invalidate = useInvalidate(workspaceKeys.versions(projectId, prototypeId))
+  const invalidateList = useInvalidate(workspaceKeys.prototypes(projectId))
   const invalidateLedger = useInvalidate(workspaceKeys.ledger(projectId))
   return useMutation({
-    mutationFn: (input: { name: string; file: File }) => workspaceApi.createVersion(projectId, prototypeId, input),
-    onSuccess: () => Promise.all([invalidate(), invalidateLedger()]),
+    mutationFn: async ({ name, file }: { name: string; file: File }) => {
+      const { mediaId } = await uploadFile(file, 'prototype')
+      const version = await api.createPrototypeVersion(projectId, prototypeId, {
+        versionLabel: name,
+        mediaIds: [mediaId],
+      })
+      return toPrototypeVersion(version, prototypeId, user?.id)
+    },
+    onSuccess: () => Promise.all([invalidate(), invalidateList(), invalidateLedger()]),
   })
 }
 
@@ -218,7 +254,7 @@ export function useCommentOnVersion(projectId: string, prototypeId: string) {
   const invalidate = useInvalidate(workspaceKeys.versions(projectId, prototypeId))
   return useMutation({
     mutationFn: ({ versionId, text }: { versionId: string; text: string }) =>
-      workspaceApi.commentOnVersion(projectId, versionId, text),
+      api.createWorkspaceComment(projectId, { targetType: 'prototype_version', targetId: versionId, body: text }),
     onSuccess: invalidate,
   })
 }

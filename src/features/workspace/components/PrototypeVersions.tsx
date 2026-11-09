@@ -1,4 +1,4 @@
-import { DotsThree, DotsThreeOutlineVertical, Plus } from '@phosphor-icons/react'
+import { DotsThree, DotsThreeOutlineVertical, FileText, Plus } from '@phosphor-icons/react'
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
@@ -6,26 +6,43 @@ import { Avatar, FilePicker, IconButton, Menu, MenuItem, Modal, Spinner, useToas
 import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { useCommentOnVersion, useCreateVersion, usePrototypes, useVersions } from '../hooks/queries'
+import { useCommentOnVersion, useCreateVersion, usePrototype } from '../hooks/queries'
 import type { PrototypeVersion } from '../types'
 import { CommentBar, FilledField, ModalActions, TabState } from './shared'
 
-function download(url: string, name: string) {
+/** Files live on another origin (signed links), so `download` may be ignored: open in a new tab too. */
+function download(file: { url: string; name: string }) {
   const link = document.createElement('a')
-  link.href = url
-  link.download = name
+  link.href = file.url
+  link.download = file.name
+  link.target = '_blank'
+  link.rel = 'noopener'
   link.click()
+}
+
+/** Files the backend accepts for prototype versions (images, video, documents). */
+const VERSION_FILE_TYPES =
+  'image/jpeg,image/png,image/webp,image/gif,image/heic,video/mp4,video/quicktime,video/webm,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'
+
+/** Grid / preview image, or a file icon for documents and videos. */
+function VersionImage({ version, className }: { version: PrototypeVersion; className: string }) {
+  if (version.imageUrl) return <img src={version.imageUrl} alt="" loading="lazy" className={className} />
+  return (
+    <span className={cn(className, 'flex items-center justify-center text-grey-40')}>
+      <FileText className="size-10" aria-hidden />
+    </span>
+  )
 }
 
 /** A prototype's versions: grid on the left, preview on the right (Figma "version"). */
 export function PrototypeVersions({ projectId, prototypeId }: { projectId: string; prototypeId: string }) {
-  const prototypes = usePrototypes(projectId)
-  const versions = useVersions(projectId, prototypeId)
+  const detail = usePrototype(projectId, prototypeId)
   const [selectedId, setSelectedId] = useState<string>()
   const [uploading, setUploading] = useState(false)
   const preview = useRef<HTMLElement>(null)
-  const prototype = prototypes.data?.find((item) => item.id === prototypeId)
-  const selected = versions.data?.find((version) => version.id === selectedId) ?? versions.data?.[0]
+  const prototype = detail.data?.prototype
+  const versions = detail.data?.versions
+  const selected = versions?.find((version) => version.id === selectedId) ?? versions?.[0]
 
   const show = (id: string) => {
     setSelectedId(id)
@@ -43,17 +60,17 @@ export function PrototypeVersions({ projectId, prototypeId }: { projectId: strin
           <span className="text-fg">Versions</span>
         </nav>
 
-        {versions.isPending ? (
+        {detail.isPending ? (
           <TabState>
             <Spinner className="text-brand-orange" />
           </TabState>
-        ) : versions.isError ? (
-          <TabState>{getErrorMessage(versions.error)}</TabState>
-        ) : versions.data.length === 0 ? (
-          <TabState>No versions yet. Upload the first CAD file.</TabState>
+        ) : detail.isError ? (
+          <TabState>{getErrorMessage(detail.error)}</TabState>
+        ) : !versions?.length ? (
+          <TabState>No versions yet. Upload the first file.</TabState>
         ) : (
           <ul className="grid grid-cols-2 gap-x-3.5 gap-y-2">
-            {versions.data.map((version) => (
+            {versions.map((version) => (
               <li key={version.id} className="flex flex-col gap-[7px]">
                 <button
                   type="button"
@@ -65,12 +82,7 @@ export function PrototypeVersions({ projectId, prototypeId }: { projectId: strin
                     version.id === selected?.id && 'ring-2 ring-brand-orange',
                   )}
                 >
-                  <img
-                    src={version.thumbnailUrl ?? version.imageUrl}
-                    alt=""
-                    loading="lazy"
-                    className="size-full object-cover"
-                  />
+                  <VersionImage version={version} className="size-full object-cover" />
                 </button>
                 <div className="flex items-start gap-2">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -143,12 +155,12 @@ function VersionMenu({ version, onOpen }: { version: PrototypeVersion; onOpen: (
           >
             Preview
           </MenuItem>
-          {version.imageUrl && (
+          {version.file && (
             <MenuItem
               size="sm"
               onSelect={() => {
                 close()
-                download(version.imageUrl!, version.name)
+                download(version.file!)
               }}
             >
               Download
@@ -185,12 +197,12 @@ function VersionPreview({
             className="w-[200px]"
           >
             {(close) =>
-              version.imageUrl ? (
+              version.file ? (
                 <MenuItem
                   size="sm"
                   onSelect={() => {
                     close()
-                    download(version.imageUrl!, version.name)
+                    download(version.file!)
                   }}
                 >
                   Download {version.name}
@@ -201,12 +213,24 @@ function VersionPreview({
             }
           </Menu>
         </div>
-        {version.imageUrl && (
+        {version.imageUrl ? (
           <img
             src={version.imageUrl}
             alt={`${version.name} preview`}
             className="aspect-square w-full max-w-[354px] bg-white object-contain"
           />
+        ) : (
+          version.file && (
+            <a
+              href={version.file.url}
+              target="_blank"
+              rel="noopener"
+              className="flex aspect-square w-full max-w-[354px] flex-col items-center justify-center gap-2 bg-white text-body-s text-grey-40 hover:underline"
+            >
+              <FileText className="size-12" aria-hidden />
+              <span className="max-w-full truncate px-4">{version.file.name}</span>
+            </a>
+          )
         )}
         <h2 className="sr-only">{version.name}</h2>
       </div>
@@ -268,7 +292,7 @@ function UploadVersionModal({
     event.preventDefault()
     const next = {
       name: name.trim() ? undefined : 'Name this version',
-      file: file ? undefined : 'Choose a CAD file to upload',
+      file: file ? undefined : 'Choose a file to upload',
     }
     setErrors(next)
     if (next.name || next.file || !file) return
@@ -293,12 +317,13 @@ function UploadVersionModal({
           placeholder="Version name"
           value={name}
           onChange={(event) => setName(event.target.value)}
+          maxLength={30}
           error={errors.name}
         />
         <FilePicker
           variant="dropzone"
           placeholder="Upload CAD file"
-          accept=".dwg,.dxf,.step,.stp,.stl,.iges,.igs,.sldprt,.f3d,image/*,application/pdf"
+          accept={VERSION_FILE_TYPES}
           file={file}
           onChange={setFile}
           error={errors.file}

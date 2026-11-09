@@ -11,7 +11,7 @@ import { FilledField, ModalActions, TabState, WorkspaceAction } from './shared'
 const dateFormat = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
 /** Prototype library (Figma "Prototype"). Opening a prototype shows its versions. */
-export function PrototypeTab({ projectId }: { projectId: string }) {
+export function PrototypeTab({ projectId, isAdmin }: { projectId: string; isAdmin: boolean }) {
   const prototypes = usePrototypes(projectId)
   const [creating, setCreating] = useState(false)
 
@@ -31,7 +31,7 @@ export function PrototypeTab({ projectId }: { projectId: string }) {
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {prototypes.data.map((prototype) => (
-              <PrototypeCard key={prototype.id} projectId={projectId} prototype={prototype} />
+              <PrototypeCard key={prototype.id} projectId={projectId} prototype={prototype} canDelete={isAdmin} />
             ))}
           </ul>
         )}
@@ -42,7 +42,15 @@ export function PrototypeTab({ projectId }: { projectId: string }) {
   )
 }
 
-function PrototypeCard({ projectId, prototype }: { projectId: string; prototype: Prototype }) {
+function PrototypeCard({
+  projectId,
+  prototype,
+  canDelete,
+}: {
+  projectId: string
+  prototype: Prototype
+  canDelete: boolean
+}) {
   const remove = useDeletePrototype(projectId)
   const toast = useToast()
   const href = paths.prototype(projectId, prototype.id)
@@ -65,37 +73,39 @@ function PrototypeCard({ projectId, prototype }: { projectId: string; prototype:
             Created {dateFormat.format(new Date(prototype.createdAt))}
           </p>
           <div className="flex items-center gap-1">
-            <AvatarStack people={prototype.artisans} size={24} />
+            <AvatarStack people={[prototype.createdBy]} size={24} />
             <span className="text-caption text-grey-40 dark:text-fg-body">
-              {prototype.artisans.length} {prototype.artisans.length === 1 ? 'Artisan' : 'Artisans'}
+              {prototype.versionCount} {prototype.versionCount === 1 ? 'Version' : 'Versions'}
             </span>
           </div>
         </div>
-        <Menu
-          trigger={
-            <IconButton label={`Actions for ${prototype.name}`} className="size-7 text-fg">
-              <DotsThree weight="bold" className="size-6" />
-            </IconButton>
-          }
-          className="w-[200px]"
-        >
-          {(close) => (
-            <MenuItem
-              size="sm"
-              tone="danger"
-              icon={<Trash />}
-              onSelect={() => {
-                close()
-                remove.mutate(prototype.id, {
-                  onSuccess: () => toast(`“${prototype.name}” deleted`),
-                  onError: (error) => toast(getErrorMessage(error)),
-                })
-              }}
-            >
-              Delete prototype
-            </MenuItem>
-          )}
-        </Menu>
+        {canDelete && (
+          <Menu
+            trigger={
+              <IconButton label={`Actions for ${prototype.name}`} className="size-7 text-fg">
+                <DotsThree weight="bold" className="size-6" />
+              </IconButton>
+            }
+            className="w-[200px]"
+          >
+            {(close) => (
+              <MenuItem
+                size="sm"
+                tone="danger"
+                icon={<Trash />}
+                onSelect={() => {
+                  close()
+                  remove.mutate(prototype.id, {
+                    onSuccess: () => toast(`“${prototype.name}” deleted`),
+                    onError: (error) => toast(getErrorMessage(error)),
+                  })
+                }}
+              >
+                Delete prototype
+              </MenuItem>
+            )}
+          </Menu>
+        )}
       </div>
     </li>
   )
@@ -111,7 +121,7 @@ function NewPrototypeModal({ projectId, onClose }: { projectId: string; onClose:
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!name.trim()) return setError('Give your prototype a name')
+    if (name.trim().length < 2) return setError('Give your prototype a name (at least 2 characters)')
     create.mutate(
       { name: name.trim(), thumbnail },
       {
@@ -142,6 +152,7 @@ function NewPrototypeModal({ projectId, onClose }: { projectId: string; onClose:
             setError(undefined)
           }}
           onFocus={(event) => event.target.select()}
+          maxLength={120}
           error={error}
         />
         <ModalActions confirmLabel="Create" onCancel={onClose} loading={create.isPending} />

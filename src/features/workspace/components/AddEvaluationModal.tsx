@@ -3,7 +3,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { Modal, Spinner, StarRating, TextAreaField, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
-import { useCreateEvaluation, usePrototypes, useResearch, useVersions } from '../hooks/queries'
+import { useCreateEvaluation, usePrototype, usePrototypes, useResearch } from '../hooks/queries'
 import { EVALUATION_CRITERIA, type EvaluationScores, type EvaluationTarget, type Prototype } from '../types'
 import { ModalActions, TabState } from './shared'
 
@@ -226,13 +226,14 @@ function VersionPicker({
   prototype: Prototype
   onSelect: (target: EvaluationTarget) => void
 }) {
-  const versions = useVersions(projectId, prototype.id)
+  const detail = usePrototype(projectId, prototype.id)
+  const versions = detail.data?.versions
   return (
-    <PickerList loading={versions.isPending} error={versions.error} empty={versions.data?.length === 0}>
-      {versions.data?.map((version) => (
+    <PickerList loading={detail.isPending} error={detail.error} empty={versions?.length === 0}>
+      {versions?.map((version) => (
         <PickerRow
           key={version.id}
-          imageUrl={version.imageUrl ?? version.thumbnailUrl}
+          imageUrl={version.imageUrl}
           title={version.name}
           subtitle={`Updated by: ${version.editedBy.name.split(' ')[0]}  ${timeAgo(version.updatedAt)}`}
           onSelect={() =>

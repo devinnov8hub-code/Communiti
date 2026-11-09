@@ -155,20 +155,24 @@ backend has no fields for the Figma "Project impact" and "Roles Needed" inputs, 
 
 Connected (`projectsApi`, `workspaceApi`, `reportsApi`; `features/workspace/mappers.ts` shapes them for the screens):
 
-| Method     | Path                                                     | Used for                                                          |
-| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| GET        | `/projects/:id`                                          | Header and Overview; `myRole` / `joinRequestStatus` → access      |
-| POST       | `/projects/:id/join-requests`                            | "Join Project" after Accept Terms                                 |
-| DELETE     | `/projects/:id/members/:userId`                          | Leave (yourself; hidden for the owner) and remove a member        |
-| GET        | `/projects/:id/members`                                  | Project members sheet                                             |
-| GET        | `/projects/:id/join-requests`                            | Requests tab (owner and admins)                                   |
-| POST       | `/projects/:id/join-requests/:requestId/accept\|decline` | Accept / Decline                                                  |
-| GET / PUT  | `/projects/:id/notification-settings`                    | Notifications sheet                                               |
-| GET        | `/projects/:id/contracts`                                | Contract tab's documents                                          |
-| POST       | `/reports` (`targetType: project`)                       | Report this project                                               |
-| GET / POST | `/projects/:id/research`                                 | Research tab, a page at a time / "New Document" (`kind: written`) |
-| DELETE     | `/projects/:id/research/:docId`                          | Delete (author or admin)                                          |
-| POST       | `/projects/:id/workspace-comments`                       | Comment on a document (`targetType: research_doc`)                |
+| Method     | Path                                                     | Used for                                                                |
+| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| GET        | `/projects/:id`                                          | Header and Overview; `myRole` / `joinRequestStatus` → access            |
+| POST       | `/projects/:id/join-requests`                            | "Join Project" after Accept Terms                                       |
+| DELETE     | `/projects/:id/members/:userId`                          | Leave (yourself; hidden for the owner) and remove a member              |
+| GET        | `/projects/:id/members`                                  | Project members sheet                                                   |
+| GET        | `/projects/:id/join-requests`                            | Requests tab (owner and admins)                                         |
+| POST       | `/projects/:id/join-requests/:requestId/accept\|decline` | Accept / Decline                                                        |
+| GET / PUT  | `/projects/:id/notification-settings`                    | Notifications sheet                                                     |
+| GET        | `/projects/:id/contracts`                                | Contract tab's documents                                                |
+| POST       | `/reports` (`targetType: project`)                       | Report this project                                                     |
+| GET / POST | `/projects/:id/research`                                 | Research tab, a page at a time / "New Document" (`kind: written`)       |
+| DELETE     | `/projects/:id/research/:docId`                          | Delete (author or admin)                                                |
+| POST       | `/projects/:id/workspace-comments`                       | Comment on a document or version (`research_doc` / `prototype_version`) |
+| GET / POST | `/projects/:id/prototypes`                               | Prototype tab / "New Prototype" (thumbnail → `coverUrl`)                |
+| DELETE     | `/projects/:id/prototypes/:prototypeId`                  | Delete prototype (project admins only, so hidden for others)            |
+| GET        | `/projects/:id/prototypes/:prototypeId`                  | Versions screen and the Expert tab's version picker                     |
+| POST       | `/projects/:id/prototypes/:prototypeId/versions`         | "Upload version" (file uploaded with purpose `prototype`)               |
 
 The collaboration terms in Accept Terms and the Contract tab are the same for every project
 (`features/workspace/terms.ts`). Not in the backend, so not shown: the design's "Impact" section and the
@@ -179,18 +183,20 @@ Research documents are stored as TipTap/ProseMirror JSON. The web editor is plai
 `features/workspace/richText.ts` saves one paragraph per line and reads any document back as text.
 Uploaded documents (`kind: uploaded`) show an "Open file" link.
 
+Prototypes: the thumbnail is uploaded with the public `project` purpose because `coverUrl` must be a
+public link. The backend has no list of a prototype's artisans, so the card shows its creator and
+the version count. A version's file is private (signed link, valid for an hour); images are
+previewed, other files show a file icon that opens the file. The backend only accepts images,
+video, PDF and Office/text files, so the picker no longer offers CAD formats (`.dwg`, `.stl`, `.step`…).
+
 Not connected yet (`features/workspace/api/`, sample data):
 
-| Method         | Path                                             | Body                                              | Returns                                   |
-| -------------- | ------------------------------------------------ | ------------------------------------------------- | ----------------------------------------- |
-| GET / POST     | `/projects/:id/prototypes`                       | — / `name, thumbnail?` (multipart)                | `Prototype[]` / `Prototype`               |
-| DELETE         | `/projects/:id/prototypes/:prototypeId`          |                                                   | —                                         |
-| GET / POST     | `/projects/:id/prototypes/:prototypeId/versions` | — / `name, file` (multipart)                      | `PrototypeVersion[]` / `PrototypeVersion` |
-| POST           | `/projects/:id/versions/:versionId/comments`     | `{ text }`                                        | `PrototypeVersion`                        |
-| GET / POST     | `/projects/:id/evaluations`                      | — / `{ target, scores, comment }`                 | `EvaluationSummary`                       |
-| GET            | `/projects/:id/ledger`                           |                                                   | `LedgerEntry[]`                           |
-| GET / POST     | `/projects/:id/tasks`                            | — / `{ title, description, assigneeId, dueDate }` | `ProjectTask[]` / `ProjectTask`           |
-| PATCH / DELETE | `/projects/:id/tasks/:taskId`                    | `{ completed }` / —                               | `ProjectTask` / —                         |
+| Method         | Path                          | Body                                              | Returns                         |
+| -------------- | ----------------------------- | ------------------------------------------------- | ------------------------------- |
+| GET / POST     | `/projects/:id/evaluations`   | — / `{ target, scores, comment }`                 | `EvaluationSummary`             |
+| GET            | `/projects/:id/ledger`        |                                                   | `LedgerEntry[]`                 |
+| GET / POST     | `/projects/:id/tasks`         | — / `{ title, description, assigneeId, dueDate }` | `ProjectTask[]` / `ProjectTask` |
+| PATCH / DELETE | `/projects/:id/tasks/:taskId` | `{ completed }` / —                               | `ProjectTask` / —               |
 
 Only members see workspace tabs other than Overview; owners and admins also get Edit Project Details and
 join-request management. While a join request is pending the workspace re-fetches every 5 seconds.

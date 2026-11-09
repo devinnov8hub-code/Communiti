@@ -4,10 +4,20 @@ import type {
   ResearchDoc as ApiResearchDoc,
   Project,
   ProjectMember,
+  Prototype as ApiPrototype,
+  PrototypeVersion as ApiPrototypeVersion,
   UserSummary,
 } from '@/lib/api'
 import { richTextToText } from './richText'
-import type { JoinRequest, Membership, ProjectWorkspace, ResearchDoc, WorkspaceMember } from './types'
+import type {
+  JoinRequest,
+  Membership,
+  ProjectWorkspace,
+  Prototype,
+  PrototypeVersion,
+  ResearchDoc,
+  WorkspaceMember,
+} from './types'
 
 const roleLabel = (user: Pick<UserSummary, 'memberRole'>) => getRoleLabel({ role: user.memberRole ?? undefined })
 
@@ -58,6 +68,30 @@ export function toWorkspace(project: Project, myId?: string): ProjectWorkspace {
     membership,
     isOwner: project.myRole === 'owner',
     conversationId: (isMember && project.conversationId) || undefined,
+  }
+}
+
+export const toPrototype = (prototype: ApiPrototype, myId?: string): Prototype => ({
+  id: prototype.id,
+  name: prototype.name,
+  thumbnailUrl: prototype.coverUrl ?? undefined,
+  createdAt: prototype.createdAt,
+  createdBy: toWorkspaceUser(prototype.createdBy, myId),
+  versionCount: prototype.versionCount,
+})
+
+/** A version's first file is what the screens preview and download. */
+export function toPrototypeVersion(version: ApiPrototypeVersion, prototypeId: string, myId?: string): PrototypeVersion {
+  const media = version.media[0]
+  return {
+    id: version.id,
+    prototypeId,
+    name: version.versionLabel,
+    imageUrl: (media?.kind === 'image' && media.url) || undefined,
+    file: media?.url ? { url: media.url, name: media.originalName ?? version.versionLabel } : undefined,
+    editedBy: toWorkspaceUser(version.uploadedBy, myId),
+    updatedAt: version.createdAt,
+    commentsCount: version.commentCount,
   }
 }
 
