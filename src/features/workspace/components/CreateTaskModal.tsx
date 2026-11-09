@@ -11,8 +11,9 @@ import { ModalActions } from './shared'
 const today = () => new Date().toLocaleDateString('en-CA')
 
 const schema = z.object({
-  title: z.string().trim().min(3, 'Give the task a title').max(100),
-  description: z.string().trim().min(5, 'Describe what needs doing').max(1000),
+  // Upper limits are the backend's.
+  title: z.string().trim().min(3, 'Give the task a title').max(200),
+  description: z.string().trim().min(5, 'Describe what needs doing').max(3000),
   assigneeId: z.string().min(1, 'Choose who should do this'),
   dueDate: z
     .string()
@@ -61,7 +62,7 @@ export function CreateTaskModal({ projectId, onClose }: { projectId: string; onC
           {...register('description')}
         />
         <SelectField
-          label="Assign To Member(s)"
+          label="Assign To Member"
           placeholder={members.isPending ? 'Loading members…' : 'Choose a member'}
           options={options}
           error={errors.assigneeId?.message}

@@ -87,10 +87,10 @@ regenerates; `npm run api:generate` regenerates only. Function names come from
 The backend only allows browser calls from the production site, so in development the client calls
 `/api/...` on the dev server and Vite proxies it (`vite.config.ts`).
 
-**Most screens are not connected yet.** Auth, Account Preferences and the admin console use `@/lib/api`. Every other feature
-still has its own `api/` folder (a placeholder service plus sample data) and screen-shaped `types.ts`
-from before the backend existed. As a feature is connected, those are deleted and it uses `@/lib/api`
-services and types directly.
+**Not every screen is connected yet.** Auth, the admin console, Feed, Forums, Chats, Notifications, Projects and the
+project workspace use `@/lib/api`. Explore, Profile and Settings still have their own `api/` folder (a
+placeholder service plus sample data) from before the backend existed. As a feature is connected, that folder is
+deleted and it uses `@/lib/api` services and types directly.
 
 ### Auth
 
@@ -151,28 +151,35 @@ upload files accept `multipart/form-data`. Response shapes are the types in each
 The form's media is uploaded with purpose `project`: images become `coverUrl`, videos `videoUrl`. The
 backend has no fields for the Figma "Project impact" and "Roles Needed" inputs, so the form doesn't show them.
 
-### Project workspace — partly connected
+### Project workspace — connected
 
-Connected (`projectsApi`, `workspaceApi`, `reportsApi`; `features/workspace/mappers.ts` shapes them for the screens):
+`projectsApi`, `workspaceApi` and `reportsApi`; `features/workspace/mappers.ts` shapes them for the screens:
 
-| Method     | Path                                                     | Used for                                                                |
-| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
-| GET        | `/projects/:id`                                          | Header and Overview; `myRole` / `joinRequestStatus` → access            |
-| POST       | `/projects/:id/join-requests`                            | "Join Project" after Accept Terms                                       |
-| DELETE     | `/projects/:id/members/:userId`                          | Leave (yourself; hidden for the owner) and remove a member              |
-| GET        | `/projects/:id/members`                                  | Project members sheet                                                   |
-| GET        | `/projects/:id/join-requests`                            | Requests tab (owner and admins)                                         |
-| POST       | `/projects/:id/join-requests/:requestId/accept\|decline` | Accept / Decline                                                        |
-| GET / PUT  | `/projects/:id/notification-settings`                    | Notifications sheet                                                     |
-| GET        | `/projects/:id/contracts`                                | Contract tab's documents                                                |
-| POST       | `/reports` (`targetType: project`)                       | Report this project                                                     |
-| GET / POST | `/projects/:id/research`                                 | Research tab, a page at a time / "New Document" (`kind: written`)       |
-| DELETE     | `/projects/:id/research/:docId`                          | Delete (author or admin)                                                |
-| POST       | `/projects/:id/workspace-comments`                       | Comment on a document or version (`research_doc` / `prototype_version`) |
-| GET / POST | `/projects/:id/prototypes`                               | Prototype tab / "New Prototype" (thumbnail → `coverUrl`)                |
-| DELETE     | `/projects/:id/prototypes/:prototypeId`                  | Delete prototype (project admins only, so hidden for others)            |
-| GET        | `/projects/:id/prototypes/:prototypeId`                  | Versions screen and the Expert tab's version picker                     |
-| POST       | `/projects/:id/prototypes/:prototypeId/versions`         | "Upload version" (file uploaded with purpose `prototype`)               |
+| Method     | Path                                                     | Used for                                                                                 |
+| ---------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| GET        | `/projects/:id`                                          | Header and Overview; `myRole` / `joinRequestStatus` → access                             |
+| POST       | `/projects/:id/join-requests`                            | "Join Project" after Accept Terms                                                        |
+| DELETE     | `/projects/:id/members/:userId`                          | Leave (yourself; hidden for the owner) and remove a member                               |
+| GET        | `/projects/:id/members`                                  | Project members sheet                                                                    |
+| GET        | `/projects/:id/join-requests`                            | Requests tab (owner and admins)                                                          |
+| POST       | `/projects/:id/join-requests/:requestId/accept\|decline` | Accept / Decline                                                                         |
+| GET / PUT  | `/projects/:id/notification-settings`                    | Notifications sheet                                                                      |
+| GET        | `/projects/:id/contracts`                                | Contract tab's documents                                                                 |
+| POST       | `/reports` (`targetType: project`)                       | Report this project                                                                      |
+| GET / POST | `/projects/:id/research`                                 | Research tab, a page at a time / "New Document" (`kind: written`)                        |
+| DELETE     | `/projects/:id/research/:docId`                          | Delete (author or admin)                                                                 |
+| POST       | `/projects/:id/workspace-comments`                       | Comment on a document or version (`research_doc` / `prototype_version`)                  |
+| GET / POST | `/projects/:id/prototypes`                               | Prototype tab / "New Prototype" (thumbnail → `coverUrl`)                                 |
+| DELETE     | `/projects/:id/prototypes/:prototypeId`                  | Delete prototype (project admins only, so hidden for others)                             |
+| GET        | `/projects/:id/prototypes/:prototypeId`                  | Versions screen and the Expert tab's version picker                                      |
+| POST       | `/projects/:id/prototypes/:prototypeId/versions`         | "Upload version" (file uploaded with purpose `prototype`)                                |
+| GET        | `/projects/:id/evaluations`                              | Expert tab (score out of 100 = the three 1–5 averages)                                   |
+| POST       | `/projects/:id/evaluations`                              | "Add Evaluation" (researchers and professionals; the backend also requires verification) |
+| DELETE     | `/projects/:id/evaluations/:evaluationId`                | Delete your own evaluation                                                               |
+| GET        | `/projects/:id/ledger`                                   | Ledger tab, a page at a time                                                             |
+| GET / POST | `/projects/:id/tasks`                                    | Tasks tab / "New Task" (contributors and admins)                                         |
+| PATCH      | `/projects/:id/tasks/:taskId`                            | Tick a task (`status: done\|todo`)                                                       |
+| DELETE     | `/projects/:id/tasks/:taskId`                            | Delete (the task's creator or an admin)                                                  |
 
 The collaboration terms in Accept Terms and the Contract tab are the same for every project
 (`features/workspace/terms.ts`). Not in the backend, so not shown: the design's "Impact" section and the
@@ -189,14 +196,13 @@ the version count. A version's file is private (signed link, valid for an hour);
 previewed, other files show a file icon that opens the file. The backend only accepts images,
 video, PDF and Office/text files, so the picker no longer offers CAD formats (`.dwg`, `.stl`, `.step`…).
 
-Not connected yet (`features/workspace/api/`, sample data):
+Expert: evaluations only carry the reviewed document or version id, so the tab also loads the research and
+prototype lists to name them (version names are fetched only when a version was reviewed). The design's
+"Flag evaluation" has no backend, so the menu offers "Delete evaluation" on your own reviews instead.
 
-| Method         | Path                          | Body                                              | Returns                         |
-| -------------- | ----------------------------- | ------------------------------------------------- | ------------------------------- |
-| GET / POST     | `/projects/:id/evaluations`   | — / `{ target, scores, comment }`                 | `EvaluationSummary`             |
-| GET            | `/projects/:id/ledger`        |                                                   | `LedgerEntry[]`                 |
-| GET / POST     | `/projects/:id/tasks`         | — / `{ title, description, assigneeId, dueDate }` | `ProjectTask[]` / `ProjectTask` |
-| PATCH / DELETE | `/projects/:id/tasks/:taskId` | `{ completed }` / —                               | `ProjectTask` / —               |
+Ledger: the `type`s aren't a documented list, so entries are coloured by keyword (message, research,
+evaluation, prototype; anything else is a team update) and show the backend's `summary`. Tasks have one
+assignee and an optional due date in the backend; tasks without one sort last.
 
 Only members see workspace tabs other than Overview; owners and admins also get Edit Project Details and
 join-request management. While a join request is pending the workspace re-fetches every 5 seconds.

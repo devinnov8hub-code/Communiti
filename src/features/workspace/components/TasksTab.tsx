@@ -2,6 +2,7 @@ import { ArrowDown, Check, DotsThree, Trash } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { AvatarStack, IconButton, Menu, MenuItem, MenuRadioItem, Spinner, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { formatDue } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useDeleteTask, useTasks, useToggleTask } from '../hooks/queries'
@@ -15,13 +16,25 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: 'open-first', label: 'Open tasks first' },
 ]
 
+// Tasks without a due date go last.
+const byDue = (a: ProjectTask, b: ProjectTask) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')
+
 const sorters: Record<Sort, (a: ProjectTask, b: ProjectTask) => number> = {
-  due: (a, b) => a.dueDate.localeCompare(b.dueDate),
-  'open-first': (a, b) => Number(a.completed) - Number(b.completed) || a.dueDate.localeCompare(b.dueDate),
+  due: byDue,
+  'open-first': (a, b) => Number(a.completed) - Number(b.completed) || byDue(a, b),
 }
 
-/** Project task list (Figma "Tasks"); admins can create tasks. */
-export function TasksTab({ projectId, canCreate }: { projectId: string; canCreate: boolean }) {
+/** Project task list (Figma "Tasks"); contributors and admins can create tasks. */
+export function TasksTab({
+  projectId,
+  canCreate,
+  isAdmin,
+}: {
+  projectId: string
+  canCreate: boolean
+  isAdmin: boolean
+}) {
+  const { user } = useAuth()
   const tasks = useTasks(projectId)
   const [sort, setSort] = useState<Sort>('open-first')
   const [creating, setCreating] = useState(false)
@@ -71,7 +84,12 @@ export function TasksTab({ projectId, canCreate }: { projectId: string; canCreat
         ) : (
           <ul className="flex flex-col gap-3">
             {[...tasks.data].sort(sorters[sort]).map((task) => (
-              <TaskCard key={task.id} projectId={projectId} task={task} />
+              <TaskCard
+                key={task.id}
+                projectId={projectId}
+                task={task}
+                canDelete={isAdmin || task.createdById === user?.id}
+              />
             ))}
           </ul>
         )}
@@ -82,7 +100,7 @@ export function TasksTab({ projectId, canCreate }: { projectId: string; canCreat
   )
 }
 
-function TaskCard({ projectId, task }: { projectId: string; task: ProjectTask }) {
+function TaskCard({ projectId, task, canDelete }: { projectId: string; task: ProjectTask; canDelete: boolean }) {
   const toggle = useToggleTask(projectId)
   const remove = useDeleteTask(projectId)
   const toast = useToast()
@@ -118,7 +136,7 @@ function TaskCard({ projectId, task }: { projectId: string; task: ProjectTask })
       </div>
       <div className="flex items-center justify-between gap-3 py-2">
         <p className="text-caption text-grey-40 dark:text-fg-body">
-          {task.completed ? 'Completed' : formatDue(task.dueDate)}
+          {task.completed ? 'Completed' : task.dueDate ? formatDue(task.dueDate) : 'No due date'}
         </p>
         <div className="flex items-center gap-2">
           <AvatarStack people={task.assignees} size={24} />
@@ -142,17 +160,19 @@ function TaskCard({ projectId, task }: { projectId: string; task: ProjectTask })
                 >
                   {task.completed ? 'Mark as not done' : 'Mark as done'}
                 </MenuItem>
-                <MenuItem
-                  size="sm"
-                  tone="danger"
-                  icon={<Trash />}
-                  onSelect={() => {
-                    close()
-                    remove.mutate(task.id, { onSuccess: () => toast('Task deleted'), onError })
-                  }}
-                >
-                  Delete task
-                </MenuItem>
+                {canDelete && (
+                  <MenuItem
+                    size="sm"
+                    tone="danger"
+                    icon={<Trash />}
+                    onSelect={() => {
+                      close()
+                      remove.mutate(task.id, { onSuccess: () => toast('Task deleted'), onError })
+                    }}
+                  >
+                    Delete task
+                  </MenuItem>
+                )}
               </>
             )}
           </Menu>

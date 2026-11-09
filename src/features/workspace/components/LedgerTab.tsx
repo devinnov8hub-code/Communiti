@@ -1,5 +1,5 @@
 import { CalendarDots } from '@phosphor-icons/react'
-import { Spinner } from '@/components/ui'
+import { LoadMore, Spinner } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { formatDayHeading, formatTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -59,7 +59,8 @@ export function LedgerTab({ projectId }: { projectId: string }) {
                       </time>
                     </header>
                     <p className="text-caption text-grey-40 dark:text-fg-body">
-                      <span className="text-body-s text-fg">{entry.actor}</span> {entry.action}
+                      {entry.actor && <span className="text-body-s text-fg">{entry.actor} </span>}
+                      {entry.action}
                     </p>
                     {entry.detail && (
                       <p className="rounded-control bg-offwhite p-2.5 text-caption text-black dark:bg-grey-50 dark:text-fg">
@@ -73,6 +74,12 @@ export function LedgerTab({ projectId }: { projectId: string }) {
           </ol>
         </section>
       ))}
+      {ledger.hasNextPage && (
+        <LoadMore
+          key={ledger.data.length}
+          onVisible={() => !ledger.isFetchingNextPage && void ledger.fetchNextPage()}
+        />
+      )}
     </div>
   )
 }

@@ -41,6 +41,8 @@ export interface ProjectWorkspace {
   membership: Membership
   /** The owner can't leave (ownership has to be transferred first). */
   isOwner: boolean
+  /** Owners, admins and contributors can add work (viewers can only read and comment). */
+  canContribute: boolean
   /** Project group chat, for members. */
   conversationId?: string
 }
@@ -103,16 +105,18 @@ export type EvaluationTarget =
 
 export interface Evaluation {
   id: string
-  author: { id: string; name: string; avatarUrl?: string }
+  author: WorkspaceMember
   comment: string
-  target: EvaluationTarget
+  /** What was reviewed; unset for a general review or when the item was deleted. */
+  target?: EvaluationTarget
+  /** 1–5 each. */
   scores: EvaluationScores
   createdAt: string
 }
 
 export interface EvaluationSummary {
-  /** Average of all scores, out of 100. */
-  score: number
+  /** Average of all scores, out of 100 (null before the first evaluation). */
+  score: number | null
   evaluations: Evaluation[]
 }
 
@@ -121,7 +125,9 @@ export type LedgerKind = 'chat' | 'research' | 'review' | 'prototype' | 'team'
 export interface LedgerEntry {
   id: string
   kind: LedgerKind
-  actor: string
+  /** Who did it, when the summary doesn't already start with their name. */
+  actor?: string
+  /** The backend's `summary`, e.g. "uploaded a new prototype version". */
   action: string
   /** Quoted message, file name or version. */
   detail?: string
@@ -132,10 +138,12 @@ export interface ProjectTask {
   id: string
   title: string
   description: string
-  /** ISO date, YYYY-MM-DD */
-  dueDate: string
+  /** ISO date, YYYY-MM-DD (optional in the backend). */
+  dueDate?: string
   completed: boolean
+  /** The backend allows one assignee; kept as a list for the avatar stack. */
   assignees: WorkspaceMember[]
+  createdById: string
 }
 
 export interface NewTask {

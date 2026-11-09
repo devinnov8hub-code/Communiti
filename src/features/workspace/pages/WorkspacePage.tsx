@@ -101,7 +101,13 @@ function Workspace({
       {tab === 'expert' && <ExpertTab projectId={workspace.id} />}
       {tab === 'ledger' && <LedgerTab projectId={workspace.id} />}
       {tab === 'contract' && <ContractTab projectId={workspace.id} />}
-      {tab === 'tasks' && <TasksTab projectId={workspace.id} canCreate={workspace.membership === 'admin'} />}
+      {tab === 'tasks' && (
+        <TasksTab
+          projectId={workspace.id}
+          canCreate={workspace.canContribute}
+          isAdmin={workspace.membership === 'admin'}
+        />
+      )}
     </>
   )
 }

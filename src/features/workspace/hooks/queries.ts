@@ -1,18 +1,21 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { projectKeys } from '@/features/projects/hooks/queries'
-import { projectsApi, uploadFile, workspaceApi as api, type ProjectNotificationSettings } from '@/lib/api'
-import { workspaceApi } from '../api/workspace.service'
+import { projectsApi, uploadFile, workspaceApi as api, type ProjectNotificationSettings, type Task } from '@/lib/api'
 import {
+  type EvaluationTargets,
+  toEvaluationSummary,
   toJoinRequest,
+  toLedgerEntry,
   toPrototype,
   toPrototypeVersion,
   toResearchDoc,
+  toTask,
   toWorkspace,
   toWorkspaceMember,
 } from '../mappers'
 import { textToRichText } from '../richText'
-import type { EvaluationScores, EvaluationTarget, NewTask, ProjectTask } from '../types'
+import type { EvaluationScores, EvaluationTarget, NewTask } from '../types'
 
 export const workspaceKeys = {
   all: (projectId: string) => ['workspace', projectId] as const,
@@ -261,36 +264,110 @@ export function useCommentOnVersion(projectId: string, prototypeId: string) {
 
 /* ------------------------------ Evaluations ----------------------------- */
 
-export const useEvaluations = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.evaluations(projectId), queryFn: () => workspaceApi.getEvaluations(projectId) })
+/** Evaluations plus the names of what they review (the backend only sends the ids). */
+async function getEvaluations(projectId: string) {
+  const [response, research, prototypes] = await Promise.all([
+    api.listEvaluations(projectId),
+    api.listResearch(projectId, { limit: 50 }),
+    api.listPrototypes(projectId),
+  ])
+  // Version names live on each prototype, so those are only fetched when a version was reviewed.
+  const details = response.data.some((evaluation) => evaluation.prototypeVersionId)
+    ? await Promise.all(prototypes.data.map((prototype) => api.getPrototype(projectId, prototype.id)))
+    : []
+  const targets: EvaluationTargets = {
+    research: new Map(research.data.map((doc) => [doc.id, doc.title])),
+    versions: new Map(
+      details.flatMap((prototype) =>
+        prototype.versions.map((version) => [
+          version.id,
+          {
+            kind: 'prototype' as const,
+            id: prototype.id,
+            label: prototype.name,
+            versionId: version.id,
+            versionLabel: version.versionLabel,
+          },
+        ]),
+      ),
+    ),
+  }
+  return { response, targets }
+}
 
+export function useEvaluations(projectId: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: workspaceKeys.evaluations(projectId),
+    queryFn: () => getEvaluations(projectId),
+    select: ({ response, targets }) => toEvaluationSummary(response, targets, user?.id),
+  })
+}
+
+/** Verified researchers and professionals only (the backend answers 403 otherwise). */
 export function useCreateEvaluation(projectId: string) {
-  const queryClient = useQueryClient()
+  const invalidate = useInvalidate(workspaceKeys.evaluations(projectId))
+  const invalidateLedger = useInvalidate(workspaceKeys.ledger(projectId))
   return useMutation({
-    mutationFn: (input: { target: EvaluationTarget; scores: EvaluationScores; comment: string }) =>
-      workspaceApi.createEvaluation(projectId, input),
-    onSuccess: (summary) => {
-      queryClient.setQueryData(workspaceKeys.evaluations(projectId), summary)
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.ledger(projectId) })
-    },
+    mutationFn: ({
+      target,
+      scores,
+      comment,
+    }: {
+      target: EvaluationTarget
+      scores: EvaluationScores
+      comment: string
+    }) =>
+      api.createEvaluation(projectId, {
+        ...scores,
+        feedback: comment,
+        ...(target.kind === 'research' ? { researchDocId: target.id } : { prototypeVersionId: target.versionId }),
+      }),
+    onSuccess: () => Promise.all([invalidate(), invalidateLedger()]),
+  })
+}
+
+/** The author's own evaluation. */
+export function useDeleteEvaluation(projectId: string) {
+  const invalidate = useInvalidate(workspaceKeys.evaluations(projectId))
+  return useMutation({
+    mutationFn: (evaluationId: string) => api.deleteEvaluation(projectId, evaluationId),
+    onSuccess: invalidate,
   })
 }
 
 /* -------------------------------- Ledger -------------------------------- */
 
+/** Newest first, a page at a time. */
 export const useLedger = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.ledger(projectId), queryFn: () => workspaceApi.getLedger(projectId) })
+  useInfiniteQuery({
+    queryKey: workspaceKeys.ledger(projectId),
+    queryFn: ({ pageParam }) => api.listLedger(projectId, { cursor: pageParam, limit: 50 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    select: (data) => data.pages.flatMap((page) => page.data.map(toLedgerEntry)),
+  })
 
 /* --------------------------------- Tasks -------------------------------- */
 
-export const useTasks = (projectId: string) =>
-  useQuery({ queryKey: workspaceKeys.tasks(projectId), queryFn: () => workspaceApi.getTasks(projectId) })
+// Cached as the backend's tasks so the optimistic tick can update `status` in place.
+export function useTasks(projectId: string) {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: workspaceKeys.tasks(projectId),
+    queryFn: () => api.listTasks(projectId).then((page) => page.data),
+    select: (tasks) => tasks.map((task) => toTask(task, user?.id)),
+  })
+}
 
+/** Contributors and above. */
 export function useCreateTask(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.tasks(projectId))
+  const invalidateLedger = useInvalidate(workspaceKeys.ledger(projectId))
   return useMutation({
-    mutationFn: (input: NewTask) => workspaceApi.createTask(projectId, input),
-    onSuccess: invalidate,
+    mutationFn: ({ title, description, assigneeId, dueDate }: NewTask) =>
+      api.createTask(projectId, { title, description, assigneeId: assigneeId || null, dueDate: dueDate || null }),
+    onSuccess: () => Promise.all([invalidate(), invalidateLedger()]),
   })
 }
 
@@ -299,25 +376,30 @@ export function useToggleTask(projectId: string) {
   const key = workspaceKeys.tasks(projectId)
   return useMutation({
     mutationFn: ({ taskId, completed }: { taskId: string; completed: boolean }) =>
-      workspaceApi.updateTask(projectId, taskId, { completed }),
+      api.updateTask(projectId, taskId, { status: completed ? 'done' : 'todo' }),
     // Tick the box immediately; roll back on failure.
     onMutate: async ({ taskId, completed }) => {
       await queryClient.cancelQueries({ queryKey: key })
-      const previous = queryClient.getQueryData<ProjectTask[]>(key)
-      queryClient.setQueryData<ProjectTask[]>(key, (tasks) =>
-        tasks?.map((task) => (task.id === taskId ? { ...task, completed } : task)),
+      const previous = queryClient.getQueryData<Task[]>(key)
+      queryClient.setQueryData<Task[]>(key, (tasks) =>
+        tasks?.map((task) => (task.id === taskId ? { ...task, status: completed ? 'done' : 'todo' } : task)),
       )
       return { previous }
     },
     onError: (_error, _vars, context) => queryClient.setQueryData(key, context?.previous),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.ledger(projectId) }),
+      ]),
   })
 }
 
+/** The task's creator or a project admin. */
 export function useDeleteTask(projectId: string) {
   const invalidate = useInvalidate(workspaceKeys.tasks(projectId))
   return useMutation({
-    mutationFn: (taskId: string) => workspaceApi.deleteTask(projectId, taskId),
+    mutationFn: (taskId: string) => api.deleteTask(projectId, taskId),
     onSuccess: invalidate,
   })
 }
