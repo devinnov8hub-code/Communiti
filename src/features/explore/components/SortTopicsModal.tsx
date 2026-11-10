@@ -7,8 +7,9 @@ import { cn } from '@/lib/cn'
 
 interface SortTopicsModalProps {
   open: boolean
+  /** Topic ids. */
   selected: string[]
-  onApply: (topics: string[]) => void
+  onApply: (topicIds: string[]) => void
   onClose: () => void
 }
 
@@ -24,14 +25,14 @@ export function SortTopicsModal({ open, selected, onApply, onClose }: SortTopics
     <Modal open={open} onClose={onClose} title="Sort based on topics" gap="md" className="[&_h2]:text-body-l">
       <ul className="-mt-2 flex flex-col gap-2">
         {topics.data?.map((topic, index) => {
-          const checked = draft.includes(topic.slug)
+          const checked = draft.includes(topic.id)
           return (
             <li key={topic.id}>
               <button
                 type="button"
                 role="checkbox"
                 aria-checked={checked}
-                onClick={() => toggle(topic.slug)}
+                onClick={() => toggle(topic.id)}
                 className="flex w-full items-center gap-[7px] border-b border-surface py-2.5 text-left last:border-b-0"
               >
                 <TopicIcon slug={topic.slug} index={index} />

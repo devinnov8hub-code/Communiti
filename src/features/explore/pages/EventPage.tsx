@@ -29,16 +29,25 @@ export function EventPage() {
           <article className="flex flex-col gap-gap-md">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-[9px]">
-                <img
-                  src={event.data.coverUrl}
-                  alt=""
-                  className="h-[220px] w-full rounded-[4px] object-cover sm:h-[355px]"
-                />
+                {event.data.coverUrl ? (
+                  <img
+                    src={event.data.coverUrl}
+                    alt=""
+                    className="h-[220px] w-full rounded-[4px] object-cover sm:h-[355px]"
+                  />
+                ) : (
+                  <span aria-hidden className="h-[220px] w-full rounded-[4px] bg-surface sm:h-[355px]" />
+                )}
                 <div className="flex flex-wrap items-center gap-[9px]">
                   <h1 className="text-h4 font-semibold text-fg">{event.data.title}</h1>
                   <span className="rounded-full bg-brand-orange-tint px-2 py-[5px] text-body-m text-brand-orange uppercase">
                     {event.data.category}
                   </span>
+                  {event.data.status === 'cancelled' && (
+                    <span className="rounded-full bg-surface px-2 py-[5px] text-body-m text-error uppercase">
+                      Cancelled
+                    </span>
+                  )}
                 </div>
               </div>
               <dl className="mx-auto grid w-fit grid-cols-2 text-body-s text-fg sm:text-body-m">
@@ -64,32 +73,43 @@ export function EventPage() {
               <p className="text-body-m text-fg-muted">{event.data.about}</p>
             </section>
 
-            <section className="flex flex-col gap-2">
-              <h2 className="text-body-m font-semibold text-fg">Organized by</h2>
-              <div className="flex items-center gap-2">
-                <img src={event.data.organizer.logoUrl} alt="" className="size-10 object-cover" />
-                <div className="flex flex-col gap-[7px]">
-                  <p className="text-body-s text-fg">{event.data.organizer.name}</p>
-                  <p className="text-caption text-fg-muted">{event.data.organizer.subtitle}</p>
+            {event.data.organizer && (
+              <section className="flex flex-col gap-2">
+                <h2 className="text-body-m font-semibold text-fg">Organized by</h2>
+                <div className="flex items-center gap-2">
+                  {event.data.organizer.logoUrl && (
+                    <img src={event.data.organizer.logoUrl} alt="" className="size-10 object-cover" />
+                  )}
+                  <div className="flex flex-col gap-[7px]">
+                    <p className="text-body-s text-fg">{event.data.organizer.name}</p>
+                    {event.data.organizer.subtitle && (
+                      <p className="text-caption text-fg-muted">{event.data.organizer.subtitle}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {event.data.status === 'upcoming' && (
               <button
                 type="button"
                 aria-pressed={event.data.registered}
                 disabled={register.isPending}
-                onClick={() =>
+                onClick={() => {
+                  const registering = !event.data.registered
+                  // Open the organiser's sign-up page now: browsers block pop-ups opened after a request.
+                  if (registering && event.data.registrationUrl) {
+                    window.open(event.data.registrationUrl, '_blank', 'noopener')
+                  }
                   register.mutate(
-                    { id: event.data.id, registered: !event.data.registered },
+                    { id: event.data.id, registered: registering },
                     {
-                      onSuccess: (updated) =>
-                        toast(updated.registered ? 'You’re registered — see you there!' : 'Registration cancelled'),
+                      onSuccess: () =>
+                        toast(registering ? 'You’re attending — see you there!' : 'You’re no longer attending'),
                       onError: (error) => toast(getErrorMessage(error)),
                     },
                   )
-                }
+                }}
                 className={cn(
                   'flex w-fit items-center gap-2.5 rounded-control px-5 py-[15px] text-body-m font-semibold transition disabled:opacity-60',
                   event.data.registered
@@ -104,7 +124,7 @@ export function EventPage() {
                 ) : (
                   <UserPlus aria-hidden className="size-5" />
                 )}
-                {event.data.registered ? 'Registered' : 'Register'}
+                {event.data.registered ? 'Attending' : 'Register'}
               </button>
             )}
           </article>

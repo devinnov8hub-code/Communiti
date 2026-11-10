@@ -7,15 +7,16 @@ import { useExploreEvents } from '../hooks/queries'
 
 /** All events: upcoming carousel + concluded grid (Figma "Events"). */
 export function EventsPage() {
-  const events = useExploreEvents()
-  const upcoming = events.data?.filter((event) => event.status === 'upcoming') ?? []
-  const concluded = events.data?.filter((event) => event.status === 'concluded') ?? []
+  const upcomingEvents = useExploreEvents('upcoming')
+  const concludedEvents = useExploreEvents('concluded')
+  const upcoming = upcomingEvents.data ?? []
+  const concluded = concludedEvents.data ?? []
 
   return (
     <PageColumns aside={<RightRail />}>
       <SearchHeader />
       <div className="flex flex-col gap-[27px] px-4 py-2.5 sm:px-1.5">
-        {events.isPending ? (
+        {upcomingEvents.isPending || concludedEvents.isPending ? (
           <div className="h-[335px] animate-pulse rounded-control bg-surface" />
         ) : (
           <>
@@ -34,16 +35,18 @@ export function EventsPage() {
               )}
             </section>
 
-            <section className="flex flex-col gap-3">
-              <h2 className="text-h4 font-semibold text-fg">Concluded</h2>
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {concluded.map((event) => (
-                  <li key={event.id}>
-                    <EventCard event={event} />
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {concluded.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-h4 font-semibold text-fg">Concluded</h2>
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {concluded.map((event) => (
+                    <li key={event.id}>
+                      <EventCard event={event} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </div>

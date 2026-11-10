@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, LoadMore } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { ExploreHeader } from '../components/ExploreHeader'
 import { exploreTabUrl } from '../urls'
@@ -30,7 +30,7 @@ export function ExplorePage() {
       />
       <div className="px-2.5 py-2.5">
         {tab === 'suggested' && <SuggestedTab />}
-        {tab === 'highlights' && <HighlightsSection />}
+        {tab === 'highlights' && <HighlightsSection paged />}
         {tab === 'featured' && <FeaturedTab />}
       </div>
     </PageColumns>
@@ -50,8 +50,10 @@ function SuggestedTab() {
         </header>
         {innovations.isPending ? (
           <div className="h-[150px] animate-pulse rounded-card bg-surface" />
+        ) : innovations.data?.length ? (
+          <InnovationStrip innovations={innovations.data} />
         ) : (
-          <InnovationStrip innovations={innovations.data ?? []} />
+          <p className="text-body-m text-fg-muted">No featured innovations yet.</p>
         )}
       </section>
       <HighlightsSection />
@@ -59,15 +61,27 @@ function SuggestedTab() {
   )
 }
 
-function HighlightsSection() {
+/** The Suggested tab shows the first page; the Highlights tab keeps loading as you scroll. */
+function HighlightsSection({ paged = false }: { paged?: boolean }) {
   const highlights = useHighlights()
+  const items = highlights.data ?? []
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-h3 font-semibold text-brand-orange">Communiti Highlights</h2>
       {highlights.isPending ? (
         <div className="h-[400px] animate-pulse rounded-md bg-surface" />
+      ) : items.length ? (
+        <>
+          <HighlightsMosaic highlights={items} />
+          {paged && highlights.hasNextPage && (
+            <LoadMore
+              key={items.length}
+              onVisible={() => !highlights.isFetchingNextPage && highlights.fetchNextPage()}
+            />
+          )}
+        </>
       ) : (
-        <HighlightsMosaic highlights={highlights.data ?? []} />
+        <p className="text-body-m text-fg-muted">No highlights yet.</p>
       )}
     </section>
   )
@@ -117,7 +131,11 @@ function FeaturedCard({ innovation }: { innovation: Innovation }) {
       to={paths.innovation(innovation.id)}
       className="group flex flex-col gap-[7px] border-b border-hairline px-3 py-2.5"
     >
-      <img src={innovation.coverUrl} alt="" loading="lazy" className="h-[200px] w-full object-cover sm:h-[272px]" />
+      {innovation.coverUrl ? (
+        <img src={innovation.coverUrl} alt="" loading="lazy" className="h-[200px] w-full object-cover sm:h-[272px]" />
+      ) : (
+        <span aria-hidden className="h-[200px] w-full bg-surface sm:h-[272px]" />
+      )}
       <span className="text-body-m font-semibold text-brand-green group-hover:underline">{innovation.title}</span>
       <span className="line-clamp-3 text-body-m font-semibold text-fg-muted">{innovation.description[0]}</span>
     </Link>

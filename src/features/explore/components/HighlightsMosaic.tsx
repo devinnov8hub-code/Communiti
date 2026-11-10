@@ -66,8 +66,10 @@ function Tile({ highlight, className }: { highlight: Highlight; className?: stri
   return (
     <Link
       to={paths.highlight(highlight.id)}
-      aria-label={highlight.title}
-      className={cn('group block overflow-hidden rounded-md bg-surface', className)}
+      aria-label={
+        highlight.images.length > 1 ? `${highlight.title} (${highlight.images.length} photos)` : highlight.title
+      }
+      className={cn('group relative block overflow-hidden rounded-md bg-surface', className)}
     >
       <img
         src={highlight.imageUrl}
@@ -75,6 +77,15 @@ function Tile({ highlight, className }: { highlight: Highlight; className?: stri
         loading="lazy"
         className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
       />
+      {/* Albums with more photos say how many more are inside. */}
+      {highlight.images.length > 1 && (
+        <span
+          aria-hidden
+          className="absolute right-1.5 bottom-1.5 rounded-full bg-black/60 px-2 py-0.5 text-caption text-white"
+        >
+          +{highlight.images.length - 1}
+        </span>
+      )}
     </Link>
   )
 }

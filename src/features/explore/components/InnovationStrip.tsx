@@ -12,14 +12,18 @@ export function InnovationStrip({ innovations }: { innovations: Innovation[] }) 
             to={paths.innovation(innovation.id)}
             className="flex w-[206px] flex-col items-center justify-center gap-2 rounded-card bg-surface px-3 py-2.5 transition hover:ring-1 hover:ring-hairline"
           >
-            <img
-              src={innovation.thumbUrl}
-              alt=""
-              width={80}
-              height={63}
-              loading="lazy"
-              className="h-[63px] w-20 object-contain"
-            />
+            {innovation.thumbUrl ? (
+              <img
+                src={innovation.thumbUrl}
+                alt=""
+                width={80}
+                height={63}
+                loading="lazy"
+                className="h-[63px] w-20 object-contain"
+              />
+            ) : (
+              <span aria-hidden className="h-[63px] w-20 rounded-md bg-background" />
+            )}
             <span className="flex w-full flex-col gap-[7px] text-center">
               <span className="text-body-m text-innovation">{innovation.title}</span>
               <span className="text-caption whitespace-pre-line text-grey-45 dark:text-grey-30">

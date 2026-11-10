@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persistSession, queryClient])
 
   const signOut = useCallback(async () => {
-    // Tell the backend to end this device's session; sign out locally either way. Awaited
+    // This ends this device's session; sign out locally either way. Awaited
     // because the client reads the token after this tick, and clearing it first would drop it.
     if (tokens.get('member')) await authApi.logout().catch(() => undefined)
     clearSession()

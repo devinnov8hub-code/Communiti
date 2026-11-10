@@ -13,8 +13,14 @@ const KEYS: Record<AuthScope, string> = {
 /** Fired on `window` when a session can't be refreshed; `detail` is the scope that expired. */
 export const SESSION_EXPIRED_EVENT = 'communiti:session-expired'
 
+/** Fired on `window` whenever an access token is stored or cleared; `detail` is the scope (realtime re-auths on it). */
+export const TOKEN_CHANGED_EVENT = 'communiti:token-changed'
+
 /** Access-token storage. Refresh tokens never reach JavaScript — the backend keeps them in an httpOnly cookie. */
 export const tokens = {
   get: (scope: AuthScope) => local.get<string>(KEYS[scope]),
-  set: (scope: AuthScope, token: string | null) => local.set(KEYS[scope], token),
+  set: (scope: AuthScope, token: string | null) => {
+    local.set(KEYS[scope], token)
+    window.dispatchEvent(new CustomEvent(TOKEN_CHANGED_EVENT, { detail: scope }))
+  },
 }

@@ -28,12 +28,16 @@ export function EventCard({ event, className }: { event: ExploreEvent; className
     <article
       className={cn('relative flex h-[335px] flex-col justify-end rounded-control border border-hairline', className)}
     >
-      <img
-        src={event.imageUrl}
-        alt=""
-        loading="lazy"
-        className="absolute inset-0 size-full rounded-control object-cover"
-      />
+      {event.coverUrl ? (
+        <img
+          src={event.coverUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 size-full rounded-control object-cover"
+        />
+      ) : (
+        <span aria-hidden className="absolute inset-0 rounded-control bg-surface" />
+      )}
       <div className="relative flex flex-col gap-[7px] rounded-b-control bg-popover p-2">
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-brand-orange-tint px-2 py-[5px] text-caption text-brand-orange uppercase">

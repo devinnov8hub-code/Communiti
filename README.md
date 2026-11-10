@@ -88,7 +88,7 @@ The backend only allows browser calls from the production site, so in developmen
 `/api/...` on the dev server and Vite proxies it (`vite.config.ts`).
 
 **Not every screen is connected yet.** Auth, the admin console, Feed, Forums, Chats, Notifications, Projects and the
-project workspace use `@/lib/api`. Explore, Profile and Settings still have their own `api/` folder (a
+project workspace and Explore use `@/lib/api`. Profile and Settings still have their own `api/` folder (a
 placeholder service plus sample data) from before the backend existed. As a feature is connected, that folder is
 deleted and it uses `@/lib/api` services and types directly.
 
@@ -221,17 +221,25 @@ join-request management. While a join request is pending the workspace re-fetche
 | GET          | `/collaboration-requests`             |                                  | `CollaborationRequest[]`        |
 | PATCH        | `/collaboration-requests/:id`         | `{ status: accepted\|declined }` | —                               |
 
-### Explore & events — `features/explore/api/explore.service.ts`
+### Explore & events — connected (`exploreApi`)
 
-| Method       | Path                       | Returns          |
-| ------------ | -------------------------- | ---------------- |
-| GET          | `/innovations?topics=a,b`  | `Innovation[]`   |
-| GET          | `/innovations/:id`         | `Innovation`     |
-| GET          | `/highlights`              | `Highlight[]`    |
-| GET          | `/highlights/:id`          | `Highlight`      |
-| GET          | `/events`                  | `ExploreEvent[]` |
-| GET          | `/events/:id`              | `ExploreEvent`   |
-| PUT / DELETE | `/events/:id/registration` | `ExploreEvent`   |
+`features/explore/mappers.ts` shapes the backend's models for the screens:
+
+| Method       | Path                               | Used for                                                                 |
+| ------------ | ---------------------------------- | ------------------------------------------------------------------------ |
+| GET          | `/featured?topicIds=a,b`           | Featured Innovations strip and tab; "Sort topics" sends topic ids        |
+| GET          | `/featured/:id`                    | Featured View (gallery = cover + images; Share uses `shareUrl`)          |
+| GET          | `/highlights`                      | Highlights mosaic, a page at a time (the Highlights tab loads more)      |
+| GET          | `/highlights/:id`                  | Album view: every photo and the caption                                  |
+| GET          | `/highlights?exclude=:id&eventId=` | "More like this" (prefers albums from the same event)                    |
+| GET          | `/events?when=upcoming\|concluded` | Events page sections                                                     |
+| GET          | `/events/:id`                      | Event view                                                               |
+| PUT / DELETE | `/events/:id/rsvp`                 | Register (`status: going`) / cancel; also opens `registrationUrl` if set |
+
+A highlight is an album in the backend; the mosaic shows each album's first photo and skips albums
+with none. Missing covers, organiser details or logos are simply left out. The Suggested tab keeps the
+design (featured strip + highlights); the backend's `/explore/suggested` (projects, forums, people,
+events) isn't used because the design has no place for it.
 
 ### Profile — `features/profile/api/profile.service.ts`
 
