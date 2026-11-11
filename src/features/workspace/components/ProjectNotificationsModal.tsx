@@ -14,7 +14,7 @@ const OPTIONS: { key: keyof ProjectNotificationSettings; label: string }[] = [
   { key: 'members', label: 'Members & Requests' },
 ]
 
-/** Per-project notification toggles (Figma "notificatiosn"). */
+/** Per-project notification toggles (Figma "notifications"). */
 export function ProjectNotificationsModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const prefs = useNotificationPrefs(projectId)
   const update = useUpdateNotificationPrefs(projectId)
