@@ -1,22 +1,19 @@
 import { Check } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import deleteIllustration from '@/assets/settings/delete-illustration.webp'
 import { paths } from '@/app/paths'
-import { Button, ConfirmDialog, useToast } from '@/components/ui'
+import { Button, Modal, PasswordField, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { SettingsSection } from '../components/SettingsSection'
-import { useDeleteAccount } from '../hooks/queries'
+import { useAccount, useDeleteAccount } from '../hooks/queries'
 import { DELETE_REASONS, type DeleteReason } from '../types'
 
 /** Settings → Privacy → Delete Account. */
 export function DeleteAccountPage() {
   const [reasons, setReasons] = useState<DeleteReason[]>([])
   const [confirming, setConfirming] = useState(false)
-  const remove = useDeleteAccount()
-  const { signOut } = useAuth()
-  const toast = useToast()
 
   const toggle = (reason: DeleteReason) =>
     setReasons((current) =>
@@ -74,25 +71,73 @@ export function DeleteAccountPage() {
         </Button>
       </div>
 
-      {confirming && (
-        <ConfirmDialog
-          open
-          title="Delete your account?"
-          message="This permanently deletes your profile, posts and projects. This can’t be undone."
-          confirmLabel="Delete forever"
-          loading={remove.isPending}
-          onClose={() => setConfirming(false)}
-          onConfirm={() =>
-            remove.mutate(reasons, {
-              onSuccess: () => {
-                toast('Your account has been deleted')
-                signOut()
-              },
-              onError: (error) => toast(getErrorMessage(error)),
-            })
-          }
-        />
-      )}
+      {confirming && <ConfirmDeleteDialog reasons={reasons} onClose={() => setConfirming(false)} />}
     </SettingsSection>
+  )
+}
+
+/**
+ * Final step. The backend schedules deletion in 30 days and signs out everywhere; signing in
+ * again before then cancels it. Accounts with a password (not Google-only) must enter it.
+ */
+function ConfirmDeleteDialog({ reasons, onClose }: { reasons: DeleteReason[]; onClose: () => void }) {
+  const account = useAccount()
+  const remove = useDeleteAccount()
+  const { signOut } = useAuth()
+  const toast = useToast()
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string>()
+  const needsPassword = account.data?.hasPassword ?? true
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    if (needsPassword && !password) return setError('Enter your password to confirm')
+    remove.mutate(
+      { reasons, password: needsPassword ? password : undefined },
+      {
+        onSuccess: () => {
+          toast('Your account will be deleted in 30 days')
+          signOut()
+        },
+        onError: (err) => setError(getErrorMessage(err)),
+      },
+    )
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Delete your account?" className="max-w-[440px]">
+      <form noValidate onSubmit={submit} className="flex flex-col gap-gap-sm">
+        <p className="text-body-m text-fg-muted">
+          You&apos;ll be signed out everywhere and your profile, posts and projects will be deleted permanently in 30
+          days. Signing in again before then cancels the deletion.
+        </p>
+        {needsPassword && (
+          <PasswordField
+            label="Password"
+            autoComplete="current-password"
+            maxLength={128}
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value)
+              setError(undefined)
+            }}
+            error={error}
+          />
+        )}
+        {!needsPassword && error && (
+          <p role="alert" className="text-body-s text-error">
+            {error}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" className="h-[38px] rounded-full text-body-m" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" className="h-[38px] rounded-full bg-error text-body-m" loading={remove.isPending}>
+            Delete account
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

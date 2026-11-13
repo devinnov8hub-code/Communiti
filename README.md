@@ -23,7 +23,7 @@ src/
     ui/           design-system primitives: Button, TextField, SelectField, DateField, Checkbox,
                   Pill, Tag, Tabs, Avatar, AvatarStack, SearchField, Modal, ConfirmDialog, Menu,
                   IconButton, EmptyState, Toast…
-  features/       one folder per area, each with api/ (service + mock), hooks/ (TanStack Query),
+  features/       one folder per area, each with hooks/ (TanStack Query over @/lib/api), mappers,
                   components/, pages/, types.ts
     auth/         sign-up, verification (+ resend), onboarding, login
     feed/         home feed, post view, comments, search, report/menus, right rail
@@ -77,8 +77,7 @@ const { data, nextCursor } = await postsApi.getFeed({ tab: 'for-you' })
   `models.types.ts` has the backend models (`Post`, `Project`, `UserSummary`…).
 - `errors.ts` — `ApiError` (with the backend's `code` / `fields` / `requestId`) and `getErrorMessage`.
 - `upload.ts` — `uploadFile(file, purpose)`: presign → PUT to storage → confirm.
-- `legacy.ts` — temporary: the fetch helper and sample-data switch used by features that are not
-  connected yet. Removed once they are.
+- `src/lib/realtime.ts` (beside it) — Supabase Realtime for live chat messages and notifications.
 
 `services/` and `types/` are **generated — do not edit.** `npm run api:sync` re-downloads the spec and
 regenerates; `npm run api:generate` regenerates only. Function names come from
@@ -87,15 +86,14 @@ regenerates; `npm run api:generate` regenerates only. Function names come from
 The backend only allows browser calls from the production site, so in development the client calls
 `/api/...` on the dev server and Vite proxies it (`vite.config.ts`).
 
-**Not every screen is connected yet.** Auth, the admin console, Feed, Forums, Chats, Notifications, Projects and the
-project workspace and Explore use `@/lib/api`. Profile and Settings still have their own `api/` folder (a
-placeholder service plus sample data) from before the backend existed. As a feature is connected, that folder is
-deleted and it uses `@/lib/api` services and types directly.
+**Every screen uses the real backend** through `@/lib/api`; there is no sample data. Features call the
+services from their `hooks/queries.ts`, and where the backend's shape differs from what a screen needs, a
+`mappers.ts` in the feature converts it.
 
 ### Auth
 
-Sign-up, verification, login, password reset, onboarding and Google sign-in always use the real
-backend, so signing in needs a real account, even while the other features show sample data.
+Sign-up, verification, login, password reset, onboarding and Google sign-in use the real backend,
+so signing in needs a real account.
 `features/auth/user.ts` maps the backend's user to the app's `User` (`toUser`, `toSession`);
 `AuthProvider` loads the full record from `GET /me`, ends the session on logout or when the token can't
 be refreshed. Onboarding follows the backend's flow: Select Role, the role's form (`PUT /me/role`), then
@@ -109,34 +107,26 @@ which the forms show under the inputs. `VerifyTick` stays grey until the server 
 
 ## Backend integration
 
-Copy `.env.example` to `.env` and set `VITE_API_BASE_URL`. While it is empty every feature that isn't
-connected yet uses its in-browser mock (seeded with the Figma content). Each `*.service.ts` exports the API interface, the real HTTP implementation and picks one at startup,
-so pointing at the backend needs no component changes.
+Copy `.env.example` to `.env`. `VITE_API_BASE_URL` can usually stay empty (see the comments there);
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_KEY` turn on realtime. Every `VITE_` value is built into the
+JavaScript sent to browsers, so never put a secret in one, and set them in the hosting build settings too.
 
-Requests send `Authorization: Bearer <token>`; errors should return `{ message }`. Endpoints that
-upload files accept `multipart/form-data`. Response shapes are the types in each feature's `types.ts`.
+Each section below lists what a feature uses. Things the Figma design shows but the backend doesn't
+support are left out of the screens and noted, so they can be added when the backend has them.
 
-### Feed & posts — `features/feed/api/feed.service.ts`
+### Feed & posts — connected (`postsApi`, `reportsApi`, `searchApi`, `topicsApi`, `usersApi`, `exploreApi`, `uploadFile`)
 
-| Method       | Path                           | Body / query                                       | Returns                 |
-| ------------ | ------------------------------ | -------------------------------------------------- | ----------------------- |
-| GET          | `/feed?tab=for-you\|following` |                                                    | `Post[]`                |
-| GET          | `/users/:id/posts`             | (`me` for the current user)                        | `Post[]`                |
-| GET / DELETE | `/posts/:id`                   |                                                    | `Post` / —              |
-| POST         | `/posts`                       | `content, audience, attachments[]`                 | `Post`                  |
-| PUT / DELETE | `/posts/:id/like`              |                                                    | `Post`                  |
-| POST         | `/posts/:id/hide`              | ("Not interested")                                 | —                       |
-| POST         | `/posts/:id/reports`           | `{ reasons: string[] }`                            | —                       |
-| GET / POST   | `/posts/:id/comments`          | `?sort=latest\|popular` / `content, attachments[]` | `Comment[]` / `Comment` |
-| DELETE       | `/comments/:id`                |                                                    | —                       |
-| PUT / DELETE | `/comments/:id/like`           |                                                    | —                       |
-| POST         | `/comments/:id/reports`        |                                                    | —                       |
-| PUT / DELETE | `/users/:id/follow`            |                                                    | —                       |
-| PUT / DELETE | `/users/:id/block`             |                                                    | —                       |
-| GET          | `/users/me/blocked`            |                                                    | `Author[]`              |
-| GET          | `/trending`                    |                                                    | `TrendingGroup[]`       |
-| GET          | `/topics`                      |                                                    | `SearchTopic[]`         |
-| GET          | `/search/posts?q=&topic=`      |                                                    | `Post[]`                |
+Home feed (For you / Following), a member's posts, post view and comments (with likes), create and delete
+posts with attachments, report and "Not interested", follow / block from post menus, search, and the right
+rail's trending topics and forums and upcoming events.
+
+### Realtime — `src/lib/realtime.ts`
+
+Supabase Realtime (backend `FRONTEND_INTEGRATION.md` §9). The browser joins private channels with the
+member's own access token: `conversation:<id>` (new / edited / deleted messages, read) and `user:<id>`
+(new notifications). Each channel opens once however many screens listen, and closes when none do; the
+Supabase library loads on first use. Without the env keys the app polls instead (5–15 s; once a minute
+as a safety net when realtime is on).
 
 ### Projects — connected (`projectsApi`, `workspaceApi`, `uploadFile`)
 
@@ -207,19 +197,11 @@ assignee and an optional due date in the backend; tasks without one sort last.
 Only members see workspace tabs other than Overview; owners and admins also get Edit Project Details and
 join-request management. While a join request is pending the workspace re-fetches every 5 seconds.
 
-### Chats — `features/chats/api/chats.service.ts`
+### Chats — connected (`chatApi`, `collaborationApi`, `uploadFile`, realtime)
 
-| Method       | Path                                  | Body                             | Returns                         |
-| ------------ | ------------------------------------- | -------------------------------- | ------------------------------- |
-| GET          | `/conversations?kind=direct\|project` |                                  | `Conversation[]`                |
-| GET / DELETE | `/conversations/:id`                  |                                  | `Conversation` / —              |
-| GET / POST   | `/conversations/:id/messages`         | `text, attachments[]`            | `ChatMessage[]` / `ChatMessage` |
-| DELETE       | `/conversations/:id/messages`         | (clear history)                  | —                               |
-| POST         | `/conversations/:id/read`             |                                  | —                               |
-| POST         | `/conversations/:id/reports`          |                                  | —                               |
-| POST         | `/conversations/:id/leave`            | (project chats)                  | —                               |
-| GET          | `/collaboration-requests`             |                                  | `CollaborationRequest[]`        |
-| PATCH        | `/collaboration-requests/:id`         | `{ status: accepted\|declined }` | —                               |
+Direct and project chats, messages with attachments and voice notes, edit / delete, mute, clear or delete
+history, read receipts, and collaboration requests (accept / decline). Open chats and the lists update
+live through realtime.
 
 ### Explore & events — connected (`exploreApi`)
 
@@ -241,34 +223,42 @@ with none. Missing covers, organiser details or logos are simply left out. The S
 design (featured strip + highlights); the backend's `/explore/suggested` (projects, forums, people,
 events) isn't used because the design has no place for it.
 
-### Profile — `features/profile/api/profile.service.ts`
+### Profile — connected (`meApi`, `uploadFile`)
 
-| Method      | Path                        | Body                                                           | Returns         |
-| ----------- | --------------------------- | -------------------------------------------------------------- | --------------- |
-| GET / PATCH | `/users/me`                 | `name, role, profession, avatar?` / `{ openToCollaborations }` | `Profile`       |
-| PUT         | `/users/me/skills`          | `{ skills: string[] }`                                         | `Profile`       |
-| POST        | `/users/me/experiences`     | `Experience` (without id)                                      | `Profile`       |
-| DELETE      | `/users/me/experiences/:id` |                                                                | `Profile`       |
-| GET         | `/skills`                   |                                                                | `SkillOption[]` |
+| Method | Path  | Used for                                                                        |
+| ------ | ----- | ------------------------------------------------------------------------------- |
+| GET    | `/me` | Your profile: name, role, headline (shown as profession), bio, location, counts |
+| PATCH  | `/me` | Edit Profile (`fullName`, `headline`, `avatarUrl`) and "Open to Collaborations" |
 
-### Forums — `features/forums/api/forums.service.ts`
+The photo is uploaded with the public `avatar` purpose and saved as `avatarUrl`. The About tab's project
+count comes from the Projects tab's list. Edit Profile shows the role read-only with a "Change role" link:
+a role change goes through the verified role form (Settings → Account Preferences), not a plain save.
 
-| Method       | Path                                                           | Body                             | Returns   |
-| ------------ | -------------------------------------------------------------- | -------------------------------- | --------- |
-| GET          | `/forums?scope=for-you\|joined\|mine`                          |                                  | `Forum[]` |
-| GET / PATCH  | `/forums/:id`                                                  | — / `{ muted }`                  | `Forum`   |
-| POST         | `/forums`                                                      | `name, about, topics[], header?` | `Forum`   |
-| PUT / DELETE | `/forums/:id/membership`                                       |                                  | `Forum`   |
-| GET          | `/forums/:id/posts?sort=latest\|popular\|my-posts\|my-replies` |                                  | `Post[]`  |
+Not in the backend, so hidden: **Skills**, **Work Experience** (and their sheets) and the website link.
+The removed components are in git history (`AddSkillsModal.tsx`, `AddExperienceModal.tsx`) for when the
+backend adds them.
 
-### Settings — `features/settings/api/settings.service.ts`
+### Forums — connected (`forumsApi`, `uploadFile`)
 
-| Method    | Path                   | Body                                  | Returns              |
-| --------- | ---------------------- | ------------------------------------- | -------------------- |
-| GET / PUT | `/users/me/visibility` | `{ messages, collaborationRequests }` | `VisibilitySettings` |
-| GET / PUT | `/users/me/language`   | `{ language }`                        | `{ language }`       |
-| POST      | `/support/reports`     | `{ message }`                         | —                    |
-| DELETE    | `/users/me`            | `{ reasons: string[] }`               | —                    |
+Forums list (For you / Joined / Mine), forum view and its posts, create / edit / delete a forum with a
+header image, join / leave, mute, and the members sheet (change a member's role or remove them).
+
+### Settings — connected (`meApi`, `usersApi`)
+
+| Method      | Path                | Used for                                                                     |
+| ----------- | ------------------- | ---------------------------------------------------------------------------- |
+| GET         | `/me`               | Account                                                                      |
+| GET / PATCH | `/me/settings`      | Visibility (`messagePermission`), Language (shared with notification prefs)  |
+| GET         | `/me/blocked-users` | Blocked accounts; `DELETE /users/:id/block` unblocks                         |
+| DELETE      | `/me`               | Delete Account: `confirm: DELETE`, the password, and the reasons as feedback |
+
+- **Visibility:** "Who can message me" offers the backend's choices: No one, People I follow, Anyone.
+  "Allow collaboration requests from" isn't in the backend, so it's hidden.
+- **Language** is saved to the member's settings; the app itself is English-only for now.
+- **Help & Support:** there's no support endpoint, so "Send report" opens the member's email app with the
+  report filled in. `SUPPORT_EMAIL` and `WHATSAPP_URL` in `HelpSettingsPage.tsx` are still placeholders.
+- **Delete Account:** the backend schedules deletion in 30 days and signs out everywhere; signing in
+  before then cancels it. Accounts with a password must enter it (Google-only accounts don't).
 
 ### Notifications — connected (`notificationsApi`, `meApi`)
 
@@ -294,29 +284,5 @@ its own `paths.ts`. Every admin route — including the session provider — is 
 never download admin code. Admin code may use the shared UI kit (`components/ui`), tokens and `lib/`;
 **member code must never import from `src/admin/`.**
 
-Mock mode: sign in with any email and a password of 6+ characters; any 5-digit reset code works.
-
-Admin endpoints are prefixed with `/admin` and authenticated with the admin token
-(`admin/api/admin.service.ts`):
-
-| Method       | Path                                                             | Body / query                                                                                        | Returns                                  |
-| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| POST         | `/admin/auth/login`                                              | `{ email, password }`                                                                               | `{ token, admin }`                       |
-| POST         | `/admin/auth/password-reset`                                     | `{ email }`                                                                                         | — (emails a 5-digit code)                |
-| POST         | `/admin/auth/password-reset/verify`                              | `{ email, code }`                                                                                   | `{ resetToken }`                         |
-| POST         | `/admin/auth/password-reset/complete`                            | `{ resetToken, password }`                                                                          | —                                        |
-| PATCH / PUT  | `/admin/me` · `/admin/me/password`                               | profile fields + `avatar?` (multipart) · `{ oldPassword, newPassword }`                             | `AdminUser` · —                          |
-| GET          | `/admin/dashboard?range=` · `/admin/dashboard/:section?range=`   | `range`: 7d, 30d, 90d, 12m; section: users, forums, projects                                        | `OverviewDashboard` · `SectionDashboard` |
-| GET          | `/admin/reports?section=&status=&page=&q=`                       | status: all, pending, reviewed, dismissed                                                           | `Page<Report>`                           |
-| POST         | `/admin/reports/:id/actions`                                     | `{ action }` (dismiss, remove-content, warn, suspend-user, block-user, suspend-group, delete-group) | `Report`                                 |
-| GET          | `/admin/users` · `/admin/forums` · `/admin/projects` `?page=&q=` |                                                                                                     | `Page<…Row>`                             |
-| PATCH        | `/admin/{users,forums,projects}/:id/status`                      | `{ action }` (activate, restrict, warn, suspend)                                                    | —                                        |
-| GET / POST   | `/admin/events`                                                  | — / event fields + `cover?` (multipart)                                                             | `AdminEvent[]` / `AdminEvent`            |
-| GET / DELETE | `/admin/events/:id`                                              |                                                                                                     | `AdminEvent` / —                         |
-| GET / POST   | `/admin/highlights`                                              | — / `title?, eventId?, images[]` (multipart)                                                        | `HighlightGroup[]` / `HighlightGroup`    |
-| GET / DELETE | `/admin/highlights/:id`                                          |                                                                                                     | `HighlightGroup` / —                     |
-| POST         | `/admin/notifications/broadcast`                                 | `{ audience, targetId?, title, ids?, body }`                                                        | —                                        |
-| GET / POST   | `/admin/inbox` · `/admin/inbox/read-all`                         |                                                                                                     | `AdminInboxItem[]` / —                   |
-| GET          | `/admin/logs?page=&q=`                                           |                                                                                                     | `Page<AdminLog>`                         |
-
-`Page<T>` is `{ items, total, page, pageSize }`.
+Admin screens use the generated `adminApi` (and `uploadFile` with `scope: 'admin'`) from their
+`admin/hooks/queries.ts`, signed in with the admin token.

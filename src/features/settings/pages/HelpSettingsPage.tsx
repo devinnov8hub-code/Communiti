@@ -1,33 +1,28 @@
 import { useState, type FormEvent } from 'react'
-import { Button, FieldError, useToast } from '@/components/ui'
+import { Button, FieldError } from '@/components/ui'
 import { controlBoxClass } from '@/components/ui/controlStyles'
-import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { SettingsSection } from '../components/SettingsSection'
-import { useSupportReport } from '../hooks/queries'
 
 // TODO: replace with the real support contacts before launch.
 const SUPPORT_EMAIL = 'support@yourplatform.com'
 const WHATSAPP_URL = 'https://wa.me/'
 
-/** Settings → Help & Support. */
+/**
+ * Settings → Help & Support. The backend has no support-report endpoint, so "Send report" opens
+ * the member's email app with the report filled in, addressed to support.
+ */
 export function HelpSettingsPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState<string>()
-  const report = useSupportReport()
-  const toast = useToast()
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (message.trim().length < 10) return setError('Tell us a little more (at least 10 characters).')
     setError(undefined)
-    report.mutate(message.trim(), {
-      onSuccess: () => {
-        setMessage('')
-        toast('Thanks — your report has been sent')
-      },
-      onError: (err) => toast(getErrorMessage(err)),
-    })
+    const params = new URLSearchParams({ subject: 'CommUniti issue report', body: message.trim() })
+    // URLSearchParams encodes spaces as "+", which mail apps show literally.
+    window.location.href = `mailto:${SUPPORT_EMAIL}?${params.toString().replace(/\+/g, '%20')}`
   }
 
   return (
@@ -73,7 +68,7 @@ export function HelpSettingsPage() {
           )}
         />
         {error && <FieldError>{error}</FieldError>}
-        <Button type="submit" loading={report.isPending} className="mt-7 h-[38px] rounded-full font-normal">
+        <Button type="submit" className="mt-7 h-[38px] rounded-full font-normal">
           Send report
         </Button>
       </form>

@@ -1,11 +1,9 @@
-export type MessagePermission = 'no-one' | 'collaborators' | 'followers' | 'anyone'
-export type CollaborationPermission = 'no-one' | 'everyone' | 'followers'
-export type LanguageCode = 'en' | 'fr' | 'ha' | 'yo' | 'ig'
+import type { Settings } from '@/lib/api'
 
-export interface VisibilitySettings {
-  messages: MessagePermission
-  collaborationRequests: CollaborationPermission
-}
+/** "Who can message me" — the backend's `messagePermission`. */
+export type MessagePermission = Settings['messagePermission']
+
+export type LanguageCode = 'en' | 'fr' | 'ha' | 'yo' | 'ig'
 
 export const DELETE_REASONS = [
   'I am no longer using my account',

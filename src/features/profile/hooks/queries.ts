@@ -1,37 +1,51 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { profileApi } from '../api/profile.service'
-import type { NewExperience, Profile, ProfileUpdate } from '../types'
+import { toUser } from '@/features/auth/user'
+import { meApi, uploadFile, type Me, type UpdateMeBody } from '@/lib/api'
+import type { Profile, ProfileUpdate } from '../types'
 
 export const profileKeys = {
   me: ['profile', 'me'] as const,
-  skillOptions: ['profile', 'skill-options'] as const,
 }
 
-export const useMyProfile = () => useQuery({ queryKey: profileKeys.me, queryFn: profileApi.getMyProfile })
+const toProfile = (me: Me): Profile => ({
+  id: me.id,
+  name: me.fullName,
+  role: me.memberRole ?? undefined,
+  profession: me.headline ?? '',
+  bio: me.bio ?? '',
+  location: me.location || me.country || undefined,
+  avatarUrl: me.avatarUrl ?? undefined,
+  coverUrl: me.coverUrl ?? undefined,
+  collaborations: me.collaborationCount,
+  following: me.followingCount,
+  followers: me.followerCount,
+  postsCount: me.postCount,
+  openToCollaborations: me.openToCollaborate,
+})
 
-export const useSkillOptions = () =>
-  useQuery({ queryKey: profileKeys.skillOptions, queryFn: profileApi.getSkillOptions, staleTime: Infinity })
+export const useMyProfile = () =>
+  useQuery({ queryKey: profileKeys.me, queryFn: () => meApi.getMe(), select: toProfile })
 
-/** Shared onSuccess: store the returned profile and keep the auth user in sync. */
-function useProfileMutation<Input>(fn: (input: Input) => Promise<Profile>) {
+/** Saves to `PATCH /me`, stores the result and keeps the signed-in user (name, photo) in sync. */
+function useMeMutation<Input>(toBody: (input: Input) => Promise<UpdateMeBody> | UpdateMeBody) {
   const client = useQueryClient()
-  const { user, updateUser } = useAuth()
+  const { updateUser } = useAuth()
   return useMutation({
-    mutationFn: fn,
-    onSuccess: (profile) => {
-      client.setQueryData(profileKeys.me, profile)
-      if (user) {
-        const [firstName, ...rest] = profile.name.trim().split(/\s+/)
-        updateUser({ ...user, firstName, lastName: rest.join(' '), role: profile.role, avatarUrl: profile.avatarUrl })
-      }
+    mutationFn: async (input: Input) => meApi.updateMe(await toBody(input)),
+    onSuccess: (me) => {
+      client.setQueryData(profileKeys.me, me)
+      updateUser(toUser(me))
     },
   })
 }
 
-export const useUpdateProfile = () => useProfileMutation((input: ProfileUpdate) => profileApi.updateProfile(input))
-export const useSetOpenToCollaborations = () =>
-  useProfileMutation((open: boolean) => profileApi.setOpenToCollaborations(open))
-export const useSetSkills = () => useProfileMutation((skills: string[]) => profileApi.setSkills(skills))
-export const useAddExperience = () => useProfileMutation((input: NewExperience) => profileApi.addExperience(input))
-export const useRemoveExperience = () => useProfileMutation((id: string) => profileApi.removeExperience(id))
+export const useUpdateProfile = () =>
+  useMeMutation(async ({ name, profession, avatar }: ProfileUpdate) => ({
+    ...(name !== undefined && { fullName: name }),
+    ...(profession !== undefined && { headline: profession || null }),
+    // Profile photos are public files, so the upload gives a ready link.
+    ...(avatar && { avatarUrl: (await uploadFile(avatar, 'avatar')).publicUrl }),
+  }))
+
+export const useSetOpenToCollaborations = () => useMeMutation((open: boolean) => ({ openToCollaborate: open }))

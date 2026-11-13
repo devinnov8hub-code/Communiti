@@ -3,7 +3,7 @@ import { Button, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { RadioRow } from '../components/RadioRow'
 import { SettingsSection } from '../components/SettingsSection'
-import { useLanguage, useUpdateLanguage } from '../hooks/queries'
+import { useSettings, useUpdateSettings } from '../hooks/queries'
 import type { LanguageCode } from '../types'
 
 const LANGUAGES: { value: LanguageCode; label: string }[] = [
@@ -14,13 +14,20 @@ const LANGUAGES: { value: LanguageCode; label: string }[] = [
   { value: 'ig', label: 'Igbo' },
 ]
 
-/** Settings → Language (no dedicated Figma frame; follows the App Theme pattern). */
+const isLanguage = (value: string | undefined): value is LanguageCode =>
+  LANGUAGES.some((option) => option.value === value)
+
+/**
+ * Settings → Language (no dedicated Figma frame; follows the App Theme pattern). Saved to the
+ * member's settings; the app itself is English-only for now.
+ */
 export function LanguageSettingsPage() {
-  const language = useLanguage()
-  const update = useUpdateLanguage()
+  const settings = useSettings()
+  const update = useUpdateSettings()
   const toast = useToast()
   const [draft, setDraft] = useState<LanguageCode | null>(null)
-  const current = draft ?? language.data ?? 'en'
+  const saved = settings.data?.language
+  const current = draft ?? (isLanguage(saved) ? saved : 'en')
 
   return (
     <SettingsSection title="Language" className="gap-[27px] px-1">
@@ -40,17 +47,20 @@ export function LanguageSettingsPage() {
       </fieldset>
       <div className="px-[30px] py-2">
         <Button
-          disabled={!draft || draft === language.data}
+          disabled={!draft || draft === saved}
           loading={update.isPending}
           onClick={() =>
             draft &&
-            update.mutate(draft, {
-              onSuccess: () => {
-                setDraft(null)
-                toast('Language updated')
+            update.mutate(
+              { language: draft },
+              {
+                onSuccess: () => {
+                  setDraft(null)
+                  toast('Language updated')
+                },
+                onError: (error) => toast(getErrorMessage(error)),
               },
-              onError: (error) => toast(getErrorMessage(error)),
-            })
+            )
           }
           className="h-[38px] rounded-full bg-brand-orange font-normal"
         >

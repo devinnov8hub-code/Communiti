@@ -1,36 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { feedKeys } from '@/features/feed/hooks/queries'
-import { meApi, usersApi } from '@/lib/api'
-import { settingsApi } from '../api/settings.service'
-import type { DeleteReason, LanguageCode, VisibilitySettings } from '../types'
+import { notificationKeys } from '@/features/notifications/hooks/queries'
+import { meApi, usersApi, type Settings, type UpdateSettingsBody } from '@/lib/api'
+import type { DeleteReason } from '../types'
 
 export const settingsKeys = {
   account: ['settings', 'account'] as const,
-  visibility: ['settings', 'visibility'] as const,
-  language: ['settings', 'language'] as const,
+  /** `GET /me/settings`, shared with the notification settings screen. */
+  prefs: notificationKeys.settings,
   blocked: ['settings', 'blocked'] as const,
 }
 
 export const useAccount = () => useQuery({ queryKey: settingsKeys.account, queryFn: () => meApi.getMe() })
 
-export const useVisibilitySettings = () =>
-  useQuery({ queryKey: settingsKeys.visibility, queryFn: settingsApi.getVisibility })
+/** Message permission, language, theme, profile visibility and notification preferences. */
+export const useSettings = () => useQuery({ queryKey: settingsKeys.prefs, queryFn: () => meApi.getSettings() })
 
-export function useUpdateVisibility() {
+/** Saves only the fields given; the choice shows straight away and rolls back if the save fails. */
+export function useUpdateSettings() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (input: VisibilitySettings) => settingsApi.updateVisibility(input),
-    onSuccess: (visibility) => client.setQueryData(settingsKeys.visibility, visibility),
-  })
-}
-
-export const useLanguage = () => useQuery({ queryKey: settingsKeys.language, queryFn: settingsApi.getLanguage })
-
-export function useUpdateLanguage() {
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: (language: LanguageCode) => settingsApi.updateLanguage(language),
-    onSuccess: (language) => client.setQueryData(settingsKeys.language, language),
+    mutationFn: (patch: UpdateSettingsBody) => meApi.updateSettings(patch),
+    onMutate: async (patch) => {
+      await client.cancelQueries({ queryKey: settingsKeys.prefs })
+      const previous = client.getQueryData<Settings>(settingsKeys.prefs)
+      if (previous) client.setQueryData<Settings>(settingsKeys.prefs, { ...previous, ...patch } as Settings)
+      return { previous }
+    },
+    onError: (_error, _patch, context) => client.setQueryData(settingsKeys.prefs, context?.previous),
+    onSuccess: (settings) => client.setQueryData(settingsKeys.prefs, settings),
   })
 }
 
@@ -48,8 +46,16 @@ export function useUnblockUser() {
   })
 }
 
-export const useSupportReport = () =>
-  useMutation({ mutationFn: (message: string) => settingsApi.sendSupportReport(message) })
-
+/**
+ * Schedules deletion in 30 days (signing in again before then cancels it). Accounts with a
+ * password must confirm it; the chosen reasons go along as feedback.
+ */
 export const useDeleteAccount = () =>
-  useMutation({ mutationFn: (reasons: DeleteReason[]) => settingsApi.deleteAccount(reasons) })
+  useMutation({
+    mutationFn: ({ reasons, password }: { reasons: DeleteReason[]; password?: string }) =>
+      meApi.deleteMe({
+        confirm: 'DELETE',
+        password: password || undefined,
+        reason: reasons.length ? reasons.join('; ').slice(0, 500) : undefined,
+      }),
+  })

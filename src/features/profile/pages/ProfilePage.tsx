@@ -1,4 +1,4 @@
-import { GlobeHemisphereWest, LinkSimple, Sparkle } from '@phosphor-icons/react'
+import { GlobeHemisphereWest, Sparkle } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { PageColumns } from '@/components/layout/AppShell'
 import { EmptyState, useToast } from '@/components/ui'
@@ -14,14 +14,12 @@ import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { formatCount } from '@/lib/format'
 import { AboutTab } from '../components/AboutTab'
-import { AddExperienceModal } from '../components/AddExperienceModal'
-import { AddSkillsModal } from '../components/AddSkillsModal'
 import { AvatarUpload } from '../components/AvatarUpload'
 import { EditProfileModal } from '../components/EditProfileModal'
 import { useMyProfile, useSetOpenToCollaborations, useUpdateProfile } from '../hooks/queries'
 
 type ProfileTab = 'posts' | 'projects' | 'about'
-type Sheet = 'edit' | 'skills' | 'experience' | null
+type Sheet = 'edit' | null
 
 const TABS: { value: ProfileTab; label: string }[] = [
   { value: 'posts', label: 'Posts' },
@@ -37,6 +35,9 @@ export function ProfilePage() {
   const openToCollab = useSetOpenToCollaborations()
   const updateProfile = useUpdateProfile()
   const toast = useToast()
+  const { user } = useAuth()
+  // Shared with the Projects tab, so the About count costs no extra request.
+  const projects = useUserProjects(user?.id ?? '')
 
   return (
     <PageColumns aside={<RightRail />}>
@@ -57,7 +58,7 @@ export function ProfilePage() {
                 name={profile.data.name}
                 onSelect={(avatar) =>
                   updateProfile.mutate(
-                    { name: profile.data.name, role: profile.data.role, profession: profile.data.profession, avatar },
+                    { avatar },
                     {
                       onSuccess: () => toast('Profile photo updated'),
                       onError: (error) => toast(getErrorMessage(error)),
@@ -69,29 +70,20 @@ export function ProfilePage() {
                 <h1 className="text-h3 font-semibold text-fg">{profile.data.name}</h1>
                 <p className="flex items-center gap-2 text-body-m">
                   <span className="font-semibold text-brand-orange">{getRoleLabel(profile.data)}</span>
-                  <span className="text-grey-50 dark:text-grey-30">{profile.data.profession}</span>
+                  {profile.data.profession && (
+                    <span className="text-grey-50 dark:text-grey-30">{profile.data.profession}</span>
+                  )}
                 </p>
                 <p className="text-caption font-semibold text-brand-green">
                   {profile.data.collaborations} collaborations
                 </p>
-                <p className="max-w-[560px] text-body-s text-fg-muted">{profile.data.bio}</p>
-                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-body-s text-fg-muted">
-                  <span className="flex items-center gap-[7px]">
+                {profile.data.bio && <p className="max-w-[560px] text-body-s text-fg-muted">{profile.data.bio}</p>}
+                {profile.data.location && (
+                  <p className="flex items-center gap-[7px] text-body-s text-fg-muted">
                     <GlobeHemisphereWest aria-hidden className="size-[18px]" />
                     {profile.data.location}
-                  </span>
-                  {profile.data.website && (
-                    <a
-                      href={`https://${profile.data.website.replace(/^https?:\/\//, '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-[7px] text-info-strong hover:underline"
-                    >
-                      <LinkSimple aria-hidden className="size-[18px]" />
-                      {profile.data.website}
-                    </a>
-                  )}
-                </div>
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 <p className="flex items-center gap-1">
@@ -112,7 +104,7 @@ export function ProfilePage() {
                     openToCollab.mutate(!profile.data.openToCollaborations, {
                       onSuccess: (updated) =>
                         toast(
-                          updated.openToCollaborations
+                          updated.openToCollaborate
                             ? 'You’re open to collaborations'
                             : 'You’re no longer open to collaborations',
                         ),
@@ -160,18 +152,10 @@ export function ProfilePage() {
             </div>
             {tab === 'posts' && <MyPosts />}
             {tab === 'projects' && <MyProjects />}
-            {tab === 'about' && (
-              <AboutTab
-                profile={profile.data}
-                onEditSkills={() => setSheet('skills')}
-                onAddExperience={() => setSheet('experience')}
-              />
-            )}
+            {tab === 'about' && <AboutTab postsCount={profile.data.postsCount} projectsCount={projects.data?.length} />}
           </div>
 
           {sheet === 'edit' && <EditProfileModal profile={profile.data} onClose={() => setSheet(null)} />}
-          {sheet === 'skills' && <AddSkillsModal initial={profile.data.skills} onClose={() => setSheet(null)} />}
-          {sheet === 'experience' && <AddExperienceModal onClose={() => setSheet(null)} />}
         </div>
       )}
     </PageColumns>
