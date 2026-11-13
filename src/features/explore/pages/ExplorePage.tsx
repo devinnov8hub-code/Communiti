@@ -57,7 +57,7 @@ function SuggestedTab() {
           <p className="text-body-m text-fg-muted">No featured innovations yet.</p>
         )}
       </section>
-      <SuggestedPeopleSection />
+      {/* <SuggestedPeopleSection /> */}
       <HighlightsSection />
     </div>
   )
@@ -88,7 +88,7 @@ function HighlightsSection({ paged = false }: { paged?: boolean }) {
   const highlights = useHighlights()
   const items = highlights.data ?? []
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-3 px-2">
       <h2 className="text-h3 font-semibold text-brand-orange">Communiti Highlights</h2>
       {highlights.isPending ? (
         <div className="h-[400px] animate-pulse rounded-md bg-surface" />
