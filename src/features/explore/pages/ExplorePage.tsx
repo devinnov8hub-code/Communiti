@@ -9,9 +9,10 @@ import { ExploreHeader } from '../components/ExploreHeader'
 import { exploreTabUrl } from '../urls'
 import { HighlightsMosaic } from '../components/HighlightsMosaic'
 import { InnovationStrip } from '../components/InnovationStrip'
-import { PeopleStrip } from '../components/PeopleStrip'
+// import { PeopleStrip } from '../components/PeopleStrip'
 import { SortTopicsModal } from '../components/SortTopicsModal'
-import { useHighlights, useInnovations, useSuggestedPeople } from '../hooks/queries'
+import { useHighlights, useInnovations } from '../hooks/queries'
+// import { useSuggestedPeople } from '../hooks/queries'
 import type { ExploreTab, Innovation } from '../types'
 
 const isTab = (value: string | null): value is ExploreTab =>
