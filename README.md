@@ -120,6 +120,22 @@ Home feed (For you / Following), a member's posts, post view and comments (with 
 posts with attachments, report and "Not interested", follow / block from post menus, search, and the right
 rail's trending topics and forums and upcoming events.
 
+Search (`/search?type=`) has Posts, People, Events and Highlights tabs; each tab fetches only when opened.
+People results open the person's profile, which is where you follow, message or ask to collaborate.
+
+### Collaboration — `collaborationApi`, `features/profile/hooks/people.ts`
+
+From someone's profile, "Collaborate" sends a request with an optional note, and optionally invites
+them into a project you own or run (the picker lists only those; accepting adds them as a
+contributor). The button is disabled for people who switched "Open to Collaborations" off, and the
+backend refuses those requests too (`403 NOT_OPEN_TO_COLLABORATE`). Requests arrive in Chats →
+Collaboration requests; accepting opens a direct chat.
+
+**Suggested people** (Explore → Suggested): `GET /users/suggested` ranks members you don't follow by how
+similar their profile is to yours: shared interest topics, people you follow who follow them, the same
+role, forums in common and the same country. Each card says why ("2 shared interests · Also a
+Researcher") and opens the profile. New members start "Open to Collaborations" (backend default).
+
 ### Realtime — `src/lib/realtime.ts`
 
 Supabase Realtime (backend `FRONTEND_INTEGRATION.md` §9). The browser joins private channels with the
@@ -183,8 +199,10 @@ Uploaded documents (`kind: uploaded`) show an "Open file" link.
 Prototypes: the thumbnail is uploaded with the public `project` purpose because `coverUrl` must be a
 public link. The backend has no list of a prototype's artisans, so the card shows its creator and
 the version count. A version's file is private (signed link, valid for an hour); images are
-previewed, other files show a file icon that opens the file. The backend only accepts images,
-video, PDF and Office/text files, so the picker no longer offers CAD formats (`.dwg`, `.stl`, `.step`…).
+previewed, other files show a file icon that opens the file. Versions accept CAD / 3D files (`.stl`,
+`.step`, `.iges`, `.obj`, `.3mf`, `.glb`, `.dwg`, `.dxf`, SolidWorks, Fusion 360, Inventor, SketchUp, FreeCAD)
+as well as images, video, PDF and Office/text files. The backend recognises CAD files by their extension
+(browsers don't report a type for them), so `uploadFile` always sends the file name.
 
 Expert: evaluations only carry the reviewed document or version id, so the tab also loads the research and
 prototype lists to name them (version names are fetched only when a version was reviewed). The design's

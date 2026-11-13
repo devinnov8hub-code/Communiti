@@ -49,7 +49,7 @@ export function ForumsPage() {
           type="button"
           onClick={() => setCreating(true)}
           aria-label="Create a forum"
-          className="pointer-events-auto flex size-20 items-center justify-center rounded-full bg-brand-orange text-white shadow-popover transition hover:brightness-95"
+          className="pointer-events-auto flex size-8 items-center justify-center rounded-full bg-brand-orange text-white shadow-popover transition hover:brightness-95"
         >
           <Plus className="size-8" />
         </button>

@@ -14,9 +14,9 @@ import type {
 import type { Profile } from '../types/models.types'
 
 /**
- * People to follow ("Suggested Community")
+ * Suggested people: members with profiles similar to yours ("Suggested Community")
  *
- * Ranks people who share your interests and are not followed yet, then by follower count.
+ * People you don't follow yet, ranked by how similar their profile is to yours: shared interest topics (×3 each), people you follow who follow them (×2 each, up to 5), the same role (×2), forums you are both in (×1 each, up to 3) and the same country (×1); ties go to the more followed. `collaborators=true` keeps only people open to collaborations. Each result says why it was suggested (`similarity`), for a line like "3 shared interests".
  *
  * `GET /api/v1/users/suggested`
  */

@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem,
   Modal,
+  SelectField,
   TextAreaField,
   useToast,
   VerifyTick,
@@ -32,6 +33,7 @@ import {
   useFollowPerson,
   useMessagePerson,
   usePerson,
+  useInvitableProjects,
   useRequestCollaboration,
 } from '../hooks/people'
 
@@ -299,16 +301,35 @@ function PersonPosts({ userId }: { userId: string }) {
   )
 }
 
+const NO_PROJECT = 'none'
+
 function CollaborateModal({ profile, onClose }: { profile: Profile; onClose: () => void }) {
   const [message, setMessage] = useState('')
+  const [projectId, setProjectId] = useState(NO_PROJECT)
   const request = useRequestCollaboration()
+  const projects = useInvitableProjects()
   const toast = useToast()
+  const invitable = projects.data ?? []
+  const invite = projectId === NO_PROJECT ? undefined : projectId
 
   return (
     <Modal open onClose={onClose} title="Request to collaborate" className="max-w-[480px]">
       <p className="text-body-m text-fg-muted">
         {profile.fullName} will see your request in their chats and can accept or decline it.
       </p>
+      {/* Only projects you own or run can take invites, so the picker shows those alone. */}
+      {invitable.length > 0 && (
+        <SelectField
+          label="Invite to a project (optional)"
+          placeholder="Choose a project"
+          options={[
+            { value: NO_PROJECT, label: 'No project, just collaborate' },
+            ...invitable.map((project) => ({ value: project.id, label: project.title })),
+          ]}
+          value={projectId}
+          onChange={(event) => setProjectId(event.target.value)}
+        />
+      )}
       <TextAreaField
         label="Message (optional)"
         placeholder="I would like to collab with you on a project that…"
@@ -317,12 +338,13 @@ function CollaborateModal({ profile, onClose }: { profile: Profile; onClose: () 
         value={message}
         onChange={(event) => setMessage(event.target.value)}
       />
+      {invite && <p className="text-body-s text-fg-muted">If they accept, they join the project as a contributor.</p>}
       <Button
         className="h-[38px] rounded-full bg-brand-orange text-body-l"
         loading={request.isPending}
         onClick={() =>
           request.mutate(
-            { id: profile.id, message: message.trim() || undefined },
+            { id: profile.id, message: message.trim() || undefined, projectId: invite },
             {
               onSuccess: () => {
                 toast(`Request sent to ${profile.fullName}`)

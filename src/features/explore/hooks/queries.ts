@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { exploreApi } from '@/lib/api'
+import { exploreApi, usersApi } from '@/lib/api'
 import { toExploreEvent, toHighlight, toInnovation } from '../mappers'
 
 export const exploreKeys = {
@@ -11,7 +11,15 @@ export const exploreKeys = {
   highlight: (id: string) => [...exploreKeys.all, 'highlight', id] as const,
   events: (when: 'upcoming' | 'concluded') => [...exploreKeys.all, 'events', when] as const,
   event: (id: string) => [...exploreKeys.all, 'event', id] as const,
+  people: () => [...exploreKeys.all, 'people'] as const,
 }
+
+/** "Suggested people": members with profiles most like yours that you don't follow yet. */
+export const useSuggestedPeople = (limit = 10) =>
+  useQuery({
+    queryKey: exploreKeys.people(),
+    queryFn: () => usersApi.listSuggestedUsers({ limit }).then((page) => page.data),
+  })
 
 /** Featured innovations; "Sort topics" passes topic ids (items on any of them). */
 export const useInnovations = (topicIds: string[] = []) =>

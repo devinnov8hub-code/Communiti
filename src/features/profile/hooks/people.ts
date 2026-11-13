@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { chatKeys } from '@/features/chats/hooks/queries'
+import { exploreKeys } from '@/features/explore/hooks/queries'
 import { feedKeys } from '@/features/feed/hooks/queries'
-import { chatApi, collaborationApi, usersApi, type Profile } from '@/lib/api'
+import { chatApi, collaborationApi, projectsApi, usersApi, type Profile } from '@/lib/api'
 
 /** Someone else's profile (`/people/:userId`). */
 export const personKeys = {
@@ -25,6 +26,8 @@ function usePersonMutation<Input extends { id: string }, Result>(
       )
       client.invalidateQueries({ queryKey: personKeys.detail(input.id) })
       client.invalidateQueries({ queryKey: feedKeys.posts() })
+      // Following or blocking someone takes them out of "Suggested people".
+      client.invalidateQueries({ queryKey: exploreKeys.people() })
     },
   })
 }
@@ -44,10 +47,11 @@ export const useBlockPerson = () =>
     (_profile, { block }) => ({ blockedByMe: block, ...(block && { isFollowing: false }) }),
   )
 
+/** A request can also invite them into one of my projects (`projectId`): accepting adds them as a contributor. */
 export const useRequestCollaboration = () =>
   usePersonMutation(
-    ({ id, message }: { id: string; message?: string }) =>
-      collaborationApi.createCollaborationRequest({ recipientId: id, message }),
+    ({ id, message, projectId }: { id: string; message?: string; projectId?: string }) =>
+      collaborationApi.createCollaborationRequest({ recipientId: id, message, projectId }),
     (_profile, _input, request) => ({
       collaborationRequest: { id: request.id, direction: 'sent', status: 'pending' },
     }),
@@ -68,3 +72,11 @@ export function useMessagePerson() {
     onSuccess: () => client.invalidateQueries({ queryKey: chatKeys.lists() }),
   })
 }
+
+/** Projects I can invite people into: the backend only allows owners and admins to. */
+export const useInvitableProjects = () =>
+  useQuery({
+    queryKey: ['projects', 'invitable'],
+    queryFn: () => projectsApi.listProjects({ tab: 'joined', limit: 50 }).then((page) => page.data),
+    select: (projects) => projects.filter((project) => project.myRole === 'owner' || project.myRole === 'admin'),
+  })

@@ -10261,11 +10261,11 @@
     },
     "/api/v1/users/suggested": {
       "get": {
-        "summary": "People to follow (\"Suggested Community\")",
+        "summary": "Suggested people: members with profiles similar to yours (\"Suggested Community\")",
         "tags": [
           "Users"
         ],
-        "description": "Ranks people who share your interests and are not followed yet, then by follower count.",
+        "description": "People you don't follow yet, ranked by how similar their profile is to yours: shared interest topics (×3 each), people you follow who follow them (×2 each, up to 5), the same role (×2), forums you are both in (×1 each, up to 3) and the same country (×1); ties go to the more followed. `collaborators=true` keeps only people open to collaborations. Each result says why it was suggested (`similarity`), for a line like \"3 shared interests\".",
         "parameters": [
           {
             "schema": {
@@ -10277,6 +10277,19 @@
             "in": "query",
             "name": "limit",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "collaborators",
+            "required": false,
+            "description": "`true`: only people with \"Open to Collaborations\" on"
           }
         ],
         "security": [
@@ -10349,6 +10362,39 @@
                           },
                           "followerCount": {
                             "type": "number"
+                          },
+                          "openToCollaborate": {
+                            "type": "boolean"
+                          },
+                          "similarity": {
+                            "type": "object",
+                            "properties": {
+                              "sharedInterests": {
+                                "type": "number",
+                                "description": "Interest topics you both picked"
+                              },
+                              "mutualFollows": {
+                                "type": "number",
+                                "description": "People you follow who follow them"
+                              },
+                              "sameRole": {
+                                "type": "boolean"
+                              },
+                              "sharedForums": {
+                                "type": "number"
+                              },
+                              "sameCountry": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "sharedInterests",
+                              "mutualFollows",
+                              "sameRole",
+                              "sharedForums",
+                              "sameCountry"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -10359,7 +10405,9 @@
                           "headline",
                           "memberRole",
                           "verified",
-                          "followerCount"
+                          "followerCount",
+                          "openToCollaborate",
+                          "similarity"
                         ],
                         "additionalProperties": false
                       }
@@ -10967,7 +11015,7 @@
                       "verification",
                       "featured"
                     ],
-                    "description": "Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip)"
+                    "description": "Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip) · prototype also accepts CAD / 3D files by extension (stl, step/stp, iges/igs, obj, 3mf, glb, gltf, dwg, dxf, sldprt, sldasm, slddrw, f3d, ipt, iam, skp, fcstd) — send `fileName`"
                   },
                   "mimeType": {
                     "type": "string",
@@ -17207,7 +17255,7 @@
         "tags": [
           "Collaboration"
         ],
-        "description": "From a profile (\"Open to Collaborations\"). Add `projectId` to invite them into one of your projects (you must be its owner or admin). One pending request per pair. Errors: `REQUEST_PENDING`, `ALREADY_MEMBER`, `FORBIDDEN` (blocked).",
+        "description": "From a profile (\"Open to Collaborations\"). Add `projectId` to invite them into one of your projects (you must be its owner or admin). One pending request per pair. Only to people with \"Open to Collaborations\" on. Errors: `NOT_OPEN_TO_COLLABORATE`, `REQUEST_PENDING`, `ALREADY_MEMBER`, `FORBIDDEN` (blocked).",
         "requestBody": {
           "required": true,
           "content": {

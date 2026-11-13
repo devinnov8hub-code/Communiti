@@ -2,7 +2,7 @@
 // Re-run `npm run api:sync` after the backend changes.
 
 export interface PresignUploadBody {
-  /** Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip) */
+  /** Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip) · prototype also accepts CAD / 3D files by extension (stl, step/stp, iges/igs, obj, 3mf, glb, gltf, dwg, dxf, sldprt, sldasm, slddrw, f3d, ipt, iam, skp, fcstd) — send `fileName` */
   purpose:
     | 'avatar'
     | 'cover'

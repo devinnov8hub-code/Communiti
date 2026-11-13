@@ -20,9 +20,15 @@ function download(file: { url: string; name: string }) {
   link.click()
 }
 
-/** Files the backend accepts for prototype versions (images, video, documents). */
-const VERSION_FILE_TYPES =
-  'image/jpeg,image/png,image/webp,image/gif,image/heic,video/mp4,video/quicktime,video/webm,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'
+/**
+ * Files the backend accepts for prototype versions: CAD / 3D models (recognised by extension, so
+ * listed by extension here too), images, video and documents.
+ */
+const VERSION_FILE_TYPES = [
+  '.stl,.step,.stp,.iges,.igs,.obj,.3mf,.glb,.gltf,.dwg,.dxf,.sldprt,.sldasm,.slddrw,.f3d,.ipt,.iam,.skp,.fcstd',
+  'image/jpeg,image/png,image/webp,image/gif,image/heic,video/mp4,video/quicktime,video/webm',
+  'application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv',
+].join(',')
 
 /** Grid / preview image, or a file icon for documents and videos. */
 function VersionImage({ version, className }: { version: PrototypeVersion; className: string }) {

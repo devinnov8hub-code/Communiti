@@ -68,6 +68,18 @@ export const useSearchPosts = (query: string, topic?: string) =>
     enabled: query.length >= MIN_SEARCH_LENGTH,
   })
 
+/** Search → People / Events / Highlights tabs: one result type each, up to 30. */
+export const useSearchResults = <T extends 'people' | 'events' | 'highlights'>(
+  query: string,
+  type: T,
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: ['search', type, query] as const,
+    queryFn: () => searchApi.search({ q: query, type, limit: 30 }).then((results) => results[type]),
+    enabled: enabled && query.length >= MIN_SEARCH_LENGTH,
+  })
+
 /** "Trending in Forums", then the same list for this week's top topic. */
 async function getTrending() {
   const [forums, topics] = await Promise.all([

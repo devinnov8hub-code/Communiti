@@ -22,7 +22,7 @@ export const listCollaborationRequests = (params?: ListCollaborationRequestsQuer
 /**
  * Ask someone to collaborate
  *
- * From a profile ("Open to Collaborations"). Add `projectId` to invite them into one of your projects (you must be its owner or admin). One pending request per pair. Errors: `REQUEST_PENDING`, `ALREADY_MEMBER`, `FORBIDDEN` (blocked).
+ * From a profile ("Open to Collaborations"). Add `projectId` to invite them into one of your projects (you must be its owner or admin). One pending request per pair. Only to people with "Open to Collaborations" on. Errors: `NOT_OPEN_TO_COLLABORATE`, `REQUEST_PENDING`, `ALREADY_MEMBER`, `FORBIDDEN` (blocked).
  *
  * `POST /api/v1/collaboration-requests`
  */

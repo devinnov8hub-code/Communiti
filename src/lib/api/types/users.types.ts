@@ -5,6 +5,8 @@ import type { UserSummary } from './models.types'
 export interface ListSuggestedUsersQuery {
   /** (1–30, default 10) */
   limit?: number
+  /** `true`: only people with "Open to Collaborations" on */
+  collaborators?: 'true' | 'false'
 }
 
 export interface ListSuggestedUsersResponse {
@@ -18,6 +20,16 @@ export interface ListSuggestedUsersResponse {
     /** Role verified by an admin (show the verified badge) */
     verified: boolean
     followerCount: number
+    openToCollaborate: boolean
+    similarity: {
+      /** Interest topics you both picked */
+      sharedInterests: number
+      /** People you follow who follow them */
+      mutualFollows: number
+      sameRole: boolean
+      sharedForums: number
+      sameCountry: boolean
+    }
   }[]
 }
 
