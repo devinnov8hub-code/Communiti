@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 import { SettingsSection } from '../components/SettingsSection'
 
 // TODO: replace with the real support contacts before launch.
-const SUPPORT_EMAIL = 'support@yourplatform.com'
+const SUPPORT_EMAIL = 'community@innov8hub.ng'
 const WHATSAPP_URL = 'https://wa.me/'
 
 /**
