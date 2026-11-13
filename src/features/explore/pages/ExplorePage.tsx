@@ -9,10 +9,9 @@ import { ExploreHeader } from '../components/ExploreHeader'
 import { exploreTabUrl } from '../urls'
 import { HighlightsMosaic } from '../components/HighlightsMosaic'
 import { InnovationStrip } from '../components/InnovationStrip'
-// import { PeopleStrip } from '../components/PeopleStrip'
+import { PeopleStrip } from '../components/PeopleStrip'
 import { SortTopicsModal } from '../components/SortTopicsModal'
-import { useHighlights, useInnovations } from '../hooks/queries'
-// import { useSuggestedPeople } from '../hooks/queries'
+import { useHighlights, useInnovations, useSuggestedPeople } from '../hooks/queries'
 import type { ExploreTab, Innovation } from '../types'
 
 const isTab = (value: string | null): value is ExploreTab =>
@@ -58,31 +57,31 @@ function SuggestedTab() {
           <p className="text-body-m text-fg-muted">No featured innovations yet.</p>
         )}
       </section>
-      {/* <SuggestedPeopleSection /> */}
+      <SuggestedPeopleSection />
       <HighlightsSection />
     </div>
   )
 }
 
 /** People with profiles like yours; hidden when there's nobody to suggest. */
-// function SuggestedPeopleSection() {
-//   const people = useSuggestedPeople()
-//   if (people.isSuccess && people.data.length === 0) return null
-//   return (
-//     <section className="flex flex-col gap-[27px] overflow-hidden px-2 py-[5px]">
-//       <header className="flex items-center justify-between">
-//         <h2 className="text-h3 font-semibold text-brand-orange">Suggested people</h2>
-//       </header>
-//       {people.isPending ? (
-//         <div className="h-[190px] animate-pulse rounded-card bg-surface" />
-//       ) : people.isError ? (
-//         <p className="text-body-m text-fg-muted">Couldn’t load suggestions right now.</p>
-//       ) : (
-//         <PeopleStrip people={people.data} />
-//       )}
-//     </section>
-//   )
-// }
+function SuggestedPeopleSection() {
+  const people = useSuggestedPeople()
+  if (people.isSuccess && people.data.length === 0) return null
+  return (
+    <section className="flex flex-col gap-[27px] overflow-hidden px-2 py-[5px]">
+      <header className="flex items-center justify-between">
+        <h2 className="text-h3 font-semibold text-brand-orange">Suggested people</h2>
+      </header>
+      {people.isPending ? (
+        <div className="h-[190px] animate-pulse rounded-card bg-surface" />
+      ) : people.isError ? (
+        <p className="text-body-m text-fg-muted">Couldn’t load suggestions right now.</p>
+      ) : (
+        <PeopleStrip people={people.data} />
+      )}
+    </section>
+  )
+}
 
 /** The Suggested tab shows the first page; the Highlights tab keeps loading as you scroll. */
 function HighlightsSection({ paged = false }: { paged?: boolean }) {

@@ -295,6 +295,13 @@ states are optimistic, other mutations update or invalidate the cache.
 
 ## Admin console — `src/admin/`
 
+**Who can sign in where.** Admins and super admins use only the admin console: the backend refuses their
+sign-in on the member app and hides them from members everywhere (profiles, search, suggestions,
+followers, chats, collaboration requests, notification senders). Moderators are normal, visible members
+who can also sign into the console. Forum moderators and project owners/admins are unrelated in-app
+roles. Roles, what each can do, and how to promote someone or change the admin's email: backend
+README, section 7 "Platform roles".
+
 The admin console (Figma ADMIN page) lives entirely in `src/admin/` and is mounted at `/admin` by
 `admin/routes.tsx`. It has its own login (email + password, with an OTP password reset), its own
 session and token (`communiti-admin-session`, separate from members), its own sidebar layout and
