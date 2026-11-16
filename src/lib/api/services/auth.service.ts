@@ -2,8 +2,10 @@
 // Re-run `npm run api:sync` after the backend changes.
 import { api, unwrap, type CallOptions } from '../client'
 import type {
+  AcceptInviteBody,
   AdminLoginBody,
   ChangePasswordBody,
+  CheckInviteBody,
   ForgotPasswordBody,
   GoogleSignInUrlQuery,
   ListSessionsResponse,
@@ -11,13 +13,15 @@ import type {
   LoginWithGoogleTokenBody,
   RefreshBody,
   RegisterBody,
+  ResendInviteBody,
+  ResendInviteResponse,
   ResendVerificationEmailBody,
   ResetPasswordBody,
   VerifyEmailBody,
   VerifyPasswordResetCodeBody,
   VerifyPasswordResetCodeResponse,
 } from '../types/auth.types'
-import type { Accepted, TokenResponse, VerificationPending } from '../types/models.types'
+import type { Accepted, InviteLookup, TokenResponse, VerificationPending } from '../types/models.types'
 
 /**
  * Create an account with email and password
@@ -138,6 +142,42 @@ export const googleSignInUrl = (params?: GoogleSignInUrlQuery) => api.getUri({ u
 export const loginWithGoogleToken = (data: LoginWithGoogleTokenBody, options?: CallOptions) =>
   api
     .post<TokenResponse>(`/api/v1/auth/google/token`, data, { ...options, skipAuth: true, skipRefresh: true })
+    .then(unwrap)
+
+/**
+ * Welcome page: check an invitation link
+ *
+ * Pilot onboarding. An admin created the account (name + email) and emailed a link to `WEB_URL/welcome?token=…`. Call this when the page opens. 404 when the token is unknown.
+ *
+ * `POST /api/v1/auth/invite/check`
+ */
+export const checkInvite = (data: CheckInviteBody, options?: CallOptions) =>
+  api
+    .post<InviteLookup>(`/api/v1/auth/invite/check`, data, { ...options, skipAuth: true, skipRefresh: true })
+    .then(unwrap)
+
+/**
+ * Welcome page: choose a password and sign in
+ *
+ * Sets the password, marks the email verified (the link proves the inbox), records acceptance of the terms and signs the person in. Then continue with the normal onboarding (`GET /me/onboarding`). Errors: `INVITE_EXPIRED` (offer "Send me a new link"), `INVITE_ACCEPTED` (send them to sign in). "Continue with Google" with the invited address also works and needs no call here.
+ *
+ * `POST /api/v1/auth/invite/accept`
+ */
+export const acceptInvite = (data: AcceptInviteBody, options?: CallOptions) =>
+  api
+    .post<TokenResponse>(`/api/v1/auth/invite/accept`, data, { ...options, skipAuth: true, skipRefresh: true })
+    .then(unwrap)
+
+/**
+ * Welcome page: "Send me a new link"
+ *
+ * Emails a fresh 7-day link straight away to the address the invitation went to (never another address) and stops the earlier links. Works with an expired link. Limits: one a minute, five a day (429 `RATE_LIMITED`). `INVITE_ACCEPTED` when the account is already set up.
+ *
+ * `POST /api/v1/auth/invite/resend`
+ */
+export const resendInvite = (data: ResendInviteBody, options?: CallOptions) =>
+  api
+    .post<ResendInviteResponse>(`/api/v1/auth/invite/resend`, data, { ...options, skipAuth: true, skipRefresh: true })
     .then(unwrap)
 
 /**

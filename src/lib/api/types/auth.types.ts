@@ -3,7 +3,7 @@
 import type { Session } from './models.types'
 
 export interface RegisterBody {
-  /** (2–80 characters) */
+  /** Full name, e.g. Adaeze Okafor (2–80 characters) */
   fullName: string
   /** Email address (case-insensitive) (email, max 254 characters) */
   email: string
@@ -61,6 +61,32 @@ export interface GoogleSignInUrlQuery {
 export interface LoginWithGoogleTokenBody {
   /** Google ID token from the native / One Tap sign-in SDK (min 20 characters) */
   idToken: string
+}
+
+export interface CheckInviteBody {
+  /** The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…) (20–200 characters) */
+  token: string
+}
+
+export interface AcceptInviteBody {
+  /** The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…) (20–200 characters) */
+  token: string
+  /** 8–128 characters with at least one letter and one number (8–128 characters) */
+  password: string
+  acceptTerms: true
+}
+
+export interface ResendInviteBody {
+  /** The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…) (20–200 characters) */
+  token: string
+}
+
+export interface ResendInviteResponse {
+  message: string
+  /** Masked address the link was sent to */
+  email: string
+  /** Seconds before another link can be requested */
+  resendAvailableIn: number
 }
 
 export interface ForgotPasswordBody {

@@ -1,6 +1,6 @@
 # CommUniti API — endpoint reference
 
-_Generated from the code by `npm run docs:reference` · 210 endpoints · base URL `https://api.mycommuniti.org/api/v1` (local: `http://localhost:4000/api/v1`)._
+_Generated from the code by `npm run docs:reference` · 216 endpoints · base URL `https://api.mycommuniti.org/api/v1` (local: `http://localhost:4000/api/v1`)._
 
 Read **[FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)** first: headers, tokens and refresh, errors, pagination, uploads, realtime and the onboarding flow. This file lists every endpoint. Swagger UI with "Try it out" is at `/api/docs`.
 
@@ -25,6 +25,9 @@ Read **[FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)** first: headers, toke
 | Auth | `GET` | [`/auth/google`](#get-auth-google) | Start Google sign-in (web redirect flow) |
 | Auth | `GET` | [`/auth/google/callback`](#get-auth-google-callback) | Google OAuth callback (called by Google) |
 | Auth | `POST` | [`/auth/google/token`](#post-auth-google-token) | Sign in with a Google ID token (mobile apps, Google One Tap) |
+| Auth | `POST` | [`/auth/invite/check`](#post-auth-invite-check) | Welcome page: check an invitation link |
+| Auth | `POST` | [`/auth/invite/accept`](#post-auth-invite-accept) | Welcome page: choose a password and sign in |
+| Auth | `POST` | [`/auth/invite/resend`](#post-auth-invite-resend) | Welcome page: "Send me a new link" |
 | Auth | `POST` | [`/auth/password/forgot`](#post-auth-password-forgot) | Forgot password: email a reset code |
 | Auth | `POST` | [`/auth/password/verify-code`](#post-auth-password-verify-code) | Verify the reset code and get a reset token |
 | Auth | `POST` | [`/auth/password/reset`](#post-auth-password-reset) | Set a new password with the reset token |
@@ -43,7 +46,7 @@ Read **[FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)** first: headers, toke
 | Me | `GET` | [`/me/settings`](#get-me-settings) | My settings (theme, privacy, visibility, notifications) |
 | Me | `PATCH` | [`/me/settings`](#patch-me-settings) | Update my settings |
 | Topics | `GET` | [`/topics`](#get-topics) | All interest topics |
-| Users | `GET` | [`/users/suggested`](#get-users-suggested) | People to follow ("Suggested Community") |
+| Users | `GET` | [`/users/suggested`](#get-users-suggested) | Suggested people: members with profiles similar to yours ("Suggested Community") |
 | Users | `GET` | [`/users/by-username/{username}`](#get-users-by-username-username-) | Public profile by username |
 | Users | `GET` | [`/users/{id}`](#get-users-id-) | Public profile by id ("View Profile") |
 | Users | `POST` | [`/users/{id}/block`](#post-users-id-block) | Block a member |
@@ -184,6 +187,9 @@ Read **[FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)** first: headers, toke
 | Admin | `POST` | [`/admin/verifications/{userId}/recheck`](#post-admin-verifications-userid-recheck) | Re-run automatic verification on a stored form |
 | Admin | `POST` | [`/admin/verifications/{userId}/approve`](#post-admin-verifications-userid-approve) | Approve a role verification (override: member gets the verified badge) |
 | Admin | `POST` | [`/admin/verifications/{userId}/reject`](#post-admin-verifications-userid-reject) | Reject or revoke a role verification (override) |
+| Admin | `GET` | [`/admin/invites`](#get-admin-invites) | Invitations (pilot onboarding) |
+| Admin | `POST` | [`/admin/invites`](#post-admin-invites) | Invite people by name and email |
+| Admin | `POST` | [`/admin/invites/resend`](#post-admin-invites-resend) | Resend an invitation |
 | Admin | `GET` | [`/admin/stats/overview`](#get-admin-stats-overview) | KPI cards: users, activity, content, moderation |
 | Admin | `GET` | [`/admin/stats/user-activity`](#get-admin-stats-user-activity) | Activity over time (User Activity, Forum Activity charts) |
 | Admin | `GET` | [`/admin/users`](#get-admin-users) | Users table (search, filter, paginate) |
@@ -524,6 +530,78 @@ Verifies the ID token against the web and mobile client IDs. Creates the account
 **Response 200**
 
 Returns [TokenResponse](#tokenresponse)
+
+**Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `429 RATE_LIMITED`
+
+---
+
+### POST /auth/invite/check
+
+<a id="post-auth-invite-check"></a>**Welcome page: check an invitation link**
+
+- **Access:** Public (a token is optional; some fields are personalised when sent)
+
+Pilot onboarding. An admin created the account (name + email) and emailed a link to `WEB_URL/welcome?token=…`. Call this when the page opens. 404 when the token is unknown.
+
+**Request body** (JSON)
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `token` | string | **yes** | The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…) · min 20 chars, max 200 chars |
+
+**Response 200**
+
+Returns [InviteLookup](#invitelookup)
+
+**Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `429 RATE_LIMITED`
+
+---
+
+### POST /auth/invite/accept
+
+<a id="post-auth-invite-accept"></a>**Welcome page: choose a password and sign in**
+
+- **Access:** Public (a token is optional; some fields are personalised when sent)
+
+Sets the password, marks the email verified (the link proves the inbox), records acceptance of the terms and signs the person in. Then continue with the normal onboarding (`GET /me/onboarding`). Errors: `INVITE_EXPIRED` (offer "Send me a new link"), `INVITE_ACCEPTED` (send them to sign in). "Continue with Google" with the invited address also works and needs no call here.
+
+**Request body** (JSON)
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `token` | string | **yes** | The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…) · min 20 chars, max 200 chars |
+| `password` | string | **yes** | 8–128 characters with at least one letter and one number · min 8 chars, max 128 chars |
+| `acceptTerms` | `true` | **yes** |  |
+
+**Response 200**
+
+Returns [TokenResponse](#tokenresponse)
+
+**Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `429 RATE_LIMITED`
+
+---
+
+### POST /auth/invite/resend
+
+<a id="post-auth-invite-resend"></a>**Welcome page: "Send me a new link"**
+
+- **Access:** Public (a token is optional; some fields are personalised when sent)
+
+Emails a fresh 7-day link straight away to the address the invitation went to (never another address) and stops the earlier links. Works with an expired link. Limits: one a minute, five a day (429 `RATE_LIMITED`). `INVITE_ACCEPTED` when the account is already set up.
+
+**Request body** (JSON)
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `token` | string | **yes** | The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…) · min 20 chars, max 200 chars |
+
+**Response 202**
+
+| Field | Type | Notes |
+|---|---|---|
+| `message` | string |  |
+| `email` | string | Masked address the link was sent to |
+| `resendAvailableIn` | number | Seconds before another link can be requested |
 
 **Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `429 RATE_LIMITED`
 
@@ -951,17 +1029,18 @@ Profiles, follows, blocking, suggestions
 
 ### GET /users/suggested
 
-<a id="get-users-suggested"></a>**People to follow ("Suggested Community")**
+<a id="get-users-suggested"></a>**Suggested people: members with profiles similar to yours ("Suggested Community")**
 
 - **Access:** Signed in (Bearer token)
 
-Ranks people who share your interests and are not followed yet, then by follower count.
+People you don't follow yet (never admin accounts), ranked by how similar their profile is to yours: shared interest topics (×3 each), people you follow who follow them (×2 each, up to 5), the same role (×2), forums you are both in (×1 each, up to 3) and the same country (×1); ties go to the more followed. `collaborators=true` keeps only people open to collaborations. Each result says why it was suggested (`similarity`), for a line like "3 shared interests".
 
 **Query parameters**
 
 | Name | Type | Required | Notes |
 |---|---|---|---|
 | `limit` | integer | no | ≥ 1, ≤ 30, default `10` |
+| `collaborators` | `true` \| `false` | no | `true`: only people with "Open to Collaborations" on |
 
 **Response 200**
 
@@ -976,6 +1055,8 @@ Ranks people who share your interests and are not followed yet, then by follower
 | `data[].memberRole` | `researcher` \| `innovator` \| `professional` \| `learner` \| `expert` \| `investor` \| `student` \| null |  |
 | `data[].verified` | boolean | Role verified by an admin (show the verified badge) |
 | `data[].followerCount` | number |  |
+| `data[].openToCollaborate` | boolean |  |
+| `data[].similarity` | object |  |
 
 **Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `429 RATE_LIMITED`, `503 MAINTENANCE`
 
@@ -1241,7 +1322,7 @@ Upload the file with `PUT uploadUrl` (body = file bytes, header `Content-Type`).
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `purpose` | `avatar` \| `cover` \| `post` \| `message` \| `research` \| `prototype` \| `contract` \| `project` \| `forum` \| `event` \| `highlight` \| `comment` \| `verification` \| `featured` | **yes** | Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip) |
+| `purpose` | `avatar` \| `cover` \| `post` \| `message` \| `research` \| `prototype` \| `contract` \| `project` \| `forum` \| `event` \| `highlight` \| `comment` \| `verification` \| `featured` | **yes** | Where the file will be used. comment: images/files on comments · verification: onboarding evidence (private, PDF/PNG/JPEG, 10 MB) · featured: featured-innovation gallery · post now also accepts documents (paperclip) · prototype also accepts CAD / 3D files by extension (stl, step/stp, iges/igs, obj, 3mf, glb, gltf, dwg, dxf, sldprt, sldasm, slddrw, f3d, ipt, iam, skp, fcstd) — send `fileName` |
 | `mimeType` | string | **yes** | max 120 chars |
 | `sizeBytes` | integer | **yes** | ≤ 9007199254740991 |
 | `fileName` | string | no | max 200 chars |
@@ -3669,7 +3750,7 @@ Collaboration requests between members (Chats → Collaboration requests)
 
 - **Access:** Signed in, **onboarding complete**, not restricted
 
-From a profile ("Open to Collaborations"). Add `projectId` to invite them into one of your projects (you must be its owner or admin). One pending request per pair. Errors: `REQUEST_PENDING`, `ALREADY_MEMBER`, `FORBIDDEN` (blocked).
+From a profile ("Open to Collaborations"). Add `projectId` to invite them into one of your projects (you must be its owner or admin). One pending request per pair. Only to people with "Open to Collaborations" on. Errors: `NOT_OPEN_TO_COLLABORATE`, `REQUEST_PENDING`, `ALREADY_MEMBER`, `FORBIDDEN` (blocked).
 
 **Request body** (JSON)
 
@@ -4608,6 +4689,82 @@ Overrides the automatic decision: approve a rejected form, or reject (revoke) a 
 Returns [Verification](#verification)
 
 **Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `403 FORBIDDEN` (role too low), `404 NOT_FOUND`, `429 RATE_LIMITED`
+
+---
+
+### GET /admin/invites
+
+<a id="get-admin-invites"></a>**Invitations (pilot onboarding)**
+
+- **Access:** Staff: **moderator** or above
+
+**Query parameters**
+
+| Name | Type | Required | Notes |
+|---|---|---|---|
+| `page` | integer | no | ≥ 1, ≤ 9007199254740991, default `1` |
+| `pageSize` | integer | no | ≥ 1, ≤ 100, default `15` |
+| `status` | `pending` \| `accepted` \| `expired` | no |  |
+
+**Response 200**
+
+| Field | Type | Notes |
+|---|---|---|
+| `data` | [AdminInvite](#admininvite)[] |  |
+| `page` | number |  |
+| `pageSize` | number |  |
+| `total` | number |  |
+
+**Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `403 FORBIDDEN` (role too low), `429 RATE_LIMITED`
+
+---
+
+### POST /admin/invites
+
+<a id="post-admin-invites"></a>**Invite people by name and email**
+
+- **Access:** Staff: **admin** or above
+
+Creates an account (no password) for each row and emails a 7-day link to the Welcome page. Everything else on the profile is filled in by the person during the normal onboarding. Emails that already have an account are skipped and reported back (nobody is emailed). Also available from the server: `npm run invite -- pilots.csv`.
+
+**Request body** (JSON)
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `invites` | object[] | **yes** | min 1 items, max 500 items |
+| `invites[].name` | string | **yes** | max 200 chars |
+| `invites[].email` | string | **yes** | max 254 chars |
+
+**Response 200**
+
+Returns [AdminInviteSummary](#admininvitesummary)
+
+**Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `403 FORBIDDEN` (role too low), `429 RATE_LIMITED`
+
+---
+
+### POST /admin/invites/resend
+
+<a id="post-admin-invites-resend"></a>**Resend an invitation**
+
+- **Access:** Staff: **admin** or above
+
+Emails a fresh 7-day link and stops the earlier ones. `INVITE_ACCEPTED` (409) when the person has already set up their account.
+
+**Request body** (JSON)
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `email` | string | **yes** | max 254 chars |
+
+**Response 200**
+
+| Field | Type | Notes |
+|---|---|---|
+| `email` | string |  |
+| `expiresAt` | string |  |
+
+**Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `403 FORBIDDEN` (role too low), `429 RATE_LIMITED`
 
 ---
 
@@ -5734,6 +5891,38 @@ Logs page and the Overview "Admin logs" card. `label` is the Action column, `det
 |---|---|---|---|
 | `message` | string | **yes** |  |
 
+### AdminInvite
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `userId` | string (uuid) | **yes** |  |
+| `fullName` | string | **yes** |  |
+| `email` | string | **yes** |  |
+| `status` | `pending` \| `accepted` \| `expired` | **yes** | accepted: password chosen, Google linked or signed in |
+| `onboardingComplete` | boolean | **yes** |  |
+| `invitedAt` | string | **yes** |  |
+| `lastSentAt` | string | **yes** |  |
+| `linksSent` | number | **yes** |  |
+| `expiresAt` | string | **yes** | Latest link |
+
+### AdminInviteSummary
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `invited` | object[] | **yes** |  |
+| `invited[].name` | string | **yes** |  |
+| `invited[].email` | string | **yes** |  |
+| `invited[].userId` | string | **yes** |  |
+| `skipped` | object[] | **yes** | Already has an account (not emailed, not changed), or listed twice |
+| `skipped[].name` | string | **yes** |  |
+| `skipped[].email` | string | **yes** |  |
+| `skipped[].reason` | string | **yes** |  |
+| `invalid` | object[] | **yes** | Rejected rows; `row` is the 1-based position in `invites` |
+| `invalid[].row` | number | **yes** |  |
+| `invalid[].name` | string | **yes** |  |
+| `invalid[].email` | string | **yes** |  |
+| `invalid[].reason` | string | **yes** |  |
+
 ### AdminReport
 
 | Field | Type | Required | Notes |
@@ -6056,6 +6245,15 @@ Logs page and the Overview "Admin logs" card. `label` is the Action column, `det
 | `evidenceLink` | string (uri) | no | Evidence of work: link to an article, pitch deck or publication · max 500 chars |
 | `evidenceFileIds` | string (uuid)[] | **yes** | Evidence of work: uploaded files (purpose `verification`; PDF, PNG, JPEG) · max 5 items, default `[]` |
 | `otherCueFileIds` | string (uuid)[] | **yes** | Other cues: hackathons, boot-camps, patents, awards… (purpose `verification`) · max 10 items, default `[]` |
+
+### InviteLookup
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `status` | `valid` \| `expired` \| `accepted` | **yes** | valid: show the password form. expired: show "Send me a new link". accepted: the account is set up, send them to sign in. |
+| `firstName` | string | **yes** |  |
+| `email` | string | **yes** | Full address while the link is valid; masked ("ad•••@uni.edu") otherwise |
+| `expiresAt` | string | **yes** |  |
 
 ### JoinRequest
 

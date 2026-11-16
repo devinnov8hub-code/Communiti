@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Communiti API",
+    "title": "CommUniti API",
     "version": "1.0.0",
-    "description": "One REST API for the CommUniti member web app, admin dashboard and mobile app.\n\n**Authentication.** Send `Authorization: Bearer <accessToken>`. Access tokens last 15 minutes.\nWeb clients get the refresh token as an httpOnly cookie; mobile clients (`X-Client: ios|android`) get it in the response body and send it back to `/auth/refresh`.\n\n**Errors.** Every non-2xx response is `{ \"error\": { \"code\", \"message\", \"fields?\", \"requestId\" } }`.\n\n**Pagination.** Lists return `{ data, nextCursor }`; pass `?cursor=<nextCursor>` for the next page. Admin tables use `?page=&pageSize=`.\n\n**Sign-up and onboarding.** `POST /auth/register` → `POST /auth/verify-email` (signs in) → `GET /me/onboarding` tells you the next screen: `select_role` → `PUT /me/role` (Researcher / Innovator / Professional / Learner form), `interests` → `PUT /me/interests`, `done` → the app. Role forms are reviewed by admins (`verificationStatus`: pending → verified / rejected); `verified: true` on any user means show the verified badge.\n\n**Uploads.** `POST /uploads/presign` → `PUT` the bytes → `POST /uploads/{id}/complete`, then pass the `mediaId` (or `publicUrl` for avatars and covers).\n\n**Maintenance.** `GET /app-config` on start-up; a `503 MAINTENANCE` response means show the maintenance screen.\n\nScreen-by-screen guides: `docs/USER_API.md` (member apps) and `docs/ADMIN_API.md` (admin dashboard) in the API repository."
+    "description": "One REST API for the CommUniti member web app, admin dashboard and mobile app.\n\n**Authentication.** Send `Authorization: Bearer <accessToken>`. Access tokens last 15 minutes.\nWeb clients get the refresh token as an httpOnly cookie; mobile clients (`X-Client: ios|android`) get it in the response body and send it back to `/auth/refresh`.\n\n**Errors.** Every non-2xx response is `{ \"error\": { \"code\", \"message\", \"fields?\", \"requestId\" } }`.\n\n**Pagination.** Lists return `{ data, nextCursor }`; pass `?cursor=<nextCursor>` for the next page. Admin tables use `?page=&pageSize=`.\n\n**Sign-up and onboarding.** `POST /auth/register` → `POST /auth/verify-email` (signs in) → `GET /me/onboarding` tells you the next screen: `select_role` → `PUT /me/role` (Researcher / Innovator / Professional / Learner form), `interests` → `PUT /me/interests`, `done` → the app. Role forms are verified automatically on submit: pass → `verificationStatus: verified` at once; fail → `422 VERIFICATION_FAILED` with `error.fields[\"details.<field>\"]` to fix (nothing saved). `verified: true` on any user means show the verified badge.\n\n**Uploads.** `POST /uploads/presign` → `PUT` the bytes → `POST /uploads/{id}/complete`, then pass the `mediaId` (or `publicUrl` for avatars and covers).\n\n**Maintenance.** `GET /app-config` on start-up; a `503 MAINTENANCE` response means show the maintenance screen.\n\nGuides in the API repository: `docs/FRONTEND_INTEGRATION.md` (start here), `docs/API_REFERENCE.md` (every endpoint), `docs/USER_API.md` (member screens), `docs/ADMIN_API.md` (admin dashboard)."
   },
   "components": {
     "securitySchemes": {
@@ -1236,7 +1236,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "details": {
             "$ref": "#/components/schemas/VerificationDetailsInput"
@@ -1252,6 +1252,7 @@
             "type": "string"
           },
           "reviewedAt": {
+            "description": "When the current decision was made",
             "type": [
               "string",
               "null"
@@ -1263,6 +1264,21 @@
               "string",
               "null"
             ]
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "admin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`auto`: automatic verification on submit · `admin`: an admin decided"
           }
         },
         "required": [
@@ -1272,7 +1288,86 @@
           "files",
           "submittedAt",
           "reviewedAt",
-          "reviewNote"
+          "reviewNote",
+          "decidedBy"
+        ]
+      },
+      "VerificationCheckInput": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Form field the check is about, or `form`"
+          },
+          "check": {
+            "type": "string",
+            "description": "e.g. orcid_record, email_dns, link_reachable, text_quality"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "skipped"
+            ],
+            "description": "skipped = could not be checked right now (never rejects)"
+          },
+          "message": {
+            "type": "string"
+          },
+          "points": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "field",
+          "check",
+          "outcome",
+          "message",
+          "points"
+        ]
+      },
+      "AutoVerificationInput": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "rejected"
+            ]
+          },
+          "score": {
+            "type": "number"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "networkChecks": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VerificationCheckInput"
+            }
+          }
+        },
+        "required": [
+          "decision",
+          "score",
+          "summary",
+          "networkChecks",
+          "checkedAt",
+          "durationMs",
+          "checks"
         ]
       },
       "OnboardingStatusInput": {
@@ -1327,7 +1422,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           }
         },
         "required": [
@@ -1432,7 +1527,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "details": {
             "$ref": "#/components/schemas/VerificationDetailsInput"
@@ -1451,6 +1546,34 @@
               "string",
               "null"
             ]
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "admin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trustScore": {
+            "description": "0–100 evidence score from automatic verification; low scores are worth a look",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Checks that raised a warning, e.g. email_matches_org, link_mentions, independent_evidence"
           }
         },
         "required": [
@@ -1460,160 +1583,10 @@
           "details",
           "submittedAt",
           "reviewedAt",
-          "reviewNote"
-        ]
-      },
-      "AdminUserInput": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "username": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "avatarUrl": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "headline": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "memberRole": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "researcher",
-                  "innovator",
-                  "professional",
-                  "learner",
-                  "expert",
-                  "investor",
-                  "student"
-                ],
-                "description": "Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verified": {
-            "type": "boolean",
-            "description": "Role verified by an admin (show the verified badge)"
-          },
-          "shortId": {
-            "type": "string",
-            "description": "User Id column: last 8 hex characters of id"
-          },
-          "verificationStatus": {
-            "type": "string",
-            "enum": [
-              "unverified",
-              "pending",
-              "verified",
-              "rejected"
-            ],
-            "description": "Role verification (review in /admin/verifications)"
-          },
-          "email": {
-            "type": "string"
-          },
-          "emailVerified": {
-            "type": "boolean"
-          },
-          "platformRole": {
-            "type": "string",
-            "enum": [
-              "member",
-              "moderator",
-              "admin",
-              "super_admin"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "flagged",
-              "restricted",
-              "suspended",
-              "blocked"
-            ]
-          },
-          "statusReason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "statusUntil": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "country": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "postCount": {
-            "type": "number"
-          },
-          "followerCount": {
-            "type": "number"
-          },
-          "reportCount": {
-            "type": "number"
-          },
-          "lastLoginAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "fullName",
-          "username",
-          "avatarUrl",
-          "headline",
-          "memberRole",
-          "verified",
-          "shortId",
-          "verificationStatus",
-          "email",
-          "emailVerified",
-          "platformRole",
-          "status",
-          "statusReason",
-          "statusUntil",
-          "country",
-          "postCount",
-          "followerCount",
-          "reportCount",
-          "lastLoginAt",
-          "createdAt"
+          "reviewNote",
+          "decidedBy",
+          "trustScore",
+          "flags"
         ]
       },
       "AuthUserInput": {
@@ -1679,7 +1652,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "platformRole": {
             "type": "string",
@@ -1851,6 +1824,323 @@
           "createdAt",
           "lastUsedAt",
           "current"
+        ]
+      },
+      "InviteLookupInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "expired",
+              "accepted"
+            ],
+            "description": "valid: show the password form. expired: show \"Send me a new link\". accepted: the account is set up, send them to sign in."
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "description": "Full address while the link is valid; masked (\"ad•••@uni.edu\") otherwise"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "firstName",
+          "email",
+          "expiresAt"
+        ]
+      },
+      "AdminInviteSummaryInput": {
+        "type": "object",
+        "properties": {
+          "invited": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "email",
+                "userId"
+              ]
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "email",
+                "reason"
+              ]
+            },
+            "description": "Already has an account (not emailed, not changed), or listed twice"
+          },
+          "invalid": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "row": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "row",
+                "name",
+                "email",
+                "reason"
+              ]
+            },
+            "description": "Rejected rows; `row` is the 1-based position in `invites`"
+          }
+        },
+        "required": [
+          "invited",
+          "skipped",
+          "invalid"
+        ]
+      },
+      "AdminInviteInput": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "expired"
+            ],
+            "description": "accepted: password chosen, Google linked or signed in"
+          },
+          "onboardingComplete": {
+            "type": "boolean"
+          },
+          "invitedAt": {
+            "type": "string"
+          },
+          "lastSentAt": {
+            "type": "string"
+          },
+          "linksSent": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Latest link"
+          }
+        },
+        "required": [
+          "userId",
+          "fullName",
+          "email",
+          "status",
+          "onboardingComplete",
+          "invitedAt",
+          "lastSentAt",
+          "linksSent",
+          "expiresAt"
+        ]
+      },
+      "AdminUserInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "memberRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "researcher",
+                  "innovator",
+                  "professional",
+                  "learner",
+                  "expert",
+                  "investor",
+                  "student"
+                ],
+                "description": "Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Role verified by an admin (show the verified badge)"
+          },
+          "shortId": {
+            "type": "string",
+            "description": "User Id column: last 8 hex characters of id"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "verified",
+              "rejected"
+            ],
+            "description": "Role verification (review in /admin/verifications)"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "platformRole": {
+            "type": "string",
+            "enum": [
+              "member",
+              "moderator",
+              "admin",
+              "super_admin"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "flagged",
+              "restricted",
+              "suspended",
+              "blocked"
+            ]
+          },
+          "statusReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusUntil": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postCount": {
+            "type": "number"
+          },
+          "followerCount": {
+            "type": "number"
+          },
+          "reportCount": {
+            "type": "number"
+          },
+          "lastLoginAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "username",
+          "avatarUrl",
+          "headline",
+          "memberRole",
+          "verified",
+          "shortId",
+          "verificationStatus",
+          "email",
+          "emailVerified",
+          "platformRole",
+          "status",
+          "statusReason",
+          "statusUntil",
+          "country",
+          "postCount",
+          "followerCount",
+          "reportCount",
+          "lastLoginAt",
+          "createdAt"
         ]
       },
       "ConversationInput": {
@@ -2953,7 +3243,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "platformRole": {
             "type": "string",
@@ -5467,7 +5757,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "details": {
             "$ref": "#/components/schemas/VerificationDetails"
@@ -5483,6 +5773,7 @@
             "type": "string"
           },
           "reviewedAt": {
+            "description": "When the current decision was made",
             "type": [
               "string",
               "null"
@@ -5494,6 +5785,21 @@
               "string",
               "null"
             ]
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "admin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`auto`: automatic verification on submit · `admin`: an admin decided"
           }
         },
         "required": [
@@ -5503,7 +5809,88 @@
           "files",
           "submittedAt",
           "reviewedAt",
-          "reviewNote"
+          "reviewNote",
+          "decidedBy"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationCheck": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Form field the check is about, or `form`"
+          },
+          "check": {
+            "type": "string",
+            "description": "e.g. orcid_record, email_dns, link_reachable, text_quality"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "skipped"
+            ],
+            "description": "skipped = could not be checked right now (never rejects)"
+          },
+          "message": {
+            "type": "string"
+          },
+          "points": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "field",
+          "check",
+          "outcome",
+          "message",
+          "points"
+        ],
+        "additionalProperties": false
+      },
+      "AutoVerification": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "rejected"
+            ]
+          },
+          "score": {
+            "type": "number"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "networkChecks": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VerificationCheck"
+            }
+          }
+        },
+        "required": [
+          "decision",
+          "score",
+          "summary",
+          "networkChecks",
+          "checkedAt",
+          "durationMs",
+          "checks"
         ],
         "additionalProperties": false
       },
@@ -5559,7 +5946,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           }
         },
         "required": [
@@ -5666,7 +6053,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "details": {
             "$ref": "#/components/schemas/VerificationDetails"
@@ -5685,6 +6072,34 @@
               "string",
               "null"
             ]
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "admin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trustScore": {
+            "description": "0–100 evidence score from automatic verification; low scores are worth a look",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Checks that raised a warning, e.g. email_matches_org, link_mentions, independent_evidence"
           }
         },
         "required": [
@@ -5694,161 +6109,10 @@
           "details",
           "submittedAt",
           "reviewedAt",
-          "reviewNote"
-        ],
-        "additionalProperties": false
-      },
-      "AdminUser": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "username": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "avatarUrl": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "headline": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "memberRole": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "researcher",
-                  "innovator",
-                  "professional",
-                  "learner",
-                  "expert",
-                  "investor",
-                  "student"
-                ],
-                "description": "Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verified": {
-            "type": "boolean",
-            "description": "Role verified by an admin (show the verified badge)"
-          },
-          "shortId": {
-            "type": "string",
-            "description": "User Id column: last 8 hex characters of id"
-          },
-          "verificationStatus": {
-            "type": "string",
-            "enum": [
-              "unverified",
-              "pending",
-              "verified",
-              "rejected"
-            ],
-            "description": "Role verification (review in /admin/verifications)"
-          },
-          "email": {
-            "type": "string"
-          },
-          "emailVerified": {
-            "type": "boolean"
-          },
-          "platformRole": {
-            "type": "string",
-            "enum": [
-              "member",
-              "moderator",
-              "admin",
-              "super_admin"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "flagged",
-              "restricted",
-              "suspended",
-              "blocked"
-            ]
-          },
-          "statusReason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "statusUntil": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "country": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "postCount": {
-            "type": "number"
-          },
-          "followerCount": {
-            "type": "number"
-          },
-          "reportCount": {
-            "type": "number"
-          },
-          "lastLoginAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "fullName",
-          "username",
-          "avatarUrl",
-          "headline",
-          "memberRole",
-          "verified",
-          "shortId",
-          "verificationStatus",
-          "email",
-          "emailVerified",
-          "platformRole",
-          "status",
-          "statusReason",
-          "statusUntil",
-          "country",
-          "postCount",
-          "followerCount",
-          "reportCount",
-          "lastLoginAt",
-          "createdAt"
+          "reviewNote",
+          "decidedBy",
+          "trustScore",
+          "flags"
         ],
         "additionalProperties": false
       },
@@ -5915,7 +6179,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "platformRole": {
             "type": "string",
@@ -6091,6 +6355,330 @@
           "createdAt",
           "lastUsedAt",
           "current"
+        ],
+        "additionalProperties": false
+      },
+      "InviteLookup": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "expired",
+              "accepted"
+            ],
+            "description": "valid: show the password form. expired: show \"Send me a new link\". accepted: the account is set up, send them to sign in."
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "description": "Full address while the link is valid; masked (\"ad•••@uni.edu\") otherwise"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "firstName",
+          "email",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdminInviteSummary": {
+        "type": "object",
+        "properties": {
+          "invited": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "email",
+                "userId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "email",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Already has an account (not emailed, not changed), or listed twice"
+          },
+          "invalid": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "row": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "row",
+                "name",
+                "email",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Rejected rows; `row` is the 1-based position in `invites`"
+          }
+        },
+        "required": [
+          "invited",
+          "skipped",
+          "invalid"
+        ],
+        "additionalProperties": false
+      },
+      "AdminInvite": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "expired"
+            ],
+            "description": "accepted: password chosen, Google linked or signed in"
+          },
+          "onboardingComplete": {
+            "type": "boolean"
+          },
+          "invitedAt": {
+            "type": "string"
+          },
+          "lastSentAt": {
+            "type": "string"
+          },
+          "linksSent": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Latest link"
+          }
+        },
+        "required": [
+          "userId",
+          "fullName",
+          "email",
+          "status",
+          "onboardingComplete",
+          "invitedAt",
+          "lastSentAt",
+          "linksSent",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "memberRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "researcher",
+                  "innovator",
+                  "professional",
+                  "learner",
+                  "expert",
+                  "investor",
+                  "student"
+                ],
+                "description": "Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Role verified by an admin (show the verified badge)"
+          },
+          "shortId": {
+            "type": "string",
+            "description": "User Id column: last 8 hex characters of id"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "verified",
+              "rejected"
+            ],
+            "description": "Role verification (review in /admin/verifications)"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "platformRole": {
+            "type": "string",
+            "enum": [
+              "member",
+              "moderator",
+              "admin",
+              "super_admin"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "flagged",
+              "restricted",
+              "suspended",
+              "blocked"
+            ]
+          },
+          "statusReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statusUntil": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "postCount": {
+            "type": "number"
+          },
+          "followerCount": {
+            "type": "number"
+          },
+          "reportCount": {
+            "type": "number"
+          },
+          "lastLoginAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "username",
+          "avatarUrl",
+          "headline",
+          "memberRole",
+          "verified",
+          "shortId",
+          "verificationStatus",
+          "email",
+          "emailVerified",
+          "platformRole",
+          "status",
+          "statusReason",
+          "statusUntil",
+          "country",
+          "postCount",
+          "followerCount",
+          "reportCount",
+          "lastLoginAt",
+          "createdAt"
         ],
         "additionalProperties": false
       },
@@ -7209,7 +7797,7 @@
               "verified",
               "rejected"
             ],
-            "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+            "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
           },
           "platformRole": {
             "type": "string",
@@ -8636,7 +9224,8 @@
                   "fullName": {
                     "type": "string",
                     "minLength": 2,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "description": "Full name, e.g. Adaeze Okafor"
                   },
                   "email": {
                     "description": "Email address (case-insensitive)",
@@ -9158,6 +9747,173 @@
         }
       }
     },
+    "/api/v1/auth/invite/check": {
+      "post": {
+        "summary": "Welcome page: check an invitation link",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Pilot onboarding. An admin created the account (name + email) and emailed a link to `WEB_URL/welcome?token=…`. Call this when the page opens. 404 when the token is unknown.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 200,
+                    "description": "The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…)"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLookup"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/invite/accept": {
+      "post": {
+        "summary": "Welcome page: choose a password and sign in",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Sets the password, marks the email verified (the link proves the inbox), records acceptance of the terms and signs the person in. Then continue with the normal onboarding (`GET /me/onboarding`). Errors: `INVITE_EXPIRED` (offer \"Send me a new link\"), `INVITE_ACCEPTED` (send them to sign in). \"Continue with Google\" with the invited address also works and needs no call here.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 200,
+                    "description": "The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…)"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "allOf": [
+                      {
+                        "pattern": "[A-Za-z]"
+                      },
+                      {
+                        "pattern": "\\d"
+                      }
+                    ],
+                    "description": "8–128 characters with at least one letter and one number"
+                  },
+                  "acceptTerms": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "required": [
+                  "token",
+                  "password",
+                  "acceptTerms"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/invite/resend": {
+      "post": {
+        "summary": "Welcome page: \"Send me a new link\"",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Emails a fresh 7-day link straight away to the address the invitation went to (never another address) and stops the earlier links. Works with an expired link. Limits: one a minute, five a day (429 `RATE_LIMITED`). `INVITE_ACCEPTED` when the account is already set up.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 200,
+                    "description": "The `token` query parameter of the Welcome link (WEB_URL/welcome?token=…)"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "description": "Masked address the link was sent to"
+                    },
+                    "resendAvailableIn": {
+                      "type": "number",
+                      "description": "Seconds before another link can be requested"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "email",
+                    "resendAvailableIn"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/password/forgot": {
       "post": {
         "summary": "Forgot password: email a reset code",
@@ -9404,7 +10160,8 @@
                   "fullName": {
                     "type": "string",
                     "minLength": 2,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "description": "Full name, e.g. Adaeze Okafor"
                   },
                   "username": {
                     "type": "string",
@@ -9438,6 +10195,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -9449,6 +10207,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -9685,7 +10444,7 @@
         "tags": [
           "Me"
         ],
-        "description": "Onboarding step 1, and Settings → \"Change my role\" / \"Change this email\". Body: `{ memberRole, details }`; `details` depends on the role: **researcher**: `institutionalEmail` or `orcidId` (at least one), `researchProjectLink`, `researchEvidence`. **innovator**: `ventureName`, `description`, `developmentStage` (open | ongoing | closed), `evidenceLink`, `evidenceFileIds`, `otherCueFileIds` (upload with purpose `verification`). **professional**: `organizationName`, `professionalTitle`, `profileLink`, `workEmail`. **learner**: `institution`, `courseOfStudy`, `studentEmail`, `level`. Every submission sets `verificationStatus: pending` until an admin reviews it (the account stays usable). Completes onboarding when interests are already chosen.",
+        "description": "Onboarding step 1, and Settings → \"Change my role\" / \"Change this email\". Body: `{ memberRole, details }`; `details` depends on the role: **researcher**: `institutionalEmail` or `orcidId` (at least one), `researchProjectLink`, `researchEvidence`. **innovator**: `ventureName`, `description`, `developmentStage` (open | ongoing | closed), `evidenceLink`, `evidenceFileIds`, `otherCueFileIds` (upload with purpose `verification`). **professional**: `organizationName`, `professionalTitle`, `profileLink`, `workEmail`. **learner**: `institution`, `courseOfStudy`, `studentEmail`, `level`. \n\n**Automatic verification (no admin queue).** The answers are checked on submit (usually 1–6 s: placeholder/gibberish text, ORCID checksum + ORCID record + name match, email domain exists and is not disposable or a personal Gmail/Yahoo address, links open and are not 404 or parked, the same ORCID/email not used by another account). Pass → saved with `verificationStatus: verified` (verified badge) and `verification.decidedBy: auto`. Fail → `422 VERIFICATION_FAILED`, nothing is saved, and `error.fields` maps `details.<field>` to what to fix (show it under that input). Schema problems (missing or badly formatted fields) are still `400 VALIDATION_FAILED`. Completes onboarding when interests are already chosen; admins are notified of every new member.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9708,6 +10467,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Automatic verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VERIFICATION_FAILED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "fields": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "fields",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Automatic verification failed"
                 }
               }
             }
@@ -10265,7 +11074,7 @@
         "tags": [
           "Users"
         ],
-        "description": "People you don't follow yet, ranked by how similar their profile is to yours: shared interest topics (×3 each), people you follow who follow them (×2 each, up to 5), the same role (×2), forums you are both in (×1 each, up to 3) and the same country (×1); ties go to the more followed. `collaborators=true` keeps only people open to collaborations. Each result says why it was suggested (`similarity`), for a line like \"3 shared interests\".",
+        "description": "People you don't follow yet (never admin accounts), ranked by how similar their profile is to yours: shared interest topics (×3 each), people you follow who follow them (×2 each, up to 5), the same role (×2), forums you are both in (×1 each, up to 3) and the same country (×1); ties go to the more followed. `collaborators=true` keeps only people open to collaborations. Each result says why it was suggested (`similarity`), for a line like \"3 shared interests\".",
         "parameters": [
           {
             "schema": {
@@ -12896,6 +13705,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -13070,6 +13880,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -13736,6 +14547,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -13747,6 +14559,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -13952,6 +14765,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -13963,6 +14777,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -14936,6 +15751,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -15115,6 +15931,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -19328,11 +20145,11 @@
     },
     "/api/v1/admin/verifications": {
       "get": {
-        "summary": "Role verification queue",
+        "summary": "Role verifications (automatic decisions and overrides)",
         "tags": [
           "Admin"
         ],
-        "description": "Forms submitted from onboarding or Settings. `status` defaults to pending; `q` matches name or email.",
+        "description": "Forms submitted from onboarding or Settings, newest first. Forms are verified automatically on submit, so `status` defaults to `all`; `pending` only holds forms from before automatic verification (the daily job clears them). `decidedBy` filters automatic vs admin decisions, `maxTrust` lists low-evidence verifications worth a look, `q` matches name or email.",
         "parameters": [
           {
             "schema": {
@@ -19358,7 +20175,7 @@
           },
           {
             "schema": {
-              "default": "pending",
+              "default": "all",
               "type": "string",
               "enum": [
                 "pending",
@@ -19388,6 +20205,29 @@
             "name": "memberRole",
             "required": false,
             "description": "Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "admin"
+              ]
+            },
+            "in": "query",
+            "name": "decidedBy",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "maxTrust",
+            "required": false,
+            "description": "Only verifications with trustScore at or below this"
           },
           {
             "schema": {
@@ -19444,7 +20284,7 @@
     },
     "/api/v1/admin/verifications/{userId}": {
       "get": {
-        "summary": "A member's verification form with uploaded evidence",
+        "summary": "A member's verification form, evidence and automatic checks",
         "tags": [
           "Admin"
         ],
@@ -19494,7 +20334,7 @@
                         "verified",
                         "rejected"
                       ],
-                      "description": "Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected"
+                      "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
                     },
                     "details": {
                       "$ref": "#/components/schemas/VerificationDetails"
@@ -19510,6 +20350,7 @@
                       "type": "string"
                     },
                     "reviewedAt": {
+                      "description": "When the current decision was made",
                       "type": [
                         "string",
                         "null"
@@ -19521,6 +20362,21 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "decidedBy": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "admin"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`auto`: automatic verification on submit · `admin`: an admin decided"
                     },
                     "user": {
                       "type": "object",
@@ -19590,6 +20446,22 @@
                         "email"
                       ],
                       "additionalProperties": false
+                    },
+                    "trustScore": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "autoChecks": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/AutoVerification"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -19600,7 +20472,144 @@
                     "submittedAt",
                     "reviewedAt",
                     "reviewNote",
-                    "user"
+                    "decidedBy",
+                    "user",
+                    "trustScore",
+                    "autoChecks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/verifications/{userId}/recheck": {
+      "post": {
+        "summary": "Re-run automatic verification on a stored form",
+        "tags": [
+          "Admin"
+        ],
+        "description": "Useful after a lookup was inconclusive (a site or ORCID was down) or for forms from before automatic verification. The member is notified only when the status changes.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "memberRole": {
+                      "type": "string",
+                      "enum": [
+                        "researcher",
+                        "innovator",
+                        "professional",
+                        "learner",
+                        "expert",
+                        "investor",
+                        "student"
+                      ],
+                      "description": "Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unverified",
+                        "pending",
+                        "verified",
+                        "rejected"
+                      ],
+                      "description": "Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job)"
+                    },
+                    "details": {
+                      "$ref": "#/components/schemas/VerificationDetails"
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Media"
+                      },
+                      "description": "Uploaded evidence (signed links, valid 1 hour)"
+                    },
+                    "submittedAt": {
+                      "type": "string"
+                    },
+                    "reviewedAt": {
+                      "description": "When the current decision was made",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "reviewNote": {
+                      "description": "Why it was rejected, when rejected",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "decidedBy": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "auto",
+                            "admin"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "`auto`: automatic verification on submit · `admin`: an admin decided"
+                    },
+                    "trustScore": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "autoChecks": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/AutoVerification"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "memberRole",
+                    "status",
+                    "details",
+                    "files",
+                    "submittedAt",
+                    "reviewedAt",
+                    "reviewNote",
+                    "decidedBy",
+                    "trustScore",
+                    "autoChecks"
                   ],
                   "additionalProperties": false
                 }
@@ -19612,11 +20621,11 @@
     },
     "/api/v1/admin/verifications/{userId}/approve": {
       "post": {
-        "summary": "Approve a role verification (member gets the verified badge)",
+        "summary": "Approve a role verification (override: member gets the verified badge)",
         "tags": [
           "Admin"
         ],
-        "description": "The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).",
+        "description": "Overrides the automatic decision: approve a rejected form, or reject (revoke) a verified one. Returns 409 when the form already has that status. The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).",
         "requestBody": {
           "required": true,
           "content": {
@@ -19673,11 +20682,11 @@
     },
     "/api/v1/admin/verifications/{userId}/reject": {
       "post": {
-        "summary": "Reject a role verification",
+        "summary": "Reject or revoke a role verification (override)",
         "tags": [
           "Admin"
         ],
-        "description": "The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).",
+        "description": "Overrides the automatic decision: approve a rejected form, or reject (revoke) a verified one. Returns 409 when the form already has that status. The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).",
         "requestBody": {
           "required": true,
           "content": {
@@ -19722,6 +20731,211 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Verification"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/invites": {
+      "get": {
+        "summary": "Invitations (pilot onboarding)",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "default": 15,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "accepted",
+                "expired"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminInvite"
+                      }
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "pageSize": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Invite people by name and email",
+        "tags": [
+          "Admin"
+        ],
+        "description": "Creates an account (no password) for each row and emails a 7-day link to the Welcome page. Everything else on the profile is filled in by the person during the normal onboarding. Emails that already have an account are skipped and reported back (nobody is emailed). Also available from the server: `npm run invite -- pilots.csv`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "invites": {
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "email": {
+                          "type": "string",
+                          "maxLength": 254
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "email"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "invites"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminInviteSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/invites/resend": {
+      "post": {
+        "summary": "Resend an invitation",
+        "tags": [
+          "Admin"
+        ],
+        "description": "Emails a fresh 7-day link and stops the earlier ones. `INVITE_ACCEPTED` (409) when the person has already set up their account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "email",
+                    "expiresAt"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -19837,7 +21051,7 @@
                     },
                     "pendingVerifications": {
                       "type": "number",
-                      "description": "Role forms waiting for review (/admin/verifications)"
+                      "description": "Role forms still waiting from before automatic verification (cleared by the daily job). Normally 0"
                     }
                   },
                   "required": [
@@ -22058,6 +23272,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22121,6 +23336,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22130,6 +23346,7 @@
                   },
                   "registrationUrl": {
                     "type": "string",
+                    "maxLength": 2048,
                     "format": "uri",
                     "description": "Required: the Register button opens it"
                   },
@@ -22150,6 +23367,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22299,6 +23517,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22360,6 +23579,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22371,6 +23591,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22395,6 +23616,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22565,6 +23787,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -22674,6 +23897,7 @@
                     "anyOf": [
                       {
                         "type": "string",
+                        "maxLength": 2048,
                         "format": "uri"
                       },
                       {
@@ -23594,7 +24818,7 @@
   },
   "servers": [
     {
-      "url": "https://api.mycommuniti.org",
+      "url": "http://localhost:4000",
       "description": "development"
     }
   ],
@@ -23669,7 +24893,7 @@
     },
     {
       "name": "Admin",
-      "description": "Dashboard, moderation, verifications, users, content, events, broadcasts, settings, logs (moderator+)"
+      "description": "Dashboard, moderation, role verifications (automatic decisions, overrides, re-check), users, content, events, broadcasts, settings, logs (moderator+)"
     }
   ]
 }

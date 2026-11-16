@@ -278,15 +278,39 @@ export interface VerificationDetails {
 export interface Verification {
   /** Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student */
   memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student'
-  /** Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected */
+  /** Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job) */
   status: 'unverified' | 'pending' | 'verified' | 'rejected'
   details: VerificationDetails
   /** Uploaded evidence (signed links, valid 1 hour) */
   files: Media[]
   submittedAt: string
+  /** When the current decision was made */
   reviewedAt: string | null
   /** Why it was rejected, when rejected */
   reviewNote: string | null
+  /** `auto`: automatic verification on submit · `admin`: an admin decided */
+  decidedBy: 'auto' | 'admin' | null
+}
+
+export interface VerificationCheck {
+  /** Form field the check is about, or `form` */
+  field: string
+  /** e.g. orcid_record, email_dns, link_reachable, text_quality */
+  check: string
+  /** skipped = could not be checked right now (never rejects) */
+  outcome: 'pass' | 'warn' | 'fail' | 'skipped'
+  message: string
+  points: number
+}
+
+export interface AutoVerification {
+  decision: 'verified' | 'rejected'
+  score: number
+  summary: string
+  networkChecks: boolean
+  checkedAt: string
+  durationMs: number
+  checks: VerificationCheck[]
 }
 
 export interface OnboardingStatus {
@@ -297,7 +321,7 @@ export interface OnboardingStatus {
   roleSubmitted: boolean
   interestsSelected: boolean
   memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
-  /** Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected */
+  /** Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job) */
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected'
 }
 
@@ -315,39 +339,17 @@ export interface AdminVerification {
   }
   /** Current roles: researcher, innovator, professional, learner. Legacy (existing accounts only): expert, investor, student */
   memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student'
-  /** Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected */
+  /** Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job) */
   status: 'unverified' | 'pending' | 'verified' | 'rejected'
   details: VerificationDetails
   submittedAt: string
   reviewedAt: string | null
   reviewNote: string | null
-}
-
-export interface AdminUser {
-  id: string
-  fullName: string
-  username: string | null
-  avatarUrl: string | null
-  headline: string | null
-  memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
-  /** Role verified by an admin (show the verified badge) */
-  verified: boolean
-  /** User Id column: last 8 hex characters of id */
-  shortId: string
-  /** Role verification (review in /admin/verifications) */
-  verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected'
-  email: string
-  emailVerified: boolean
-  platformRole: 'member' | 'moderator' | 'admin' | 'super_admin'
-  status: 'active' | 'flagged' | 'restricted' | 'suspended' | 'blocked'
-  statusReason: string | null
-  statusUntil: string | null
-  country: string | null
-  postCount: number
-  followerCount: number
-  reportCount: number
-  lastLoginAt: string | null
-  createdAt: string
+  decidedBy: 'auto' | 'admin' | null
+  /** 0–100 evidence score from automatic verification; low scores are worth a look */
+  trustScore: number | null
+  /** Checks that raised a warning, e.g. email_matches_org, link_mentions, independent_evidence */
+  flags: string[]
 }
 
 export interface AuthUser {
@@ -359,7 +361,7 @@ export interface AuthUser {
   avatarUrl: string | null
   headline: string | null
   memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
-  /** Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected */
+  /** Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job) */
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected'
   platformRole: 'member' | 'moderator' | 'admin' | 'super_admin'
   status: 'active' | 'flagged' | 'restricted' | 'suspended' | 'blocked'
@@ -401,6 +403,77 @@ export interface Session {
   createdAt: string
   lastUsedAt: string | null
   current: boolean
+}
+
+export interface InviteLookup {
+  /** valid: show the password form. expired: show "Send me a new link". accepted: the account is set up, send them to sign in. */
+  status: 'valid' | 'expired' | 'accepted'
+  firstName: string
+  /** Full address while the link is valid; masked ("ad•••@uni.edu") otherwise */
+  email: string
+  expiresAt: string
+}
+
+export interface AdminInviteSummary {
+  invited: {
+    name: string
+    email: string
+    userId: string
+  }[]
+  /** Already has an account (not emailed, not changed), or listed twice */
+  skipped: {
+    name: string
+    email: string
+    reason: string
+  }[]
+  /** Rejected rows; `row` is the 1-based position in `invites` */
+  invalid: {
+    row: number
+    name: string
+    email: string
+    reason: string
+  }[]
+}
+
+export interface AdminInvite {
+  userId: string
+  fullName: string
+  email: string
+  /** accepted: password chosen, Google linked or signed in */
+  status: 'pending' | 'accepted' | 'expired'
+  onboardingComplete: boolean
+  invitedAt: string
+  lastSentAt: string
+  linksSent: number
+  /** Latest link */
+  expiresAt: string
+}
+
+export interface AdminUser {
+  id: string
+  fullName: string
+  username: string | null
+  avatarUrl: string | null
+  headline: string | null
+  memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
+  /** Role verified by an admin (show the verified badge) */
+  verified: boolean
+  /** User Id column: last 8 hex characters of id */
+  shortId: string
+  /** Role verification (review in /admin/verifications) */
+  verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected'
+  email: string
+  emailVerified: boolean
+  platformRole: 'member' | 'moderator' | 'admin' | 'super_admin'
+  status: 'active' | 'flagged' | 'restricted' | 'suspended' | 'blocked'
+  statusReason: string | null
+  statusUntil: string | null
+  country: string | null
+  postCount: number
+  followerCount: number
+  reportCount: number
+  lastLoginAt: string | null
+  createdAt: string
 }
 
 export interface Conversation {
@@ -609,7 +682,7 @@ export interface Me {
   avatarUrl: string | null
   headline: string | null
   memberRole: 'researcher' | 'innovator' | 'professional' | 'learner' | 'expert' | 'investor' | 'student' | null
-  /** Role verification: unverified (no form yet), pending (waiting for an admin), verified, rejected */
+  /** Role verification: unverified (no role form), verified (passed automatic verification or approved by an admin), rejected (refused or revoked by an admin; resubmit with PUT /me/role), pending (legacy: submitted before automatic verification, cleared by the daily job) */
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected'
   platformRole: 'member' | 'moderator' | 'admin' | 'super_admin'
   status: 'active' | 'flagged' | 'restricted' | 'suspended' | 'blocked'

@@ -6,6 +6,7 @@ import type {
   AdminCreateEventBody,
   AdminCreateFeaturedInnovationBody,
   AdminCreateHighlightBody,
+  AdminCreateInviteBody,
   AdminCreateMaintenanceBody,
   AdminGetEventStatsQuery,
   AdminGetEventStatsResponse,
@@ -32,6 +33,8 @@ import type {
   AdminListForumsResponse,
   AdminListHighlightsQuery,
   AdminListHighlightsResponse,
+  AdminListInvitesQuery,
+  AdminListInvitesResponse,
   AdminListMaintenanceQuery,
   AdminListMaintenanceResponse,
   AdminListPostsQuery,
@@ -46,8 +49,11 @@ import type {
   AdminListUsersResponse,
   AdminListVerificationsQuery,
   AdminListVerificationsResponse,
+  AdminRecheckVerificationResponse,
   AdminRejectVerificationBody,
   AdminRemoveContentBody,
+  AdminResendInvitesBody,
+  AdminResendInvitesResponse,
   AdminResolveReportBody,
   AdminRestoreContentBody,
   AdminSendBroadcastBody,
@@ -65,6 +71,7 @@ import type {
   AdminUpdateSettingsBody,
 } from '../types/admin.types'
 import type {
+  AdminInviteSummary,
   AdminReportDetail,
   Broadcast,
   Event,
@@ -171,9 +178,9 @@ export const deleteMaintenance = (id: string) =>
   api.delete<void>(`/api/v1/admin/maintenance/${encodeURIComponent(id)}`, { scope: 'admin' }).then(unwrap)
 
 /**
- * Role verification queue
+ * Role verifications (automatic decisions and overrides)
  *
- * Forms submitted from onboarding or Settings. `status` defaults to pending; `q` matches name or email.
+ * Forms submitted from onboarding or Settings, newest first. Forms are verified automatically on submit, so `status` defaults to `all`; `pending` only holds forms from before automatic verification (the daily job clears them). `decidedBy` filters automatic vs admin decisions, `maxTrust` lists low-evidence verifications worth a look, `q` matches name or email.
  *
  * `GET /api/v1/admin/verifications`
  */
@@ -181,7 +188,7 @@ export const listVerifications = (params?: AdminListVerificationsQuery) =>
   api.get<AdminListVerificationsResponse>(`/api/v1/admin/verifications`, { params, scope: 'admin' }).then(unwrap)
 
 /**
- * A member's verification form with uploaded evidence
+ * A member's verification form, evidence and automatic checks
  *
  * `GET /api/v1/admin/verifications/{userId}`
  */
@@ -191,9 +198,25 @@ export const getVerification = (userId: string) =>
     .then(unwrap)
 
 /**
- * Approve a role verification (member gets the verified badge)
+ * Re-run automatic verification on a stored form
  *
- * The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).
+ * Useful after a lookup was inconclusive (a site or ORCID was down) or for forms from before automatic verification. The member is notified only when the status changes.
+ *
+ * `POST /api/v1/admin/verifications/{userId}/recheck`
+ */
+export const recheckVerification = (userId: string) =>
+  api
+    .post<AdminRecheckVerificationResponse>(
+      `/api/v1/admin/verifications/${encodeURIComponent(userId)}/recheck`,
+      undefined,
+      { scope: 'admin' },
+    )
+    .then(unwrap)
+
+/**
+ * Approve a role verification (override: member gets the verified badge)
+ *
+ * Overrides the automatic decision: approve a rejected form, or reject (revoke) a verified one. Returns 409 when the form already has that status. The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).
  *
  * `POST /api/v1/admin/verifications/{userId}/approve`
  */
@@ -203,9 +226,9 @@ export const approveVerification = (userId: string, data: AdminApproveVerificati
     .then(unwrap)
 
 /**
- * Reject a role verification
+ * Reject or revoke a role verification (override)
  *
- * The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).
+ * Overrides the automatic decision: approve a rejected form, or reject (revoke) a verified one. Returns 409 when the form already has that status. The member is emailed and notified in-app. Rejected members can fix their details and submit again (PUT /me/role).
  *
  * `POST /api/v1/admin/verifications/{userId}/reject`
  */
@@ -213,6 +236,34 @@ export const rejectVerification = (userId: string, data: AdminRejectVerification
   api
     .post<Verification>(`/api/v1/admin/verifications/${encodeURIComponent(userId)}/reject`, data, { scope: 'admin' })
     .then(unwrap)
+
+/**
+ * Invitations (pilot onboarding)
+ *
+ * `GET /api/v1/admin/invites`
+ */
+export const listInvites = (params?: AdminListInvitesQuery) =>
+  api.get<AdminListInvitesResponse>(`/api/v1/admin/invites`, { params, scope: 'admin' }).then(unwrap)
+
+/**
+ * Invite people by name and email
+ *
+ * Creates an account (no password) for each row and emails a 7-day link to the Welcome page. Everything else on the profile is filled in by the person during the normal onboarding. Emails that already have an account are skipped and reported back (nobody is emailed). Also available from the server: `npm run invite -- pilots.csv`.
+ *
+ * `POST /api/v1/admin/invites`
+ */
+export const createInvite = (data: AdminCreateInviteBody) =>
+  api.post<AdminInviteSummary>(`/api/v1/admin/invites`, data, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Resend an invitation
+ *
+ * Emails a fresh 7-day link and stops the earlier ones. `INVITE_ACCEPTED` (409) when the person has already set up their account.
+ *
+ * `POST /api/v1/admin/invites/resend`
+ */
+export const resendInvites = (data: AdminResendInvitesBody) =>
+  api.post<AdminResendInvitesResponse>(`/api/v1/admin/invites/resend`, data, { scope: 'admin' }).then(unwrap)
 
 /**
  * KPI cards: users, activity, content, moderation

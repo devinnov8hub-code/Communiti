@@ -13,6 +13,11 @@ const memberRouter = () =>
       lazy: async () => ({ Component: (await import('@/features/auth/pages/AuthCallbackPage')).AuthCallbackPage }),
     },
     {
+      // Invitation link (pilot onboarding). Open to everyone: accepting signs in as the invited person.
+      path: paths.welcome,
+      lazy: async () => ({ Component: (await import('@/features/auth/pages/WelcomePage')).WelcomePage }),
+    },
+    {
       element: <GuestOnly />,
       children: [
         {

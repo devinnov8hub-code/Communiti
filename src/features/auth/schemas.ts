@@ -108,3 +108,13 @@ export const interestsSchema = z.object({
   topics: z.array(z.string()).min(1, 'Select at least one topic').max(20, 'Select up to 20 topics'),
 })
 export type InterestsValues = z.infer<typeof interestsSchema>
+
+/** Welcome page (invited pilot members): choose a password and accept the terms. */
+export const welcomeSchema = z
+  .object({
+    password: newPassword,
+    confirmPassword: z.string().min(1, 'Confirm your password'),
+    acceptTerms: z.boolean().refine(Boolean, 'Please accept the Terms and Conditions to continue'),
+  })
+  .refine((values) => values.password === values.confirmPassword, passwordsMatch)
+export type WelcomeValues = z.infer<typeof welcomeSchema>

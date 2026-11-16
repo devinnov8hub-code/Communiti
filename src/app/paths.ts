@@ -5,6 +5,8 @@ export const paths = {
   verify: '/verify',
   /** Where the backend sends the browser back after Google sign-in. */
   authCallback: '/auth/callback',
+  /** Invitation link from the admin's pilot onboarding email: /welcome?token=… */
+  welcome: '/welcome',
   forgotPassword: '/forgot-password',
   newPassword: '/forgot-password/new',
   onboardingRole: '/onboarding/role',

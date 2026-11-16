@@ -3,7 +3,7 @@
 import type { RoleSubmission, Topic } from './models.types'
 
 export interface UpdateMeBody {
-  /** (2–80 characters) */
+  /** Full name, e.g. Adaeze Okafor (2–80 characters) */
   fullName?: string
   /** (3–30 characters) */
   username?: string
