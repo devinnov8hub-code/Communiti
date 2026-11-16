@@ -63,7 +63,7 @@ export function AdminLoginPage() {
 
   // react-hook-form collects and validates the fields; `values` is what the user typed.
   const submit = useAsyncAction(async (values: z.infer<typeof loginSchema>) => {
-    const response = await authApi.adminLogin(values)
+    const response = await authApi.adminLogin(values, { scope: 'admin' })
     signIn(toAdminSession(response))
     navigate(adminPaths.overview, { replace: true })
   })
