@@ -188,7 +188,7 @@ export function MediaImages({ media }: { media: Media[] }) {
   return media.map(
     (item) =>
       item.kind === 'image' &&
-      item.url && <img key={item.id} src={item.url} alt="" loading="lazy" className="h-[239px] w-full object-cover" />,
+      item.url && <img key={item.id} src={item.url} alt="" loading="lazy" className="h-full w-full object-cover" />,
   )
 }
 

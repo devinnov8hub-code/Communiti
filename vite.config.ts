@@ -16,7 +16,8 @@ export default defineConfig({
     // src/lib/api calls /api/... on this origin and Vite forwards it (see src/lib/api/client.ts).
     proxy: {
       '/api': {
-        target: 'https://api.mycommuniti.org',
+        target: 'http://localhost:4000', 
+        // target: 'https://api.mycommuniti.org',
         changeOrigin: true,
         // Let the refresh-token cookie be stored for localhost.
         cookieDomainRewrite: 'localhost',
