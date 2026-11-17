@@ -1,6 +1,6 @@
 import { ChatCenteredText, Check, DotsThree, DotsThreeOutlineVertical, FileText, Trash } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
-import { Button, IconButton, LoadMore, Menu, MenuItem, Spinner, useToast } from '@/components/ui'
+import { Button, ErrorState, IconButton, LoadMore, Menu, MenuItem, Spinner, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
@@ -55,7 +55,13 @@ export function ResearchTab({ projectId, isAdmin }: { projectId: string; isAdmin
           <Spinner className="text-brand-orange" />
         </TabState>
       ) : docs.isError ? (
-        <TabState>{getErrorMessage(docs.error)}</TabState>
+        <ErrorState
+          size="section"
+          error={docs.error}
+          title="Couldn’t load research"
+          onRetry={() => docs.refetch()}
+          retrying={docs.isFetching}
+        />
       ) : (
         <div className="grid border-t border-hairline lg:min-h-[659px] lg:grid-cols-[minmax(0,546px)_minmax(0,1fr)] lg:gap-3">
           <ul className="flex flex-col gap-2 py-2">

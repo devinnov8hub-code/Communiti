@@ -1,8 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { PageColumns } from '@/components/layout/AppShell'
-import { EmptyState } from '@/components/ui'
+import { ErrorState } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
-import { getErrorMessage } from '@/lib/api/errors'
 import { ExploreHeader } from '../components/ExploreHeader'
 import { exploreTabUrl } from '../urls'
 import { HighlightsMosaic } from '../components/HighlightsMosaic'
@@ -23,7 +22,12 @@ export function HighlightPage() {
         {highlight.isPending ? (
           <div className="h-[400px] animate-pulse bg-surface" />
         ) : highlight.isError ? (
-          <EmptyState title="Not found" description={getErrorMessage(highlight.error)} />
+          <ErrorState
+            error={highlight.error}
+            title="Highlight not found"
+            onRetry={() => highlight.refetch()}
+            retrying={highlight.isFetching}
+          />
         ) : (
           <>
             <nav aria-label="Breadcrumb" className="text-body-l text-fg-muted">

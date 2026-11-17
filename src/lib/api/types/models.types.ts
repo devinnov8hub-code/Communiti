@@ -441,12 +441,31 @@ export interface AdminInvite {
   email: string
   /** accepted: password chosen, Google linked or signed in */
   status: 'pending' | 'accepted' | 'expired'
+  /** invited: link sent, not set up yet. link_expired: not set up and the link expired (resend). account_set_up: password or Google done, role not chosen. role_submitted: role sent, interests not chosen. onboarded: finished onboarding. */
+  stage: 'invited' | 'link_expired' | 'account_set_up' | 'role_submitted' | 'onboarded'
   onboardingComplete: boolean
+  /** Chosen during onboarding */
+  memberRole: 'innovator' | 'researcher' | 'expert' | 'investor' | 'student' | 'professional' | 'learner' | null
+  /** Role verification */
+  verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected'
+  /** How they set up the account; null while not set up */
+  signedInWith: 'password' | 'google' | null
+  lastSignInAt: string | null
+  onboardedAt: string | null
   invitedAt: string
   lastSentAt: string
   linksSent: number
   /** Latest link */
   expiresAt: string
+}
+
+export interface AdminInviteStats {
+  total: number
+  invited: number
+  link_expired: number
+  account_set_up: number
+  role_submitted: number
+  onboarded: number
 }
 
 export interface AdminUser {

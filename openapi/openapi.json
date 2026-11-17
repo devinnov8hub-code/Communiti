@@ -1961,8 +1961,76 @@
             ],
             "description": "accepted: password chosen, Google linked or signed in"
           },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "invited",
+              "link_expired",
+              "account_set_up",
+              "role_submitted",
+              "onboarded"
+            ],
+            "description": "invited: link sent, not set up yet. link_expired: not set up and the link expired (resend). account_set_up: password or Google done, role not chosen. role_submitted: role sent, interests not chosen. onboarded: finished onboarding."
+          },
           "onboardingComplete": {
             "type": "boolean"
+          },
+          "memberRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "innovator",
+                  "researcher",
+                  "expert",
+                  "investor",
+                  "student",
+                  "professional",
+                  "learner"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Chosen during onboarding"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "verified",
+              "rejected"
+            ],
+            "description": "Role verification"
+          },
+          "signedInWith": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "password",
+                  "google"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How they set up the account; null while not set up"
+          },
+          "lastSignInAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "onboardedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "invitedAt": {
             "type": "string"
@@ -1983,11 +2051,48 @@
           "fullName",
           "email",
           "status",
+          "stage",
           "onboardingComplete",
+          "memberRole",
+          "verificationStatus",
+          "signedInWith",
+          "lastSignInAt",
+          "onboardedAt",
           "invitedAt",
           "lastSentAt",
           "linksSent",
           "expiresAt"
+        ]
+      },
+      "AdminInviteStatsInput": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "invited": {
+            "type": "number"
+          },
+          "link_expired": {
+            "type": "number"
+          },
+          "account_set_up": {
+            "type": "number"
+          },
+          "role_submitted": {
+            "type": "number"
+          },
+          "onboarded": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "invited",
+          "link_expired",
+          "account_set_up",
+          "role_submitted",
+          "onboarded"
         ]
       },
       "AdminUserInput": {
@@ -6498,8 +6603,76 @@
             ],
             "description": "accepted: password chosen, Google linked or signed in"
           },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "invited",
+              "link_expired",
+              "account_set_up",
+              "role_submitted",
+              "onboarded"
+            ],
+            "description": "invited: link sent, not set up yet. link_expired: not set up and the link expired (resend). account_set_up: password or Google done, role not chosen. role_submitted: role sent, interests not chosen. onboarded: finished onboarding."
+          },
           "onboardingComplete": {
             "type": "boolean"
+          },
+          "memberRole": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "innovator",
+                  "researcher",
+                  "expert",
+                  "investor",
+                  "student",
+                  "professional",
+                  "learner"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Chosen during onboarding"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "unverified",
+              "pending",
+              "verified",
+              "rejected"
+            ],
+            "description": "Role verification"
+          },
+          "signedInWith": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "password",
+                  "google"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How they set up the account; null while not set up"
+          },
+          "lastSignInAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "onboardedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "invitedAt": {
             "type": "string"
@@ -6520,11 +6693,49 @@
           "fullName",
           "email",
           "status",
+          "stage",
           "onboardingComplete",
+          "memberRole",
+          "verificationStatus",
+          "signedInWith",
+          "lastSignInAt",
+          "onboardedAt",
           "invitedAt",
           "lastSentAt",
           "linksSent",
           "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdminInviteStats": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "invited": {
+            "type": "number"
+          },
+          "link_expired": {
+            "type": "number"
+          },
+          "account_set_up": {
+            "type": "number"
+          },
+          "role_submitted": {
+            "type": "number"
+          },
+          "onboarded": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "invited",
+          "link_expired",
+          "account_set_up",
+          "role_submitted",
+          "onboarded"
         ],
         "additionalProperties": false
       },
@@ -20744,6 +20955,7 @@
         "tags": [
           "Admin"
         ],
+        "description": "Every invited person with their onboarding `stage`. Filter by `stage` (or the older `status`) and search by name or email with `q`. Counts per stage: GET /admin/invites/stats.",
         "parameters": [
           {
             "schema": {
@@ -20779,6 +20991,31 @@
             "in": "query",
             "name": "status",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "invited",
+                "link_expired",
+                "account_set_up",
+                "role_submitted",
+                "onboarded"
+              ]
+            },
+            "in": "query",
+            "name": "stage",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Name or email contains"
           }
         ],
         "security": [
@@ -20878,6 +21115,31 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminInviteSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/invites/stats": {
+      "get": {
+        "summary": "Invitations: how many people are at each stage",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminInviteStats"
                 }
               }
             }

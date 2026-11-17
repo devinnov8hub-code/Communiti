@@ -71,6 +71,7 @@ import type {
   AdminUpdateSettingsBody,
 } from '../types/admin.types'
 import type {
+  AdminInviteStats,
   AdminInviteSummary,
   AdminReportDetail,
   Broadcast,
@@ -240,6 +241,8 @@ export const rejectVerification = (userId: string, data: AdminRejectVerification
 /**
  * Invitations (pilot onboarding)
  *
+ * Every invited person with their onboarding `stage`. Filter by `stage` (or the older `status`) and search by name or email with `q`. Counts per stage: GET /admin/invites/stats.
+ *
  * `GET /api/v1/admin/invites`
  */
 export const listInvites = (params?: AdminListInvitesQuery) =>
@@ -254,6 +257,14 @@ export const listInvites = (params?: AdminListInvitesQuery) =>
  */
 export const createInvite = (data: AdminCreateInviteBody) =>
   api.post<AdminInviteSummary>(`/api/v1/admin/invites`, data, { scope: 'admin' }).then(unwrap)
+
+/**
+ * Invitations: how many people are at each stage
+ *
+ * `GET /api/v1/admin/invites/stats`
+ */
+export const getInvitesStats = () =>
+  api.get<AdminInviteStats>(`/api/v1/admin/invites/stats`, { scope: 'admin' }).then(unwrap)
 
 /**
  * Resend an invitation

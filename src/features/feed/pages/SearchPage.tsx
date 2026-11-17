@@ -1,14 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageColumns } from '@/components/layout/AppShell'
-import { Avatar, EmptyState, SearchField, Spinner, Tabs, VerifyTick, type TabItem } from '@/components/ui'
+import { Avatar, EmptyState, ErrorState, SearchField, Spinner, type TabItem, Tabs, VerifyTick } from '@/components/ui'
 import { getRoleLabel } from '@/features/auth/user'
 import { EventCard } from '@/features/explore/components/EventCard'
 import { HighlightsMosaic } from '@/features/explore/components/HighlightsMosaic'
 import { toExploreEvent, toHighlight } from '@/features/explore/mappers'
 import { useProfilePath } from '@/features/profile/profilePath'
 import type { SearchResponse } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { formatCount } from '@/lib/format'
 import { PostList } from '../components/PostList'
 import { RightRail } from '../components/RightRail'
@@ -141,7 +140,7 @@ function Results<T>({
       </div>
     )
   }
-  if (query.isError) return <EmptyState title="Search failed" description={getErrorMessage(query.error)} />
+  if (query.isError) return <ErrorState error={query.error} title="Search failed" />
   if (!query.data?.length) {
     return <EmptyState title="No results" description={`We couldn’t find any ${kind} for ${subject}.`} />
   }

@@ -11,6 +11,8 @@ export const adminPaths = {
   newPassword: `${base}/new-password`,
   overview: base || '/',
   users: `${base}/users`,
+  /** Pilot invitations and how far each person got with onboarding. */
+  invites: `${base}/invites`,
   /** One member's account logs ("user logs"). */
   userLogs: (id = ':userId') => `${base}/users/${id}/logs`,
   forums: `${base}/forums`,

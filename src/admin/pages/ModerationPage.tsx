@@ -1,7 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { adminPaths } from '../paths'
-import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { QueueTable } from '../components/ReportTables'
@@ -87,7 +86,7 @@ function ModerationQueue({ section }: { section: ModerationSection }) {
           <Panel className="py-[3px]">
             <PanelHeader title="Moderation Queue" className="px-[17px] [&_h2]:text-body-l" />
             {reports.isError ? (
-              <ErrorState message={getErrorMessage(reports.error)} onRetry={() => reports.refetch()} />
+              <ErrorState error={reports.error} onRetry={() => reports.refetch()} />
             ) : (
               <>
                 <QueueTable

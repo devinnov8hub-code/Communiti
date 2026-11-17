@@ -1,6 +1,7 @@
 import {
   Bell,
   CalendarDots,
+  EnvelopeSimple,
   File,
   GearSix,
   GlobeHemisphereWest,
@@ -23,6 +24,7 @@ import { useAdminSession } from '../session/adminSessionContext'
 const NAV = [
   { label: 'Overview', to: adminPaths.overview, icon: House, match: [adminPaths.moderation('overview')] },
   { label: 'Users', to: adminPaths.users, icon: User, match: [adminPaths.moderation('users')] },
+  { label: 'Invitations', to: adminPaths.invites, icon: EnvelopeSimple, match: [] },
   { label: 'Forums', to: adminPaths.forums, icon: GlobeHemisphereWest, match: [adminPaths.moderation('forums')] },
   {
     label: 'Projects',

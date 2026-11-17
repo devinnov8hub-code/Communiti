@@ -1,6 +1,6 @@
 import { DotsThreeOutline, ShieldCheck, ShieldSlash, UserMinus } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
-import { Avatar, EmptyState, IconButton, Menu, MenuItem, Modal, Tag, useToast } from '@/components/ui'
+import { Avatar, ErrorState, IconButton, Menu, MenuItem, Modal, Tag, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getRoleLabel } from '@/features/auth/user'
 import { useProfilePath } from '@/features/profile/profilePath'
@@ -25,7 +25,13 @@ export function ForumMembersModal({ forum, onClose }: { forum: Forum; onClose: (
       {members.isPending ? (
         <div className="h-[240px] animate-pulse rounded-card bg-surface" />
       ) : members.isError ? (
-        <EmptyState title="Couldn’t load members" description={getErrorMessage(members.error)} className="py-8" />
+        <ErrorState
+          size="section"
+          error={members.error}
+          title="Couldn’t load members"
+          onRetry={() => members.refetch()}
+          retrying={members.isFetching}
+        />
       ) : (
         <ul className="flex flex-col">
           {members.data.map((member) => {

@@ -241,6 +241,9 @@ export interface AdminListInvitesQuery {
   /** (1–100, default 15) */
   pageSize?: number
   status?: 'pending' | 'accepted' | 'expired'
+  stage?: 'invited' | 'link_expired' | 'account_set_up' | 'role_submitted' | 'onboarded'
+  /** Name or email contains (max 200 characters) */
+  q?: string
 }
 
 export interface AdminListInvitesResponse {

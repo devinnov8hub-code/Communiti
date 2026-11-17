@@ -199,7 +199,7 @@ export function ReviewPanel({ report, onClose }: { report: AdminReport; onClose:
           {detail.isPending ? (
             <PanelLoading />
           ) : detail.isError ? (
-            <ErrorState message={getErrorMessage(detail.error)} onRetry={() => detail.refetch()} />
+            <ErrorState error={detail.error} onRetry={() => detail.refetch()} />
           ) : (
             <ReportBody report={detail.data} />
           )}

@@ -1,5 +1,4 @@
 import { useDeferredValue, useState } from 'react'
-import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { AuditLogTable } from '../components/LogsTable'
 import { ErrorState } from '../components/states'
@@ -28,7 +27,7 @@ export function LogsPage() {
         <Panel className="py-[3px]">
           <PanelHeader title="Admin logs" className="[&_h2]:text-body-m" />
           {logs.isError ? (
-            <ErrorState message={getErrorMessage(logs.error)} onRetry={() => logs.refetch()} />
+            <ErrorState error={logs.error} onRetry={() => logs.refetch()} />
           ) : (
             <>
               <AuditLogTable entries={logs.data?.data} loading={logs.isFetching} showIp />

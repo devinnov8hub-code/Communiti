@@ -1,6 +1,6 @@
 import { ArrowDown, Check, DotsThree, Trash } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { AvatarStack, IconButton, Menu, MenuItem, MenuRadioItem, Spinner, useToast } from '@/components/ui'
+import { AvatarStack, ErrorState, IconButton, Menu, MenuItem, MenuRadioItem, Spinner, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { formatDue } from '@/lib/format'
@@ -78,7 +78,13 @@ export function TasksTab({
             <Spinner className="text-brand-orange" />
           </TabState>
         ) : tasks.isError ? (
-          <TabState>{getErrorMessage(tasks.error)}</TabState>
+          <ErrorState
+            size="section"
+            error={tasks.error}
+            title="Couldn’t load tasks"
+            onRetry={() => tasks.refetch()}
+            retrying={tasks.isFetching}
+          />
         ) : tasks.data.length === 0 ? (
           <TabState>No tasks yet.</TabState>
         ) : (

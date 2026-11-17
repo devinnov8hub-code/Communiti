@@ -63,7 +63,7 @@ export function UsersPage() {
         <AdminContent>
           <DateRangeSelect value={range} onChange={setRange} />
           {dashboard.isError ? (
-            <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
+            <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />
           ) : (
             <>
               {dashboard.data ? (
@@ -184,7 +184,7 @@ function UsersTable({
         action={<TableSearch value={search} onChange={onSearch} placeholder="Search users" />}
       />
       {users.isError ? (
-        <ErrorState message={getErrorMessage(users.error)} onRetry={() => users.refetch()} />
+        <ErrorState error={users.error} onRetry={() => users.refetch()} />
       ) : (
         <>
           <DataTable

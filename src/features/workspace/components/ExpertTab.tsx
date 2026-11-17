@@ -1,6 +1,6 @@
 import { Cube, DotsThree, FileText, Question, Trash } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { Avatar, IconButton, Menu, MenuItem, Spinner, StarRating, useToast } from '@/components/ui'
+import { Avatar, ErrorState, IconButton, Menu, MenuItem, Spinner, StarRating, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import type { UserRole } from '@/features/auth/types'
 import { getErrorMessage } from '@/lib/api/errors'
@@ -28,7 +28,13 @@ export function ExpertTab({ projectId }: { projectId: string }) {
           <Spinner className="text-brand-orange" />
         </TabState>
       ) : evaluations.isError ? (
-        <TabState>{getErrorMessage(evaluations.error)}</TabState>
+        <ErrorState
+          size="section"
+          error={evaluations.error}
+          title="Couldn’t load evaluations"
+          onRetry={() => evaluations.refetch()}
+          retrying={evaluations.isFetching}
+        />
       ) : (
         <div className="flex flex-col gap-3 lg:px-[50px]">
           <p className="flex min-h-[27px] items-center justify-center gap-1.5 rounded-sm bg-brand-orange-peach px-3 py-1 text-center text-body-s text-grey-50">

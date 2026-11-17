@@ -2,7 +2,17 @@ import { DotsThree, Trash } from '@phosphor-icons/react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
-import { AvatarStack, FilePicker, IconButton, Menu, MenuItem, Modal, Spinner, useToast } from '@/components/ui'
+import {
+  AvatarStack,
+  ErrorState,
+  FilePicker,
+  IconButton,
+  Menu,
+  MenuItem,
+  Modal,
+  Spinner,
+  useToast,
+} from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { useCreatePrototype, useDeletePrototype, usePrototypes } from '../hooks/queries'
 import type { Prototype } from '../types'
@@ -25,7 +35,13 @@ export function PrototypeTab({ projectId, isAdmin }: { projectId: string; isAdmi
             <Spinner className="text-brand-orange" />
           </TabState>
         ) : prototypes.isError ? (
-          <TabState>{getErrorMessage(prototypes.error)}</TabState>
+          <ErrorState
+            size="section"
+            error={prototypes.error}
+            title="Couldn’t load prototypes"
+            onRetry={() => prototypes.refetch()}
+            retrying={prototypes.isFetching}
+          />
         ) : prototypes.data.length === 0 ? (
           <TabState>No prototypes yet. Create one to start uploading versions.</TabState>
         ) : (

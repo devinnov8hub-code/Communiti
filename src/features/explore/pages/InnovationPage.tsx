@@ -1,9 +1,8 @@
 import { ShareNetwork } from '@phosphor-icons/react'
 import { Link, useParams } from 'react-router-dom'
 import { PageColumns } from '@/components/layout/AppShell'
-import { EmptyState, useToast } from '@/components/ui'
+import { ErrorState, useToast } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
-import { getErrorMessage } from '@/lib/api/errors'
 import { ExploreHeader } from '../components/ExploreHeader'
 import { ImageGallery } from '../components/ImageGallery'
 import { exploreTabUrl } from '../urls'
@@ -35,7 +34,12 @@ export function InnovationPage() {
         {innovation.isPending ? (
           <div className="h-[500px] animate-pulse bg-surface" />
         ) : innovation.isError ? (
-          <EmptyState title="Not found" description={getErrorMessage(innovation.error)} />
+          <ErrorState
+            error={innovation.error}
+            title="Innovation not found"
+            onRetry={() => innovation.refetch()}
+            retrying={innovation.isFetching}
+          />
         ) : (
           <article className="flex flex-col gap-[27px] px-2 py-[5px]">
             <div className="flex items-center justify-between gap-3">

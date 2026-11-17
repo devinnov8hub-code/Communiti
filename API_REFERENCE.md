@@ -1,6 +1,6 @@
 # CommUniti API — endpoint reference
 
-_Generated from the code by `npm run docs:reference` · 216 endpoints · base URL `https://api.mycommuniti.org/api/v1` (local: `http://localhost:4000/api/v1`)._
+_Generated from the code by `npm run docs:reference` · 217 endpoints · base URL `https://api.mycommuniti.org/api/v1` (local: `http://localhost:4000/api/v1`)._
 
 Read **[FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)** first: headers, tokens and refresh, errors, pagination, uploads, realtime and the onboarding flow. This file lists every endpoint. Swagger UI with "Try it out" is at `/api/docs`.
 
@@ -189,6 +189,7 @@ Read **[FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)** first: headers, toke
 | Admin | `POST` | [`/admin/verifications/{userId}/reject`](#post-admin-verifications-userid-reject) | Reject or revoke a role verification (override) |
 | Admin | `GET` | [`/admin/invites`](#get-admin-invites) | Invitations (pilot onboarding) |
 | Admin | `POST` | [`/admin/invites`](#post-admin-invites) | Invite people by name and email |
+| Admin | `GET` | [`/admin/invites/stats`](#get-admin-invites-stats) | Invitations: how many people are at each stage |
 | Admin | `POST` | [`/admin/invites/resend`](#post-admin-invites-resend) | Resend an invitation |
 | Admin | `GET` | [`/admin/stats/overview`](#get-admin-stats-overview) | KPI cards: users, activity, content, moderation |
 | Admin | `GET` | [`/admin/stats/user-activity`](#get-admin-stats-user-activity) | Activity over time (User Activity, Forum Activity charts) |
@@ -4698,6 +4699,8 @@ Returns [Verification](#verification)
 
 - **Access:** Staff: **moderator** or above
 
+Every invited person with their onboarding `stage`. Filter by `stage` (or the older `status`) and search by name or email with `q`. Counts per stage: GET /admin/invites/stats.
+
 **Query parameters**
 
 | Name | Type | Required | Notes |
@@ -4705,6 +4708,8 @@ Returns [Verification](#verification)
 | `page` | integer | no | ≥ 1, ≤ 9007199254740991, default `1` |
 | `pageSize` | integer | no | ≥ 1, ≤ 100, default `15` |
 | `status` | `pending` \| `accepted` \| `expired` | no |  |
+| `stage` | `invited` \| `link_expired` \| `account_set_up` \| `role_submitted` \| `onboarded` | no |  |
+| `q` | string | no | Name or email contains · max 200 chars |
 
 **Response 200**
 
@@ -4740,6 +4745,20 @@ Creates an account (no password) for each row and emails a 7-day link to the Wel
 Returns [AdminInviteSummary](#admininvitesummary)
 
 **Errors to handle:** `400 VALIDATION_FAILED` (see `error.fields`), `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `403 FORBIDDEN` (role too low), `429 RATE_LIMITED`
+
+---
+
+### GET /admin/invites/stats
+
+<a id="get-admin-invites-stats"></a>**Invitations: how many people are at each stage**
+
+- **Access:** Staff: **moderator** or above
+
+**Response 200**
+
+Returns [AdminInviteStats](#admininvitestats)
+
+**Errors to handle:** `401 UNAUTHENTICATED / TOKEN_EXPIRED / TOKEN_INVALID`, `403 ACCOUNT_SUSPENDED / ACCOUNT_BLOCKED`, `403 FORBIDDEN` (role too low), `429 RATE_LIMITED`
 
 ---
 
@@ -5899,11 +5918,28 @@ Logs page and the Overview "Admin logs" card. `label` is the Action column, `det
 | `fullName` | string | **yes** |  |
 | `email` | string | **yes** |  |
 | `status` | `pending` \| `accepted` \| `expired` | **yes** | accepted: password chosen, Google linked or signed in |
+| `stage` | `invited` \| `link_expired` \| `account_set_up` \| `role_submitted` \| `onboarded` | **yes** | invited: link sent, not set up yet. link_expired: not set up and the link expired (resend). account_set_up: password or Google done, role not chosen. role_submitted: role sent, interests not chosen. onboarded: finished onboarding. |
 | `onboardingComplete` | boolean | **yes** |  |
+| `memberRole` | `innovator` \| `researcher` \| `expert` \| `investor` \| `student` \| `professional` \| `learner` \| null | **yes** | Chosen during onboarding |
+| `verificationStatus` | `unverified` \| `pending` \| `verified` \| `rejected` | **yes** | Role verification |
+| `signedInWith` | `password` \| `google` \| null | **yes** | How they set up the account; null while not set up |
+| `lastSignInAt` | string \| null | **yes** |  |
+| `onboardedAt` | string \| null | **yes** |  |
 | `invitedAt` | string | **yes** |  |
 | `lastSentAt` | string | **yes** |  |
 | `linksSent` | number | **yes** |  |
 | `expiresAt` | string | **yes** | Latest link |
+
+### AdminInviteStats
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `total` | number | **yes** |  |
+| `invited` | number | **yes** |  |
+| `link_expired` | number | **yes** |  |
+| `account_set_up` | number | **yes** |  |
+| `role_submitted` | number | **yes** |  |
+| `onboarded` | number | **yes** |  |
 
 ### AdminInviteSummary
 

@@ -4,8 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
 import { BackHeader } from '@/components/layout/BackHeader'
-import { Button, EmptyState, Menu, MenuRadioItem } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/errors'
+import { Button, EmptyState, ErrorState, Menu, MenuRadioItem } from '@/components/ui'
 import { CommentCard } from '../components/CommentCard'
 import { PostCard } from '../components/PostCard'
 import { RightRail } from '../components/RightRail'
@@ -32,12 +31,17 @@ export function PostPage() {
         {post.isPending ? (
           <div aria-busy className="h-[600px] animate-pulse bg-surface" />
         ) : post.isError ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-body-m text-fg-muted">{getErrorMessage(post.error)}</p>
-            <Button variant="outline" fullWidth={false} className="h-10 rounded-full text-body-m" onClick={goBack}>
-              Go back
-            </Button>
-          </div>
+          <ErrorState
+            error={post.error}
+            title="Post not found"
+            onRetry={() => post.refetch()}
+            retrying={post.isFetching}
+            actions={
+              <Button variant="outline" fullWidth={false} className="h-10 rounded-full text-body-m" onClick={goBack}>
+                Go back
+              </Button>
+            }
+          />
         ) : (
           <>
             <PostCard post={post.data} variant="detail">

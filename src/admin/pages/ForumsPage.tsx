@@ -1,7 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 import { Avatar } from '@/components/ui'
 import type { AdminGetForumStatsResponse, AdminListForumsResponse } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ActivityChart } from '../components/charts'
 import { GroupActions } from '../components/GroupActions'
@@ -64,7 +63,7 @@ export function ForumsPage() {
       <AdminContent>
         <DateRangeSelect value={range} onChange={setRange} />
         {dashboard.isError ? (
-          <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
+          <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />
         ) : (
           <>
             {dashboard.data ? (
@@ -172,7 +171,7 @@ function ForumsTable({
         action={<TableSearch value={search} onChange={onSearch} placeholder="Search forums" />}
       />
       {forums.isError ? (
-        <ErrorState message={getErrorMessage(forums.error)} onRetry={() => forums.refetch()} />
+        <ErrorState error={forums.error} onRetry={() => forums.refetch()} />
       ) : (
         <>
           <DataTable

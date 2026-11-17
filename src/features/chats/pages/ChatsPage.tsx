@@ -3,10 +3,9 @@ import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
-import { Button, EmptyState, Menu, MenuRadioItem, Tabs } from '@/components/ui'
+import { EmptyState, ErrorState, Menu, MenuRadioItem, Tabs } from '@/components/ui'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { getErrorMessage } from '@/lib/api/errors'
 import { ChatPanel } from '../components/ChatPanel'
 import { ConversationRow } from '../components/ConversationRow'
 import { RequestPanel } from '../components/RequestPanel'
@@ -153,17 +152,7 @@ function RequestList({ activeId }: { activeId?: string }) {
 }
 
 function LoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
-  return (
-    <EmptyState
-      title="Couldn’t load your chats"
-      description={getErrorMessage(error)}
-      action={
-        <Button variant="outline" fullWidth={false} className="h-10 rounded-full text-body-m" onClick={onRetry}>
-          Try again
-        </Button>
-      }
-    />
-  )
+  return <ErrorState error={error} title="Couldn’t load your chats" onRetry={onRetry} />
 }
 
 function ListSkeleton() {

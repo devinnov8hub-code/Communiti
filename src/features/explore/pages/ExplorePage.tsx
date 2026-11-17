@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
-import { EmptyState, LoadMore } from '@/components/ui'
+import { EmptyState, ErrorState, LoadMore } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { ExploreHeader } from '../components/ExploreHeader'
 import { exploreTabUrl } from '../urls'
@@ -75,7 +75,13 @@ function SuggestedPeopleSection() {
       {people.isPending ? (
         <div className="h-[190px] animate-pulse rounded-card bg-surface" />
       ) : people.isError ? (
-        <p className="text-body-m text-fg-muted">Couldn’t load suggestions right now.</p>
+        <ErrorState
+          size="section"
+          error={people.error}
+          title="Couldn’t load suggestions"
+          onRetry={() => people.refetch()}
+          retrying={people.isFetching}
+        />
       ) : (
         <PeopleStrip people={people.data} />
       )}

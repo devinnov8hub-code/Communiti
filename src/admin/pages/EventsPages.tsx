@@ -3,7 +3,6 @@ import { useDeferredValue, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ActionButton, IconButton, Spinner } from '@/components/ui'
 import type { AdminGetEventStatsResponse, Event as CommunityEvent } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { eventCategoryLabel, eventPlace } from '@/lib/events'
 import { formatDateRange } from '@/lib/format'
 import { AdminEventCard } from '../components/AdminEventCard'
@@ -55,7 +54,7 @@ export function EventsPage() {
         </ActionButton>
         {stats.data ? <StatGrid stats={eventStats(stats.data)} icons={EVENT_STAT_ICONS} /> : <StatSkeleton />}
         {failed ? (
-          <ErrorState message={getErrorMessage(failed.error)} onRetry={() => lists.forEach((list) => list.refetch())} />
+          <ErrorState error={failed.error} onRetry={() => lists.forEach((list) => list.refetch())} />
         ) : lists.some((list) => list.isPending) ? (
           <div className="flex justify-center py-16 text-brand-orange">
             <Spinner />
@@ -155,7 +154,7 @@ export function EventDetailPage() {
               <Spinner />
             </div>
           ) : event.isError ? (
-            <ErrorState message={getErrorMessage(event.error)} onRetry={() => event.refetch()} />
+            <ErrorState error={event.error} onRetry={() => event.refetch()} />
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1,4 +1,5 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
+import { RouteError } from '@/components/layout/RouteError'
 import { adminPaths } from './paths'
 
 const session = () => import('./session/AdminRoot')
@@ -13,6 +14,7 @@ const highlights = () => import('./pages/HighlightsPages')
 export const adminRoutes: RouteObject = {
   path: adminPaths.overview,
   lazy: async () => ({ Component: (await session()).AdminRoot }),
+  errorElement: <RouteError homeTo={adminPaths.overview} />,
   children: [
     {
       lazy: async () => ({ Component: (await session()).AdminGuestOnly }),
@@ -29,48 +31,61 @@ export const adminRoutes: RouteObject = {
         {
           lazy: async () => ({ Component: (await import('./components/AdminShell')).AdminShell }),
           children: [
-            { index: true, lazy: async () => ({ Component: (await import('./pages/OverviewPage')).OverviewPage }) },
             {
-              path: adminPaths.users,
-              lazy: async () => ({ Component: (await import('./pages/UsersPage')).UsersPage }),
+              // Keeps the admin sidebar around a crashed page.
+              errorElement: <RouteError inline homeTo={adminPaths.overview} />,
+              children: [
+                { index: true, lazy: async () => ({ Component: (await import('./pages/OverviewPage')).OverviewPage }) },
+                {
+                  path: adminPaths.users,
+                  lazy: async () => ({ Component: (await import('./pages/UsersPage')).UsersPage }),
+                },
+                {
+                  path: adminPaths.invites,
+                  lazy: async () => ({ Component: (await import('./pages/InvitesPage')).InvitesPage }),
+                },
+                {
+                  path: adminPaths.userLogs(),
+                  lazy: async () => ({ Component: (await import('./pages/UserLogsPage')).UserLogsPage }),
+                },
+                {
+                  path: adminPaths.forums,
+                  lazy: async () => ({ Component: (await import('./pages/ForumsPage')).ForumsPage }),
+                },
+                {
+                  path: adminPaths.projects,
+                  lazy: async () => ({ Component: (await import('./pages/ProjectsPage')).ProjectsPage }),
+                },
+                {
+                  path: adminPaths.moderation(),
+                  lazy: async () => ({ Component: (await import('./pages/ModerationPage')).ModerationPage }),
+                },
+                { path: adminPaths.events, lazy: async () => ({ Component: (await events()).EventsPage }) },
+                { path: adminPaths.event(), lazy: async () => ({ Component: (await events()).EventDetailPage }) },
+                { path: adminPaths.highlights, lazy: async () => ({ Component: (await highlights()).HighlightsPage }) },
+                {
+                  path: adminPaths.highlight(),
+                  lazy: async () => ({ Component: (await highlights()).HighlightDetailPage }),
+                },
+                {
+                  path: adminPaths.notifications,
+                  lazy: async () => ({ Component: (await import('./pages/NotificationsPage')).NotificationsPage }),
+                },
+                {
+                  path: adminPaths.settings,
+                  lazy: async () => ({ Component: (await import('./pages/SettingsPage')).SettingsPage }),
+                },
+                {
+                  path: adminPaths.logs,
+                  lazy: async () => ({ Component: (await import('./pages/LogsPage')).LogsPage }),
+                },
+                {
+                  path: adminPaths.profile,
+                  lazy: async () => ({ Component: (await import('./pages/ProfilePage')).ProfilePage }),
+                },
+                { path: '*', element: <Navigate to={adminPaths.overview} replace /> },
+              ],
             },
-            {
-              path: adminPaths.userLogs(),
-              lazy: async () => ({ Component: (await import('./pages/UserLogsPage')).UserLogsPage }),
-            },
-            {
-              path: adminPaths.forums,
-              lazy: async () => ({ Component: (await import('./pages/ForumsPage')).ForumsPage }),
-            },
-            {
-              path: adminPaths.projects,
-              lazy: async () => ({ Component: (await import('./pages/ProjectsPage')).ProjectsPage }),
-            },
-            {
-              path: adminPaths.moderation(),
-              lazy: async () => ({ Component: (await import('./pages/ModerationPage')).ModerationPage }),
-            },
-            { path: adminPaths.events, lazy: async () => ({ Component: (await events()).EventsPage }) },
-            { path: adminPaths.event(), lazy: async () => ({ Component: (await events()).EventDetailPage }) },
-            { path: adminPaths.highlights, lazy: async () => ({ Component: (await highlights()).HighlightsPage }) },
-            {
-              path: adminPaths.highlight(),
-              lazy: async () => ({ Component: (await highlights()).HighlightDetailPage }),
-            },
-            {
-              path: adminPaths.notifications,
-              lazy: async () => ({ Component: (await import('./pages/NotificationsPage')).NotificationsPage }),
-            },
-            {
-              path: adminPaths.settings,
-              lazy: async () => ({ Component: (await import('./pages/SettingsPage')).SettingsPage }),
-            },
-            { path: adminPaths.logs, lazy: async () => ({ Component: (await import('./pages/LogsPage')).LogsPage }) },
-            {
-              path: adminPaths.profile,
-              lazy: async () => ({ Component: (await import('./pages/ProfilePage')).ProfilePage }),
-            },
-            { path: '*', element: <Navigate to={adminPaths.overview} replace /> },
           ],
         },
       ],

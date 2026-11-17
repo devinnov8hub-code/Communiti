@@ -1,9 +1,8 @@
 import { ArrowLeft, User } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
-import { Avatar, IconButton, Spinner } from '@/components/ui'
+import { Avatar, ErrorState, IconButton, Spinner } from '@/components/ui'
 import { getRoleLabel } from '@/features/auth/user'
-import { getErrorMessage } from '@/lib/api/errors'
 import { useCollaborationRequest } from '../hooks/queries'
 import { useAnswerRequest } from '../hooks/useAnswerRequest'
 
@@ -20,7 +19,14 @@ export function RequestPanel({ requestId, onBack }: { requestId: string; onBack?
     )
   }
   if (request.isError) {
-    return <p className="p-10 text-center text-body-m text-fg-muted">{getErrorMessage(request.error)}</p>
+    return (
+      <ErrorState
+        error={request.error}
+        title="Couldn’t open this request"
+        onRetry={() => request.refetch()}
+        retrying={request.isFetching}
+      />
+    )
   }
 
   const { sender, project } = request.data

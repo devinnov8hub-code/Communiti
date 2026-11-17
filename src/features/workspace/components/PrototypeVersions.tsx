@@ -2,7 +2,7 @@ import { DotsThree, DotsThreeOutlineVertical, FileText, Plus } from '@phosphor-i
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
-import { Avatar, FilePicker, IconButton, Menu, MenuItem, Modal, Spinner, useToast } from '@/components/ui'
+import { Avatar, ErrorState, FilePicker, IconButton, Menu, MenuItem, Modal, Spinner, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -71,7 +71,13 @@ export function PrototypeVersions({ projectId, prototypeId }: { projectId: strin
             <Spinner className="text-brand-orange" />
           </TabState>
         ) : detail.isError ? (
-          <TabState>{getErrorMessage(detail.error)}</TabState>
+          <ErrorState
+            size="section"
+            error={detail.error}
+            title="Couldn’t load versions"
+            onRetry={() => detail.refetch()}
+            retrying={detail.isFetching}
+          />
         ) : !versions?.length ? (
           <TabState>No versions yet. Upload the first file.</TabState>
         ) : (

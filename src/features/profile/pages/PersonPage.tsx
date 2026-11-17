@@ -9,6 +9,7 @@ import {
   Button,
   ConfirmDialog,
   EmptyState,
+  ErrorState,
   IconButton,
   Menu,
   MenuItem,
@@ -112,7 +113,12 @@ export function PersonPage() {
       {person.isPending ? (
         <div className="h-[420px] animate-pulse bg-surface" />
       ) : person.isError ? (
-        <EmptyState title="Profile not found" description={getErrorMessage(person.error)} />
+        <ErrorState
+          error={person.error}
+          title="Profile not found"
+          onRetry={() => person.refetch()}
+          retrying={person.isFetching}
+        />
       ) : (
         <div className="flex flex-col items-center gap-gap-sm">
           <ProfileHeader profile={person.data} onCollaborate={() => setSheet('collaborate')} />

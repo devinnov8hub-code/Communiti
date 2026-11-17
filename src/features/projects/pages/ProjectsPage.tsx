@@ -3,10 +3,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
-import { Button, EmptyState, LoadMore, Tabs } from '@/components/ui'
+import { EmptyState, ErrorState, LoadMore, Tabs } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
-import { getErrorMessage } from '@/lib/api/errors'
 import { ProjectCard } from '../components/ProjectCard'
 import { useProjects } from '../hooks/queries'
 import type { ProjectsTab } from '../types'
@@ -37,17 +36,12 @@ export function ProjectsPage() {
             </div>
           ))
         ) : projects.isError ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-body-m text-fg-muted">{getErrorMessage(projects.error)}</p>
-            <Button
-              variant="outline"
-              fullWidth={false}
-              className="h-10 rounded-full text-body-m"
-              onClick={() => projects.refetch()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ErrorState
+            error={projects.error}
+            title="Couldn’t load projects"
+            onRetry={() => projects.refetch()}
+            retrying={projects.isFetching}
+          />
         ) : projects.data.length === 0 ? (
           <EmptyState
             title={tab === 'joined' ? 'No projects yet' : 'No projects found'}

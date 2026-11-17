@@ -2,7 +2,6 @@ import { At, Info, SignIn, SignOut, type Icon } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/ui'
 import type { AdminGetUserResponse, VerificationDetails } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { timeAgo, titleCase } from '@/lib/format'
 import { useAdminUser, useUserLogs } from '../hooks/queries'
 import { adminPaths } from '../paths'
@@ -38,7 +37,7 @@ export function UserDetailsPanel({ userId, onClose }: { userId: string; onClose:
       {user.isPending ? (
         <PanelLoading />
       ) : user.isError ? (
-        <ErrorState message={getErrorMessage(user.error)} onRetry={() => user.refetch()} />
+        <ErrorState error={user.error} onRetry={() => user.refetch()} />
       ) : (
         <UserDetails user={user.data} />
       )}

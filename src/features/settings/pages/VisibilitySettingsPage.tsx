@@ -1,4 +1,4 @@
-import { useToast } from '@/components/ui'
+import { ErrorState, useToast } from '@/components/ui'
 import { getErrorMessage } from '@/lib/api/errors'
 import { RadioRow } from '../components/RadioRow'
 import { SettingsGroup, SettingsSection } from '../components/SettingsSection'
@@ -45,7 +45,13 @@ export function VisibilitySettingsPage() {
           </div>
         </SettingsGroup>
       ) : settings.isError ? (
-        <p className="px-5 text-body-m text-fg-muted">{getErrorMessage(settings.error)}</p>
+        <ErrorState
+          size="section"
+          error={settings.error}
+          title="Couldn’t load your settings"
+          onRetry={() => settings.refetch()}
+          retrying={settings.isFetching}
+        />
       ) : (
         <div className="h-72 animate-pulse rounded-card bg-surface" />
       )}

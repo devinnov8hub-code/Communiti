@@ -7,7 +7,7 @@ import { BackHeader } from '@/components/layout/BackHeader'
 import {
   AvatarStack,
   ConfirmDialog,
-  EmptyState,
+  ErrorState,
   Menu,
   MenuRadioItem,
   Modal,
@@ -70,7 +70,12 @@ export function ForumPage() {
       {forum.isPending ? (
         <div className="h-[420px] animate-pulse bg-surface" />
       ) : forum.isError ? (
-        <EmptyState title="Forum not found" description={getErrorMessage(forum.error)} />
+        <ErrorState
+          error={forum.error}
+          title="Forum not found"
+          onRetry={() => forum.refetch()}
+          retrying={forum.isFetching}
+        />
       ) : (
         <div className="flex flex-1 flex-col items-center gap-gap-md pb-28">
           <section className="flex w-full flex-col border-b border-hairline">

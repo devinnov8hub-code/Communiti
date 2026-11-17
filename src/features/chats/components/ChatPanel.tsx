@@ -2,7 +2,17 @@ import { ArrowLeft, Broom, DotsThreeVertical, MagnifyingGlass, Prohibit, Trash, 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '@/app/paths'
-import { Avatar, ConfirmDialog, IconButton, Menu, MenuItem, MenuRadioItem, Spinner, useToast } from '@/components/ui'
+import {
+  Avatar,
+  ConfirmDialog,
+  ErrorState,
+  IconButton,
+  Menu,
+  MenuItem,
+  MenuRadioItem,
+  Spinner,
+  useToast,
+} from '@/components/ui'
 import { ReportModal } from '@/features/feed/components/ReportModal'
 import type { GetConversationResponse as ConversationDetail, Message } from '@/lib/api'
 import { getErrorMessage } from '@/lib/api/errors'
@@ -100,7 +110,14 @@ export function ChatPanel({ conversationId, onBack }: ChatPanelProps) {
     )
   }
   if (conversation.isError) {
-    return <p className="p-10 text-center text-body-m text-fg-muted">{getErrorMessage(conversation.error)}</p>
+    return (
+      <ErrorState
+        error={conversation.error}
+        title="Couldn’t open this chat"
+        onRetry={() => conversation.refetch()}
+        retrying={conversation.isFetching}
+      />
+    )
   }
 
   const chat = conversation.data
@@ -146,7 +163,13 @@ export function ChatPanel({ conversationId, onBack }: ChatPanelProps) {
             <Spinner className="text-brand-orange" />
           </div>
         ) : messages.isError ? (
-          <p className="mt-8 text-center text-body-s text-fg-muted">{getErrorMessage(messages.error)}</p>
+          <ErrorState
+            size="section"
+            error={messages.error}
+            title="Couldn’t load messages"
+            onRetry={() => messages.refetch()}
+            retrying={messages.isFetching}
+          />
         ) : thread.length === 0 ? (
           <p className="mt-8 text-center text-body-s text-fg-muted">
             {query ? 'No messages match your search.' : 'No messages yet. Say hello!'}

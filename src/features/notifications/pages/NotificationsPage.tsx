@@ -2,7 +2,7 @@ import { Bell, ChatsCircle, GearSix, Handshake, Ranking, UsersThree } from '@pho
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageColumns } from '@/components/layout/AppShell'
-import { Avatar, EmptyState, IconButton, LoadMore, Tabs } from '@/components/ui'
+import { Avatar, EmptyState, ErrorState, IconButton, LoadMore, Tabs } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { cn } from '@/lib/cn'
 import { NotificationSettingsModal } from '../components/NotificationSettingsModal'
@@ -60,7 +60,12 @@ export function NotificationsPage() {
       {notifications.isPending ? (
         <div className="h-96 animate-pulse bg-surface" />
       ) : notifications.isError ? (
-        <EmptyState title="Couldn’t load notifications" description="Check your connection and try again." />
+        <ErrorState
+          error={notifications.error}
+          title="Couldn’t load notifications"
+          onRetry={() => notifications.refetch()}
+          retrying={notifications.isFetching}
+        />
       ) : visible.length ? (
         <ul className="flex flex-col gap-3.5">
           {visible.map((notification) => (

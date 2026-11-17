@@ -5,7 +5,16 @@ import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { paths } from '@/app/paths'
-import { Button, FilePicker, SelectField, Spinner, TextAreaField, TextField, useToast } from '@/components/ui'
+import {
+  Button,
+  ErrorState,
+  FilePicker,
+  SelectField,
+  Spinner,
+  TextAreaField,
+  TextField,
+  useToast,
+} from '@/components/ui'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
 import { getErrorMessage, type Project } from '@/lib/api'
 import { useCreateProject, useProject, useUpdateProject } from '../hooks/queries'
@@ -52,7 +61,15 @@ export function ProjectFormPage() {
         <Spinner />
       </div>
     )
-  if (project.isError) return <p className="p-10 text-center text-fg-muted">{getErrorMessage(project.error)}</p>
+  if (project.isError)
+    return (
+      <ErrorState
+        error={project.error}
+        title="Couldn’t load this project"
+        onRetry={() => project.refetch()}
+        retrying={project.isFetching}
+      />
+    )
   // Only the owner and project admins can edit the details.
   if (project.data.myRole !== 'owner' && project.data.myRole !== 'admin')
     return <Navigate to={paths.project(projectId)} replace />

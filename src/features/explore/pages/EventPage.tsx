@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
 import { PageColumns } from '@/components/layout/AppShell'
 import { BackHeader } from '@/components/layout/BackHeader'
-import { EmptyState, Spinner, useToast } from '@/components/ui'
+import { ErrorState, Spinner, useToast } from '@/components/ui'
 import { RightRail } from '@/features/feed/components/RightRail'
 import { getErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/lib/cn'
@@ -24,7 +24,12 @@ export function EventPage() {
         {event.isPending ? (
           <div className="h-[355px] animate-pulse rounded-[4px] bg-surface" />
         ) : event.isError ? (
-          <EmptyState title="Event not found" description={getErrorMessage(event.error)} />
+          <ErrorState
+            error={event.error}
+            title="Event not found"
+            onRetry={() => event.refetch()}
+            retrying={event.isFetching}
+          />
         ) : (
           <article className="flex flex-col gap-gap-md">
             <div className="flex flex-col gap-3">

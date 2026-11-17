@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Button, DateField } from '@/components/ui'
 import type { AdminListUserLogsResponse } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ErrorState } from '../components/states'
 import { AdminContent, Breadcrumb, DataTable, Pagination, Panel, PanelHeader, type Column } from '../components/ui'
@@ -110,7 +109,7 @@ export function UserLogsPage() {
             </div>
           )}
           {logs.isError ? (
-            <ErrorState message={getErrorMessage(logs.error)} onRetry={() => logs.refetch()} />
+            <ErrorState error={logs.error} onRetry={() => logs.refetch()} />
           ) : (
             <>
               <DataTable

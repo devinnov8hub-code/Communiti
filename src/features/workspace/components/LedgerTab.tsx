@@ -1,6 +1,5 @@
 import { CalendarDots } from '@phosphor-icons/react'
-import { LoadMore, Spinner } from '@/components/ui'
-import { getErrorMessage } from '@/lib/api/errors'
+import { ErrorState, LoadMore, Spinner } from '@/components/ui'
 import { formatDayHeading, formatTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useLedger } from '../hooks/queries'
@@ -25,7 +24,16 @@ export function LedgerTab({ projectId }: { projectId: string }) {
         <Spinner className="text-brand-orange" />
       </TabState>
     )
-  if (ledger.isError) return <TabState>{getErrorMessage(ledger.error)}</TabState>
+  if (ledger.isError)
+    return (
+      <ErrorState
+        size="section"
+        error={ledger.error}
+        title="Couldn’t load activity"
+        onRetry={() => ledger.refetch()}
+        retrying={ledger.isFetching}
+      />
+    )
   if (ledger.data.length === 0) return <TabState>No activity yet.</TabState>
 
   const groups = new Map<string, LedgerEntry[]>()

@@ -1,7 +1,6 @@
 import { DownloadSimple, FileText } from '@phosphor-icons/react'
-import { Spinner, Tag, type TagTone } from '@/components/ui'
+import { ErrorState, Spinner, Tag, type TagTone } from '@/components/ui'
 import type { Contract } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { formatLongDate } from '@/lib/format'
 import { useContracts } from '../hooks/queries'
 import { ContractTerms } from './ContractTerms'
@@ -30,7 +29,13 @@ export function ContractTab({ projectId }: { projectId: string }) {
             <Spinner />
           </div>
         ) : contracts.isError ? (
-          <p className="text-body-s text-fg-muted">{getErrorMessage(contracts.error)}</p>
+          <ErrorState
+            size="section"
+            error={contracts.error}
+            title="Couldn’t load contracts"
+            onRetry={() => contracts.refetch()}
+            retrying={contracts.isFetching}
+          />
         ) : contracts.data.length === 0 ? (
           <p className="text-body-s text-fg-muted">No contract has been uploaded for this project yet.</p>
         ) : (

@@ -1,6 +1,5 @@
 import { useDeferredValue, useState } from 'react'
 import type { AdminGetOverviewStatsResponse } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { ActivityChart } from '../components/charts'
 import { AuditLogTable } from '../components/LogsTable'
@@ -48,7 +47,7 @@ export function OverviewPage() {
       <AdminContent>
         <DateRangeSelect value={range} onChange={setRange} />
         {overview.isError ? (
-          <ErrorState message={getErrorMessage(overview.error)} onRetry={() => overview.refetch()} />
+          <ErrorState error={overview.error} onRetry={() => overview.refetch()} />
         ) : (
           <>
             {overview.data ? <StatGrid stats={statCards(overview.data.stats, range)} /> : <StatSkeleton />}

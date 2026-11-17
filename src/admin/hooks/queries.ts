@@ -7,6 +7,7 @@ import {
   type AdminUpdateEventBody,
   type AdminListAuditLogsQuery,
   type AdminListForumsQuery,
+  type AdminListInvitesQuery,
   type AdminListProjectsQuery,
   type AdminListReportsQuery,
   type AdminListUserLogsQuery,
@@ -372,3 +373,25 @@ export function useUpdateAdminProfile() {
 
 export const useChangeAdminPassword = () =>
   useMutation({ mutationFn: (data: ChangePasswordBody) => authApi.changePassword(data, ADMIN) })
+
+/* ------------------------------- Invitations ----------------------------- */
+
+/** Invited people (pilot onboarding) with their onboarding stage, plus counts per stage. */
+export const useInvites = (params: AdminListInvitesQuery) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'invites', params],
+    queryFn: () => adminApi.listInvites(params),
+    placeholderData: keepPreviousData,
+  })
+
+export const useInviteStats = () =>
+  useQuery({ queryKey: [...adminKeys.all, 'invite-stats'], queryFn: () => adminApi.getInvitesStats() })
+
+/** Emails a fresh 7-day link to someone who hasn't set up their account yet. */
+export function useResendInvite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (email: string) => adminApi.resendInvites({ email }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'invites'] }),
+  })
+}

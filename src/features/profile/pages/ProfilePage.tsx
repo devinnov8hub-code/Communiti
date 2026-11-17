@@ -1,7 +1,7 @@
 import { GlobeHemisphereWest, Sparkle } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { PageColumns } from '@/components/layout/AppShell'
-import { EmptyState, useToast } from '@/components/ui'
+import { EmptyState, ErrorState, useToast } from '@/components/ui'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { getRoleLabel } from '@/features/auth/user'
 import { PostList } from '@/features/feed/components/PostList'
@@ -45,7 +45,12 @@ export function ProfilePage() {
       {profile.isPending ? (
         <div className="h-[420px] animate-pulse bg-surface" />
       ) : profile.isError ? (
-        <EmptyState title="Couldn’t load your profile" description={getErrorMessage(profile.error)} />
+        <ErrorState
+          error={profile.error}
+          title="Couldn’t load your profile"
+          onRetry={() => profile.refetch()}
+          retrying={profile.isFetching}
+        />
       ) : (
         <div className="flex flex-col items-center gap-gap-sm">
           <section className="flex w-full flex-col">

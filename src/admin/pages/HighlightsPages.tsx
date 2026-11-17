@@ -32,7 +32,7 @@ export function HighlightsPage() {
             <Spinner />
           </div>
         ) : groups.isError ? (
-          <ErrorState message={getErrorMessage(groups.error)} onRetry={() => groups.refetch()} />
+          <ErrorState error={groups.error} onRetry={() => groups.refetch()} />
         ) : visible?.length ? (
           visible.map((group, index) => (
             <section key={group.id} className="flex flex-col gap-4 lg:px-2">
@@ -127,7 +127,7 @@ export function HighlightDetailPage() {
             <Spinner />
           </div>
         ) : group.isError ? (
-          <ErrorState message={getErrorMessage(group.error)} onRetry={() => group.refetch()} />
+          <ErrorState error={group.error} onRetry={() => group.refetch()} />
         ) : (
           <>
             <nav aria-label="Breadcrumb" className="text-body-m text-fg-muted">

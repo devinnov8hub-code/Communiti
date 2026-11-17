@@ -1,7 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 import { Avatar } from '@/components/ui'
 import type { AdminGetProjectStatsResponse, AdminListProjectsResponse } from '@/lib/api'
-import { getErrorMessage } from '@/lib/api/errors'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { DistributionChart } from '../components/charts'
 import { GroupActions } from '../components/GroupActions'
@@ -78,7 +77,7 @@ export function ProjectsPage() {
       <AdminContent>
         <DateRangeSelect value={range} onChange={setRange} />
         {dashboard.isError ? (
-          <ErrorState message={getErrorMessage(dashboard.error)} onRetry={() => dashboard.refetch()} />
+          <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />
         ) : (
           <>
             {dashboard.data ? (
@@ -189,7 +188,7 @@ function ProjectsTable({
         action={<TableSearch value={search} onChange={onSearch} placeholder="Search project" />}
       />
       {projects.isError ? (
-        <ErrorState message={getErrorMessage(projects.error)} onRetry={() => projects.refetch()} />
+        <ErrorState error={projects.error} onRetry={() => projects.refetch()} />
       ) : (
         <>
           <DataTable

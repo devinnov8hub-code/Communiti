@@ -1,8 +1,8 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { paths } from '@/app/paths'
-import { Button, Spinner } from '@/components/ui'
+import { ErrorState, Spinner } from '@/components/ui'
 import { SearchHeader } from '@/features/feed/components/SearchHeader'
-import { ApiError, getErrorMessage } from '@/lib/api/errors'
+import { ApiError } from '@/lib/api/errors'
 import { ContractTab } from '../components/ContractTab'
 import { ExpertTab } from '../components/ExpertTab'
 import { LedgerTab } from '../components/LedgerTab'
@@ -35,21 +35,16 @@ export function WorkspacePage() {
             <Spinner />
           </div>
         ) : workspace.isError ? (
-          <div className="flex flex-col items-center gap-4 py-24 text-center">
-            <p className="text-body-m text-fg-muted">
-              {workspace.error instanceof ApiError && workspace.error.status === 404
-                ? 'We couldn’t find that project.'
-                : getErrorMessage(workspace.error)}
-            </p>
-            <Button
-              variant="outline"
-              fullWidth={false}
-              className="h-10 rounded-full text-body-m"
-              onClick={() => workspace.refetch()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ErrorState
+            error={workspace.error}
+            title={
+              workspace.error instanceof ApiError && workspace.error.status === 404
+                ? 'Project not found'
+                : 'Couldn’t load this project'
+            }
+            onRetry={() => workspace.refetch()}
+            retrying={workspace.isFetching}
+          />
         ) : (
           <Workspace workspace={workspace.data} tab={tab} prototypeId={prototypeId} />
         )}
