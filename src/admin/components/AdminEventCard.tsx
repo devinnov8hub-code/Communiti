@@ -1,4 +1,4 @@
-import { CalendarDots, DotsThree, Eye, NavigationArrow, Trash } from '@phosphor-icons/react'
+import { CalendarDots, DotsThree, Eye, NavigationArrow, PencilSimple, Trash } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ConfirmDialog, IconButton, Menu, MenuItem, useToast } from '@/components/ui'
@@ -9,10 +9,12 @@ import { eventCategoryLabel, eventPlace } from '@/lib/events'
 import { formatDateRange } from '@/lib/format'
 import { useDeleteEvent } from '../hooks/queries'
 import { adminPaths } from '../paths'
+import { EventFormModal } from './EventFormModal'
 
 /** Admin event tile: image on top, details below (Figma "EVENTS PAGE" cards). */
 export function AdminEventCard({ event, className }: { event: CommunityEvent; className?: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editing, setEditing] = useState(false)
   const remove = useDeleteEvent()
   const toast = useToast()
   const navigate = useNavigate()
@@ -56,6 +58,16 @@ export function AdminEventCard({ event, className }: { event: CommunityEvent; cl
                   }}
                 >
                   View event
+                </MenuItem>
+                <MenuItem
+                  size="sm"
+                  icon={<PencilSimple />}
+                  onSelect={() => {
+                    close()
+                    setEditing(true)
+                  }}
+                >
+                  Edit event
                 </MenuItem>
                 <MenuItem
                   size="sm"
@@ -107,6 +119,7 @@ export function AdminEventCard({ event, className }: { event: CommunityEvent; cl
           })
         }
       />
+      {editing && <EventFormModal event={event} onClose={() => setEditing(false)} />}
     </article>
   )
 }

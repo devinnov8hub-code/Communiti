@@ -1,4 +1,4 @@
-import { CalendarDots, CaretLeft, CaretRight, NavigationArrow, UserPlus } from '@phosphor-icons/react'
+import { CalendarDots, CaretLeft, CaretRight, NavigationArrow, PencilSimple, UserPlus } from '@phosphor-icons/react'
 import { useDeferredValue, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ActionButton, IconButton, Spinner } from '@/components/ui'
@@ -6,8 +6,8 @@ import type { AdminGetEventStatsResponse, Event as CommunityEvent } from '@/lib/
 import { getErrorMessage } from '@/lib/api/errors'
 import { eventCategoryLabel, eventPlace } from '@/lib/events'
 import { formatDateRange } from '@/lib/format'
-import { AddEventModal } from '../components/AddEventModal'
 import { AdminEventCard } from '../components/AdminEventCard'
+import { EventFormModal } from '../components/EventFormModal'
 import { AdminTopBar } from '../components/AdminTopBar'
 import { EVENT_STAT_ICONS } from '../components/statIcons'
 import { ErrorState, StatSkeleton } from '../components/states'
@@ -91,7 +91,7 @@ export function EventsPage() {
           </>
         )}
       </AdminContent>
-      {adding && <AddEventModal onClose={() => setAdding(false)} />}
+      {adding && <EventFormModal onClose={() => setAdding(false)} />}
     </>
   )
 }
@@ -141,6 +141,7 @@ function EventRow({ title, events }: { title: string; events: CommunityEvent[] }
 export function EventDetailPage() {
   const { eventId = '' } = useParams()
   const event = useAdminEvent(eventId)
+  const [editing, setEditing] = useState(false)
   const upcoming = useAdminEventList('upcoming')
   const others = upcoming.data?.data.filter((item) => item.id !== eventId).slice(0, 6)
 
@@ -157,7 +158,18 @@ export function EventDetailPage() {
             <ErrorState message={getErrorMessage(event.error)} onRetry={() => event.refetch()} />
           ) : (
             <>
-              <Breadcrumb items={[{ label: 'Events', to: adminPaths.events }, { label: event.data.title }]} />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Breadcrumb items={[{ label: 'Events', to: adminPaths.events }, { label: event.data.title }]} />
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex h-[42px] items-center gap-2 rounded-control border border-brand-orange px-4 text-body-m font-semibold text-brand-orange hover:bg-brand-orange-tint dark:hover:bg-brand-orange/10"
+                >
+                  <PencilSimple aria-hidden className="size-5" />
+                  Edit event
+                </button>
+              </div>
+              {editing && <EventFormModal event={event.data} onClose={() => setEditing(false)} />}
               <article className="flex flex-col gap-gap-md sm:px-5">
                 <div className="flex flex-col gap-3">
                   {event.data.coverUrl && (

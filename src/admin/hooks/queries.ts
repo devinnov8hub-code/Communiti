@@ -4,6 +4,7 @@ import {
   type AdminCreateEventBody,
   type AdminCreateHighlightBody,
   type AdminCreateMaintenanceBody,
+  type AdminUpdateEventBody,
   type AdminListAuditLogsQuery,
   type AdminListForumsQuery,
   type AdminListProjectsQuery,
@@ -212,6 +213,19 @@ export function useCreateEvent() {
     mutationFn: async ({ cover, ...event }: AdminCreateEventBody & { cover?: File }) => {
       const coverUrl = cover ? (await uploadFile(cover, 'event', {}, 'admin')).publicUrl : null
       return adminApi.createEvent({ ...event, coverUrl })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+  })
+}
+
+/** Saves the changed fields. `cover`: a new image to upload, or null to remove the current one. */
+export function useUpdateEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, cover, ...patch }: AdminUpdateEventBody & { id: string; cover?: File | null }) => {
+      if (cover instanceof File) patch.coverUrl = (await uploadFile(cover, 'event', {}, 'admin')).publicUrl
+      else if (cover === null) patch.coverUrl = null
+      return adminApi.updateEvent(id, patch)
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   })
